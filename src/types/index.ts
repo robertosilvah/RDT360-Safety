@@ -122,3 +122,11 @@ export type ForkliftInspection = {
   date: string;
   checklist: ForkliftChecklistItem[];
 };
+
+export type User = {
+  id: string;
+  name: string;
+  email: string;
+  role: 'Administrator' | 'Manager' | 'Operator' | 'Maintenance' | 'HR';
+  status: 'Active' | 'Pending';
+};

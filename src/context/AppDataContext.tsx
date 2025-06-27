@@ -1,13 +1,14 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection } from '@/types';
+import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User } from '@/types';
 import {
   mockObservations,
   mockCorrectiveActions,
   mockIncidents,
   mockSafetyWalks,
   mockForkliftInspections,
+  mockUsers,
 } from '@/lib/mockData';
 
 interface AppDataContextType {
@@ -26,6 +27,10 @@ interface AppDataContextType {
   addCommentToSafetyWalk: (walkId: string, comment: Comment) => void;
   forkliftInspections: ForkliftInspection[];
   addForkliftInspection: (inspection: ForkliftInspection) => void;
+  users: User[];
+  addUser: (user: User) => void;
+  updateUserStatus: (userId: string, status: User['status']) => void;
+  removeUser: (userId: string) => void;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -36,6 +41,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [incidents, setIncidents] = useState<Incident[]>(mockIncidents);
   const [safetyWalks, setSafetyWalks] = useState<SafetyWalk[]>(mockSafetyWalks);
   const [forkliftInspections, setForkliftInspections] = useState<ForkliftInspection[]>(mockForkliftInspections);
+  const [users, setUsers] = useState<User[]>(mockUsers);
 
   // Observations
   const addObservation = (observation: Observation) => {
@@ -82,6 +88,19 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     setForkliftInspections(prev => [inspection, ...prev]);
   };
 
+  // Users
+  const addUser = (user: User) => {
+    setUsers(prev => [user, ...prev]);
+  };
+
+  const updateUserStatus = (userId: string, status: User['status']) => {
+    setUsers(prev => prev.map(u => u.id === userId ? { ...u, status } : u));
+  };
+
+  const removeUser = (userId: string) => {
+    setUsers(prev => prev.filter(u => u.id !== userId));
+  };
+
   return (
     <AppDataContext.Provider value={{
       observations, addObservation,
@@ -89,6 +108,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       incidents, updateIncident, addCommentToIncident,
       safetyWalks, addSafetyWalk, updateSafetyWalk, addCommentToSafetyWalk,
       forkliftInspections, addForkliftInspection,
+      users, addUser, updateUserStatus, removeUser,
     }}>
       {children}
     </AppDataContext.Provider>

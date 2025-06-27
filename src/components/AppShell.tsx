@@ -93,9 +93,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </Card>
           <SidebarMenu>
             <SidebarMenuItem>
-              <SidebarMenuButton>
-                <Settings />
-                <span>Settings</span>
+              <SidebarMenuButton asChild isActive={pathname.startsWith('/settings')}>
+                <Link href="/settings/users">
+                  <Settings />
+                  <span>Settings</span>
+                </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

@@ -1,4 +1,4 @@
-import type { Incident, Observation, SafetyWalk, CorrectiveAction, SafetyDoc, Area, ComplianceRecord, JSA, HotWorkPermit, Comment, ForkliftInspection } from '@/types';
+import type { Incident, Observation, SafetyWalk, CorrectiveAction, SafetyDoc, Area, ComplianceRecord, JSA, HotWorkPermit, Comment, ForkliftInspection, User } from '@/types';
 import { subDays, formatISO, subHours } from 'date-fns';
 
 const mockUser = "Safety Manager";
@@ -239,4 +239,14 @@ export const mockForkliftInspections: ForkliftInspection[] = [
             { id: 'battery', question: 'Battery charged and connectors are clean?', status: 'Pass' },
         ]
     }
+];
+
+export const mockUsers: User[] = [
+  { id: 'user-1', name: 'Admin User', email: 'admin@example.com', role: 'Administrator', status: 'Active' },
+  { id: 'user-2', name: 'Sarah Miller', email: 'sarah.miller@example.com', role: 'Manager', status: 'Active' },
+  { id: 'user-3', name: 'John Doe', email: 'john.doe@example.com', role: 'Operator', status: 'Active' },
+  { id: 'user-4', name: 'Mike Brown', email: 'mike.brown@example.com', role: 'Maintenance', status: 'Active' },
+  { id: 'user-5', name: 'HR Person', email: 'hr@example.com', role: 'HR', status: 'Active' },
+  { id: 'user-6', name: 'Pending Operator', email: 'pending.op@example.com', role: 'Operator', status: 'Pending' },
+  { id: 'user-7', name: 'Pending Manager', email: 'pending.mgr@example.com', role: 'Manager', status: 'Pending' },
 ];
