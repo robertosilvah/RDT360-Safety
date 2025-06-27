@@ -39,7 +39,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { mockAreas, mockIncidents, mockObservations, mockSafetyWalks } from '@/lib/mockData';
 import type { Area } from '@/types';
-import { MapPin, PlusCircle, Siren, Eye, ClipboardCheck, Edit, Trash2 } from 'lucide-react';
+import { MapPin, PlusCircle, Siren, Eye, ClipboardCheck, Edit, Trash2, ListTree, List } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -449,6 +449,28 @@ export default function AreasPage() {
     setDetailsOpen(true);
   };
 
+  const flattenAreas = (areas: Area[], path: string[] = []): (Area & { path: string })[] => {
+    let flatList: (Area & { path: string })[] = [];
+    areas.forEach(area => {
+        const currentPath = [...path, area.name];
+        const areaWithPath = { ...area, path: currentPath.join(' / ') };
+        flatList.push(areaWithPath);
+        if (area.children && area.children.length > 0) {
+            flatList = flatList.concat(flattenAreas(area.children, currentPath));
+        }
+    });
+    return flatList;
+  };
+
+  const getStatsForSingleArea = (area: Area): { incidentsCount: number; observationsCount: number; safetyWalksCount: number } => {
+    const incidentsCount = mockIncidents.filter((i) => i.area === area.name).length;
+    const observationsCount = mockObservations.filter((o) => o.areaId === area.area_id).length;
+    const safetyWalksCount = mockSafetyWalks.filter((a) => a.walker.includes(area.name)).length;
+    return { incidentsCount, observationsCount, safetyWalksCount };
+  };
+
+  const flatAreas = flattenAreas(areas);
+
   return (
     <AppShell>
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -474,18 +496,85 @@ export default function AreasPage() {
           An overview of all safety events, categorized by area.
         </p>
 
-        <div className="space-y-4">
-          {areas.map((area) => (
-            <AreaDisplay
-              key={area.area_id}
-              area={area}
-              onEdit={openEditForm}
-              onDelete={handleDeleteArea}
-              onAddSubArea={(parentId) => openCreateForm(parentId)}
-              onViewDetails={openViewDetails}
-            />
-          ))}
-        </div>
+        <Tabs defaultValue="hierarchical">
+            <TabsList>
+                <TabsTrigger value="hierarchical"><ListTree className="mr-2 h-4 w-4"/>Hierarchical View</TabsTrigger>
+                <TabsTrigger value="table"><List className="mr-2 h-4 w-4"/>Table View</TabsTrigger>
+            </TabsList>
+            <TabsContent value="hierarchical" className="pt-4">
+                 <div className="space-y-4">
+                    {areas.map((area) => (
+                        <AreaDisplay
+                        key={area.area_id}
+                        area={area}
+                        onEdit={openEditForm}
+                        onDelete={handleDeleteArea}
+                        onAddSubArea={(parentId) => openCreateForm(parentId)}
+                        onViewDetails={openViewDetails}
+                        />
+                    ))}
+                </div>
+            </TabsContent>
+            <TabsContent value="table" className="pt-4">
+                <Card>
+                    <CardContent className="pt-6">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Area Name</TableHead>
+                                    <TableHead>Full Path</TableHead>
+                                    <TableHead>Machines</TableHead>
+                                    <TableHead>Incidents</TableHead>
+                                    <TableHead>Observations</TableHead>
+                                    <TableHead>Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {flatAreas.map((area) => {
+                                    const stats = getStatsForSingleArea(area);
+                                    return (
+                                        <TableRow key={area.area_id} onClick={() => openViewDetails(area)} className="cursor-pointer">
+                                            <TableCell className="font-medium">{area.name}</TableCell>
+                                            <TableCell className="text-muted-foreground">{area.path}</TableCell>
+                                            <TableCell>{area.machines.length > 0 ? area.machines.join(', ') : 'N/A'}</TableCell>
+                                            <TableCell>{stats.incidentsCount > 0 ? <Badge variant="destructive">{stats.incidentsCount}</Badge> : 0}</TableCell>
+                                            <TableCell>{stats.observationsCount > 0 ? <Badge>{stats.observationsCount}</Badge> : 0}</TableCell>
+                                            <TableCell className="text-right">
+                                                 <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); openEditForm(area); }}>
+                                                    <Edit className="h-4 w-4" />
+                                                </Button>
+                                                <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); openCreateForm(area.area_id); }}>
+                                                    <PlusCircle className="h-4 w-4" />
+                                                </Button>
+                                                <AlertDialog>
+                                                    <AlertDialogTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={(e) => e.stopPropagation()}>
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </AlertDialogTrigger>
+                                                    <AlertDialogContent>
+                                                        <AlertDialogHeader>
+                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                        <AlertDialogDescription>
+                                                            This will permanently delete "{area.name}". If it has sub-areas, they will be deleted too.
+                                                        </AlertDialogDescription>
+                                                        </AlertDialogHeader>
+                                                        <AlertDialogFooter>
+                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={() => handleDeleteArea(area.area_id)}>Delete</AlertDialogAction>
+                                                        </AlertDialogFooter>
+                                                    </AlertDialogContent>
+                                                </AlertDialog>
+                                            </TableCell>
+                                        </TableRow>
+                                    )
+                                })}
+                            </TableBody>
+                        </Table>
+                    </CardContent>
+                </Card>
+            </TabsContent>
+        </Tabs>
         
         <AreaDetailsDialog 
           area={selectedArea}
