@@ -7,11 +7,183 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Separator } from '@/components/ui/separator';
 import { mockJSAs } from '@/lib/mockData';
 import type { JSA } from '@/types';
-import { PlusCircle, Users, Shield, FileSignature, Edit, UserCheck } from 'lucide-react';
+import { PlusCircle, Users, Shield, FileSignature, Edit, UserCheck, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { useFieldArray, useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Textarea } from '@/components/ui/textarea';
+
+const jsaStepSchema = z.object({
+  step_description: z.string().min(1, { message: 'Step description cannot be empty.' }),
+  hazards: z.string().min(1, { message: 'Please list at least one hazard.' }),
+  controls: z.string().min(1, { message: 'Please list at least one control measure.' }),
+});
+
+const jsaFormSchema = z.object({
+  title: z.string().min(3, { message: 'Title must be at least 3 characters long.' }),
+  job_description: z.string().min(10, { message: 'Description must be at least 10 characters long.' }),
+  required_ppe: z.string().min(1, { message: 'Please list required PPE.' }),
+  steps: z.array(jsaStepSchema).min(1, 'At least one job step is required.'),
+});
+
+type JsaFormValues = z.infer<typeof jsaFormSchema>;
+
+
+const CreateJsaForm = ({ onAddJsa, setOpen }: { onAddJsa: (jsa: JSA) => void, setOpen: (open: boolean) => void }) => {
+  const form = useForm<JsaFormValues>({
+    resolver: zodResolver(jsaFormSchema),
+    defaultValues: {
+      title: '',
+      job_description: '',
+      required_ppe: '',
+      steps: [{ step_description: '', hazards: '', controls: '' }],
+    },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: 'steps',
+  });
+  
+  const { toast } = useToast();
+
+  const onSubmit = (data: JsaFormValues) => {
+    const newJsa: JSA = {
+        jsa_id: `JSA${String(Math.floor(Math.random() * 900) + 100)}`,
+        title: data.title,
+        job_description: data.job_description,
+        required_ppe: data.required_ppe.split(',').map(s => s.trim()).filter(Boolean),
+        steps: data.steps.map(step => ({
+            step_description: step.step_description,
+            hazards: step.hazards.split(',').map(s => s.trim()).filter(Boolean),
+            controls: step.controls.split(',').map(s => s.trim()).filter(Boolean),
+        })),
+        created_by: 'Safety Manager',
+        created_date: new Date().toISOString(),
+        signatures: [],
+    };
+    onAddJsa(newJsa);
+    toast({
+      title: 'JSA Created',
+      description: `The JSA "${data.title}" has been successfully created.`,
+    });
+    setOpen(false);
+    form.reset();
+  };
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <DialogHeader>
+          <DialogTitle>Create a New Job Safety Analysis</DialogTitle>
+          <DialogDescription>Fill in the details below. For fields that accept multiple items, please separate them with a comma.</DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[60vh] overflow-y-auto pr-4 space-y-4">
+            <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>JSA Title</FormLabel>
+                    <FormControl><Input placeholder="e.g., Operating the hydraulic press" {...field} /></FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+            />
+            <FormField
+              control={form.control}
+              name="job_description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Job Description</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Describe the job this JSA is for..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="required_ppe"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Required PPE (comma-separated)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., Safety glasses, Steel-toed boots" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <Separator />
+
+            <div>
+              <h3 className="text-lg font-medium mb-2">Job Steps</h3>
+              {fields.map((field, index) => (
+                <Card key={field.id} className="mb-4 p-4 relative bg-muted/30">
+                   <div className="space-y-4">
+                     <p className="font-semibold">Step {index + 1}</p>
+                     <FormField
+                        control={form.control}
+                        name={`steps.${index}.step_description`}
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Step Description</FormLabel>
+                            <FormControl><Textarea placeholder="Describe this step..." {...field} /></FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                     <FormField
+                        control={form.control}
+                        name={`steps.${index}.hazards`}
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Potential Hazards (comma-separated)</FormLabel>
+                            <FormControl><Input placeholder="e.g., Pinch points, Loud noise" {...field} /></FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                     <FormField
+                        control={form.control}
+                        name={`steps.${index}.controls`}
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Control Measures (comma-separated)</FormLabel>
+                            <FormControl><Input placeholder="e.g., Use two-hand controls, Wear ear protection" {...field} /></FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                   </div>
+                   {fields.length > 1 && (
+                     <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2" onClick={() => remove(index)}>
+                       <Trash2 className="h-4 w-4 text-destructive" />
+                       <span className="sr-only">Remove Step</span>
+                     </Button>
+                   )}
+                </Card>
+              ))}
+              <Button type="button" variant="outline" size="sm" onClick={() => append({ step_description: '', hazards: '', controls: '' })}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Step
+              </Button>
+            </div>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button type="submit">Create JSA</Button>
+        </DialogFooter>
+      </form>
+    </Form>
+  )
+}
 
 // This component now takes a jsa and handles its own dialog state.
 const JsaCard = ({ jsa, onSign, currentUser }: { jsa: JSA, onSign: (jsaId: string, name: string) => void, currentUser: string }) => {
@@ -113,6 +285,7 @@ export default function JsaPage() {
     const MOCKED_CURRENT_USER = "Sarah Miller";
     const [jsas, setJsas] = useState<JSA[]>(mockJSAs);
     const { toast } = useToast();
+    const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
 
     const handleSignJsa = (jsaId: string, employeeName: string) => {
         setJsas(prevJsas => {
@@ -133,15 +306,26 @@ export default function JsaPage() {
             description: `Thank you for signing, ${employeeName}.`,
         });
     };
+    
+    const handleAddJsa = (newJsa: JSA) => {
+        setJsas(prevJsas => [newJsa, ...prevJsas]);
+    };
 
     return (
         <AppShell>
             <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
                 <div className="flex items-center justify-between space-y-2">
                     <h2 className="text-3xl font-bold tracking-tight">Job Safety Analyses (JSAs)</h2>
-                    <Button>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Create JSA
-                    </Button>
+                     <Dialog open={isCreateDialogOpen} onOpenChange={setCreateDialogOpen}>
+                        <DialogTrigger asChild>
+                            <Button>
+                                <PlusCircle className="mr-2 h-4 w-4" /> Create JSA
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-4xl">
+                            <CreateJsaForm onAddJsa={handleAddJsa} setOpen={setCreateDialogOpen} />
+                        </DialogContent>
+                    </Dialog>
                 </div>
                 <p className="text-muted-foreground">
                     Review and acknowledge safety procedures for specific jobs.
