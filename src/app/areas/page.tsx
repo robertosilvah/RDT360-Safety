@@ -47,6 +47,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 
 const areaFormSchema = z.object({
   name: z.string().min(3, { message: 'Area name must be at least 3 characters.' }),
@@ -128,16 +131,132 @@ const AreaForm = ({
   );
 };
 
+const AreaDetailsDialog = ({ area, isOpen, onOpenChange }: { area: Area | null; isOpen: boolean; onOpenChange: (open: boolean) => void; }) => {
+    if (!area) return null;
+
+    const incidentsInArea = mockIncidents.filter((i) => i.area === area.name);
+    const observationsInArea = mockObservations.filter((o) => o.areaId === area.area_id);
+    const auditsInArea = mockAudits.filter((a) => a.auditor.includes(area.name));
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-4xl">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                        <MapPin className="h-6 w-6 text-primary" />
+                        Area Details: {area.name}
+                    </DialogTitle>
+                    <DialogDescription>
+                        {area.machines.length > 0 ? `Machines: ${area.machines.join(', ')}` : 'This is a container for sub-areas.'}
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="max-h-[70vh] overflow-y-auto pr-4">
+                    <Tabs defaultValue="incidents">
+                        <TabsList className="grid w-full grid-cols-3 mb-4">
+                            <TabsTrigger value="incidents"><Siren className="mr-2 h-4 w-4" />Incidents ({incidentsInArea.length})</TabsTrigger>
+                            <TabsTrigger value="observations"><Eye className="mr-2 h-4 w-4" />Observations ({observationsInArea.length})</TabsTrigger>
+                            <TabsTrigger value="audits"><ClipboardCheck className="mr-2 h-4 w-4" />Audits ({auditsInArea.length})</TabsTrigger>
+                        </TabsList>
+                        <TabsContent value="incidents">
+                            <Card>
+                                <CardContent className="pt-6">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>ID</TableHead>
+                                                <TableHead>Date</TableHead>
+                                                <TableHead>Description</TableHead>
+                                                <TableHead>Severity</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {incidentsInArea.length > 0 ? incidentsInArea.map((incident) => (
+                                                <TableRow key={incident.incident_id}>
+                                                    <TableCell>{incident.incident_id}</TableCell>
+                                                    <TableCell>{new Date(incident.date).toLocaleDateString()}</TableCell>
+                                                    <TableCell>{incident.description}</TableCell>
+                                                    <TableCell><Badge variant={incident.severity === 'High' ? 'destructive' : incident.severity === 'Medium' ? 'secondary' : 'default'}>{incident.severity}</Badge></TableCell>
+                                                </TableRow>
+                                            )) : <TableRow><TableCell colSpan={4} className="text-center">No incidents recorded in this area.</TableCell></TableRow>}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                        <TabsContent value="observations">
+                           <Card>
+                                <CardContent className="pt-6">
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>ID</TableHead>
+                                                <TableHead>Date</TableHead>
+                                                <TableHead>Submitted By</TableHead>
+                                                <TableHead>Description</TableHead>
+                                                <TableHead>Status</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {observationsInArea.length > 0 ? observationsInArea.map((obs) => (
+                                            <TableRow key={obs.observation_id}>
+                                                <TableCell>{obs.observation_id}</TableCell>
+                                                <TableCell>{new Date(obs.date).toLocaleDateString()}</TableCell>
+                                                <TableCell>{obs.submitted_by}</TableCell>
+                                                <TableCell>{obs.description}</TableCell>
+                                                <TableCell><Badge variant={obs.status === 'Open' ? 'default' : 'outline'}>{obs.status}</Badge></TableCell>
+                                            </TableRow>
+                                            )) : <TableRow><TableCell colSpan={5} className="text-center">No observations recorded in this area.</TableCell></TableRow>}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                        <TabsContent value="audits">
+                            <Card>
+                                <CardContent className="pt-6">
+                                     <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                            <TableHead>ID</TableHead>
+                                            <TableHead>Date</TableHead>
+                                            <TableHead>Auditor</TableHead>
+                                            <TableHead>Status</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {auditsInArea.length > 0 ? auditsInArea.map((audit) => (
+                                            <TableRow key={audit.audit_id}>
+                                                <TableCell>{audit.audit_id}</TableCell>
+                                                <TableCell>{new Date(audit.date).toLocaleDateString()}</TableCell>
+                                                <TableCell>{audit.auditor}</TableCell>
+                                                <TableCell><Badge variant={audit.status === 'Completed' ? 'default' : 'secondary'}>{audit.status}</Badge></TableCell>
+                                            </TableRow>
+                                            )) : <TableRow><TableCell colSpan={4} className="text-center">No audits recorded in this area.</TableCell></TableRow>}
+                                        </TableBody>
+                                    </Table>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                    </Tabs>
+                </div>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
+
 const AreaDisplay = ({
   area,
   onEdit,
   onDelete,
   onAddSubArea,
+  onViewDetails,
 }: {
   area: Area;
   onEdit: (area: Area) => void;
   onDelete: (areaId: string) => void;
   onAddSubArea: (parentId: string) => void;
+  onViewDetails: (area: Area) => void;
 }) => {
   const getAreaStats = (area: Area): { incidentsCount: number; observationsCount: number; auditsCount: number } => {
     let incidentsCount = mockIncidents.filter((i) => i.area === area.name).length;
@@ -228,6 +347,7 @@ const AreaDisplay = ({
                     onEdit={onEdit}
                     onDelete={onDelete}
                     onAddSubArea={onAddSubArea}
+                    onViewDetails={onViewDetails}
                   />
                 ))}
               </AccordionContent>
@@ -236,7 +356,7 @@ const AreaDisplay = ({
         )}
       </CardContent>
       <CardFooter className="border-t pt-4 flex justify-between">
-        <Button variant="outline">View Area Details</Button>
+        <Button variant="outline" onClick={() => onViewDetails(area)}>View Area Details</Button>
         <Button variant="secondary" onClick={() => onAddSubArea(area.area_id)}>
           <PlusCircle className="mr-2 h-4 w-4" /> Add Sub-Area
         </Button>
@@ -251,6 +371,8 @@ export default function AreasPage() {
   const [editingArea, setEditingArea] = useState<Area | undefined>(undefined);
   const [currentParentId, setCurrentParentId] = useState<string | null>(null);
   const { toast } = useToast();
+  const [selectedArea, setSelectedArea] = useState<Area | null>(null);
+  const [isDetailsOpen, setDetailsOpen] = useState(false);
 
   const handleSaveArea = (data: AreaFormValues, areaId?: string) => {
     const newArea: Area = {
@@ -321,6 +443,11 @@ export default function AreasPage() {
     setEditingArea(area);
     setFormOpen(true);
   };
+  
+  const openViewDetails = (area: Area) => {
+    setSelectedArea(area);
+    setDetailsOpen(true);
+  };
 
   return (
     <AppShell>
@@ -355,9 +482,16 @@ export default function AreasPage() {
               onEdit={openEditForm}
               onDelete={handleDeleteArea}
               onAddSubArea={(parentId) => openCreateForm(parentId)}
+              onViewDetails={openViewDetails}
             />
           ))}
         </div>
+        
+        <AreaDetailsDialog 
+          area={selectedArea}
+          isOpen={isDetailsOpen}
+          onOpenChange={setDetailsOpen}
+        />
       </div>
     </AppShell>
   );
