@@ -10,10 +10,10 @@ export const mockIncidents: Incident[] = [
 ];
 
 export const mockObservations: Observation[] = [
-  { observation_id: 'OBS001', submitted_by: 'John Doe', date: formatISO(subDays(new Date(), 2)), location: 'Assembly Line 1', details: 'Emergency exit blocked by pallets.', status: 'Open', assigned_to: 'Jane Smith', imageUrl: 'https://placehold.co/600x400.png' },
-  { observation_id: 'OBS002', submitted_by: 'Emily Jones', date: formatISO(subDays(new Date(), 10)), location: 'Warehouse', details: 'Fire extinguisher needs inspection.', status: 'Open', assigned_to: 'Mike Brown', imageUrl: 'https://placehold.co/600x400.png' },
-  { observation_id: 'OBS003', submitted_by: 'John Doe', date: formatISO(subDays(new Date(), 15)), location: 'Welding Station', details: 'Excellent housekeeping observed.', status: 'Closed', assigned_to: 'N/A' },
-  { observation_id: 'OBS004', submitted_by: 'Sarah Miller', date: formatISO(subDays(new Date(), 32)), location: 'Packaging', details: 'Floor markings are faded.', status: 'Closed', assigned_to: 'Jane Smith', imageUrl: 'https://placehold.co/600x400.png' },
+  { observation_id: 'OBS001', submitted_by: 'John Doe', date: formatISO(subDays(new Date(), 2)), location: 'Assembly Line 1', description: 'Emergency exit blocked by pallets.', status: 'Open', imageUrl: 'https://placehold.co/600x400.png', report_type: 'Safety Concern', risk_level: 3, actions: 'Pallets to be moved immediately. Area to be inspected daily.', unsafe_category: 'Unsafe Condition', person_involved: 'Warehouse Staff' },
+  { observation_id: 'OBS002', submitted_by: 'Emily Jones', date: formatISO(subDays(new Date(), 10)), location: 'Warehouse', description: 'Fire extinguisher needs inspection. Tag is expired.', status: 'Open', imageUrl: 'https://placehold.co/600x400.png', report_type: 'Safety Concern', risk_level: 2, actions: 'Scheduled for inspection by EOD.', unsafe_category: 'Unsafe Condition' },
+  { observation_id: 'OBS003', submitted_by: 'John Doe', date: formatISO(subDays(new Date(), 15)), location: 'Welding Station', description: 'Excellent housekeeping observed. Clear walkways and properly stored materials.', status: 'Closed', report_type: 'Positive Observation', risk_level: 1, actions: 'Acknowledged with team lead.', unsafe_category: 'N/A' },
+  { observation_id: 'OBS004', submitted_by: 'Sarah Miller', date: formatISO(subDays(new Date(), 32)), location: 'Packaging', description: 'Employee seen running with scissors.', status: 'Closed', imageUrl: 'https://placehold.co/600x400.png', report_type: 'Near Miss', risk_level: 4, actions: 'Employee coached on safe conduct. Review of tool handling procedures.', unsafe_category: 'Unsafe Behavior', person_involved: 'Mark Johnson' },
 ];
 
 export const mockAudits: Audit[] = [

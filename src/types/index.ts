@@ -9,12 +9,16 @@ export type Incident = {
 
 export type Observation = {
   observation_id: string;
+  report_type: 'Safety Concern' | 'Positive Observation' | 'Near Miss';
   submitted_by: string;
   date: string;
   location: string;
-  details: string;
+  person_involved?: string;
+  risk_level: 1 | 2 | 3 | 4;
+  description: string;
+  actions: string;
+  unsafe_category: 'Unsafe Behavior' | 'Unsafe Condition' | 'N/A';
   status: 'Open' | 'Closed';
-  assigned_to: string;
   imageUrl?: string;
 };
 
