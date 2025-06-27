@@ -24,9 +24,9 @@ export const mockObservations: Observation[] = [
 ];
 
 export const mockSafetyWalks: SafetyWalk[] = [
-  { safety_walk_id: 'SWALK001', walker: 'Safety Team', date: formatISO(subDays(new Date(), 7)), checklist_items: [{ item: 'PPE Compliance', checked: true }, { item: 'Machine Guarding', checked: true }, { item: 'E-Stops Accessible', checked: true}], status: 'Completed', comments: [] },
-  { safety_walk_id: 'SWALK002', walker: 'External Consultant', date: formatISO(subDays(new Date(), 45)), checklist_items: [{ item: 'Lockout/Tagout Procedures', checked: true }], status: 'Completed', comments: [] },
-  { safety_walk_id: 'SWALK003', walker: 'Safety Team', date: formatISO(new Date()), checklist_items: [{ item: 'Housekeeping', checked: true }, {item: 'Chemical Storage', checked: false}], status: 'In Progress', comments: [] },
+  { safety_walk_id: 'SWALK001', walker: 'Safety Team', date: formatISO(subDays(new Date(), 7)), checklist_items: [{ item: 'PPE Compliance', checked: true }, { item: 'Machine Guarding', checked: true }, { item: 'E-Stops Accessible', checked: true}], status: 'Completed', comments: [], people_involved: 'Mechanic Team A', safety_feeling_scale: 4 },
+  { safety_walk_id: 'SWALK002', walker: 'External Consultant', date: formatISO(subDays(new Date(), 45)), checklist_items: [{ item: 'Lockout/Tagout Procedures', checked: true }], status: 'Completed', comments: [], people_involved: 'John Smith', safety_feeling_scale: 5 },
+  { safety_walk_id: 'SWALK003', walker: 'Safety Team', date: formatISO(new Date()), checklist_items: [{ item: 'Housekeeping', checked: true }, {item: 'Chemical Storage', checked: false}], status: 'In Progress', comments: [], people_involved: 'Warehouse Staff' },
 ];
 
 

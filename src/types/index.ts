@@ -39,6 +39,8 @@ export type SafetyWalk = {
   checklist_items: { item: string; checked: boolean }[];
   status: 'Scheduled' | 'In Progress' | 'Completed';
   comments: Comment[];
+  people_involved?: string;
+  safety_feeling_scale?: number;
 };
 
 export type CorrectiveAction = {

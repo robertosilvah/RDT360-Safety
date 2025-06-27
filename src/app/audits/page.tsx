@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAppData } from '@/context/AppDataContext';
 import type { SafetyWalk, Observation, Comment } from '@/types';
-import { PlusCircle, Trash2, CheckCircle2, PlayCircle, Clock, MessageSquare, User, Avatar as AvatarIcon } from 'lucide-react';
+import { PlusCircle, Trash2, CheckCircle2, PlayCircle, Clock, MessageSquare, User, Users, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
@@ -24,11 +24,14 @@ import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Slider } from '@/components/ui/slider';
 
 
 const walkFormSchema = z.object({
   walker: z.string().min(2, 'Walker name is required.'),
   date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: 'A valid date is required.' }),
+  people_involved: z.string().optional(),
+  safety_feeling_scale: z.number().min(1).max(5).optional(),
   checklist_items: z.array(z.object({ item: z.string().min(3, 'Checklist item must be at least 3 characters.') })).min(1, 'At least one checklist item is required.'),
 });
 
@@ -41,6 +44,8 @@ const CreateWalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
     resolver: zodResolver(walkFormSchema),
     defaultValues: {
       walker: '',
+      people_involved: '',
+      safety_feeling_scale: 3,
       checklist_items: [{ item: 'PPE Compliance' }, { item: 'Machine Guarding' }, { item: 'Housekeeping' }],
     },
   });
@@ -74,12 +79,40 @@ const CreateWalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
           <DialogDescription>Schedule a new safety walk and define its checklist.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-4">
-          <FormField control={form.control} name="walker" render={({ field }) => (
-            <FormItem><FormLabel>Walker / Team</FormLabel><FormControl><Input placeholder="e.g., Safety Team" {...field} /></FormControl><FormMessage /></FormItem>
-          )} />
-          <FormField control={form.control} name="date" render={({ field }) => (
-            <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
-          )} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField control={form.control} name="walker" render={({ field }) => (
+              <FormItem><FormLabel>Walker / Team</FormLabel><FormControl><Input placeholder="e.g., Safety Team" {...field} /></FormControl><FormMessage /></FormItem>
+            )} />
+            <FormField control={form.control} name="date" render={({ field }) => (
+              <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+            )} />
+          </div>
+           <FormField control={form.control} name="people_involved" render={({ field }) => (
+              <FormItem><FormLabel>People Involved / Observed</FormLabel><FormControl><Input placeholder="e.g., John Doe, Mechanic Team" {...field} /></FormControl><FormMessage /></FormItem>
+            )} />
+          <FormField
+            control={form.control}
+            name="safety_feeling_scale"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>How safe does the involved person feel? (1=Unsafe, 5=Very Safe)</FormLabel>
+                <FormControl>
+                  <div className="flex items-center gap-4 pt-2">
+                    <Slider
+                      defaultValue={[3]}
+                      min={1}
+                      max={5}
+                      step={1}
+                      onValueChange={(value) => field.onChange(value[0])}
+                      className="w-[90%]"
+                    />
+                    <span className="w-[10%] text-center font-bold text-lg text-primary">{field.value}</span>
+                  </div>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
           <Separator />
           <div>
             <FormLabel>Checklist Items</FormLabel>
@@ -175,11 +208,44 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
                  <DialogHeader>
                     <DialogTitle>Safety Walk Details: {walk.safety_walk_id}</DialogTitle>
                     <DialogDescription>
-                        Walk conducted by {walk.walker} on {format(new Date(walk.date), 'PPP')}.
+                        Walk on {format(new Date(walk.date), 'PPP')}.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-h-[70vh]">
                     <div className="md:col-span-2 space-y-6 overflow-y-auto pr-4">
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div className="flex items-center gap-2">
+                                    <User className="h-4 w-4 text-muted-foreground" />
+                                    <div>
+                                        <p className="font-semibold">Walker / Team</p>
+                                        <p className="text-muted-foreground">{walk.walker}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Users className="h-4 w-4 text-muted-foreground" />
+                                    <div>
+                                        <p className="font-semibold">People Involved</p>
+                                        <p className="text-muted-foreground">{walk.people_involved || 'N/A'}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            {walk.safety_feeling_scale && (
+                                <div className="flex items-center gap-2 mt-4">
+                                    <Star className="h-4 w-4 text-muted-foreground" />
+                                    <div>
+                                        <p className="font-semibold">Perceived Safety Rating</p>
+                                        <div className="flex items-center">
+                                            {[...Array(5)].map((_, i) => (
+                                                <Star key={i} className={`h-5 w-5 ${i < walk.safety_feeling_scale! ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
+                                            ))}
+                                            <span className="ml-2 text-muted-foreground">({walk.safety_feeling_scale} out of 5)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                        <Separator />
                         <Form {...form}>
                             <form>
                                 <FormField
@@ -295,7 +361,7 @@ export default function SafetyWalksPage() {
                     <PlusCircle className="mr-2 h-4 w-4" /> Create New Walk
                 </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-2xl">
                 <CreateWalkForm setOpen={setCreateOpen} />
             </DialogContent>
           </Dialog>
@@ -313,6 +379,7 @@ export default function SafetyWalksPage() {
                   <TableHead>ID</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Walker</TableHead>
+                  <TableHead>People Involved</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Progress</TableHead>
                 </TableRow>
@@ -325,6 +392,7 @@ export default function SafetyWalksPage() {
                       <TableCell className="font-medium">{walk.safety_walk_id}</TableCell>
                       <TableCell>{new Date(walk.date).toLocaleDateString()}</TableCell>
                       <TableCell>{walk.walker}</TableCell>
+                      <TableCell>{walk.people_involved || 'N/A'}</TableCell>
                       <TableCell>
                         <Badge variant={statusInfo[walk.status].variant}>
                             <Icon className="mr-2 h-4 w-4"/>
