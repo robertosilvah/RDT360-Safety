@@ -52,6 +52,10 @@ export default function DashboardPage() {
     ).length;
   }, [correctiveActions]);
 
+  const nearMissesCount = useMemo(() => {
+    return observations.filter(obs => obs.report_type === 'Near Miss').length;
+  }, [observations]);
+
   const recentIncidents = useMemo(() => {
     return [...incidents]
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -125,9 +129,9 @@ export default function DashboardPage() {
           />
           <KpiCard
             title="Near Misses Reported"
-            value="12"
+            value={nearMissesCount.toString()}
             icon={<Ban className="h-4 w-4 text-muted-foreground" />}
-            description="+3 from last month"
+            description="Total reports classified as 'Near Miss'"
           />
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
