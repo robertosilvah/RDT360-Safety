@@ -38,8 +38,8 @@ export function Header() {
         <DropdownMenuTrigger asChild>
           <Button variant="secondary" size="icon" className="rounded-full">
             <Avatar>
-              <AvatarImage src="https://placehold.co/40x40" alt="@shadcn" />
-              <AvatarFallback>SO</AvatarFallback>
+              <AvatarImage src="https://placehold.co/40x40" alt="User Avatar" data-ai-hint="user avatar" />
+              <AvatarFallback>SM</AvatarFallback>
             </Avatar>
             <span className="sr-only">Toggle user menu</span>
           </Button>
