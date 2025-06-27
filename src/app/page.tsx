@@ -19,7 +19,11 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { mockIncidents, mockCorrectiveActions } from '@/lib/mockData';
+import {
+  mockIncidents,
+  mockCorrectiveActions,
+  mockObservations,
+} from '@/lib/mockData';
 import type { Incident } from '@/types';
 import { ArrowUpRight, Ban, Clock, ShieldCheck, Siren } from 'lucide-react';
 import Link from 'next/link';
@@ -49,6 +53,30 @@ export default function DashboardPage() {
     Medium: 'text-yellow-500',
     Low: 'text-green-500',
   };
+
+  const observationsByPerson = mockObservations.reduce(
+    (acc: Record<string, number>, obs) => {
+      acc[obs.submitted_by] = (acc[obs.submitted_by] || 0) + 1;
+      return acc;
+    },
+    {}
+  );
+
+  const observationsByPersonData = Object.entries(observationsByPerson)
+    .map(([person, count]) => ({ person, count }))
+    .sort((a, b) => b.count - a.count);
+
+  const pendingActionsByPerson = mockCorrectiveActions
+    .filter((action) => action.status !== 'Completed')
+    .reduce((acc: Record<string, number>, action) => {
+      acc[action.responsible_person] =
+        (acc[action.responsible_person] || 0) + 1;
+      return acc;
+    }, {});
+
+  const pendingActionsByPersonData = Object.entries(pendingActionsByPerson)
+    .map(([person, count]) => ({ person, count }))
+    .sort((a, b) => b.count - a.count);
 
   return (
     <AppShell>
@@ -147,6 +175,66 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
           <KpiSummary />
+        </div>
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Observations by Person</CardTitle>
+              <CardDescription>
+                Top contributors for safety observations.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Person</TableHead>
+                    <TableHead className="text-right">Observations</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {observationsByPersonData.map((item) => (
+                    <TableRow key={item.person}>
+                      <TableCell className="font-medium">
+                        {item.person}
+                      </TableCell>
+                      <TableCell className="text-right">{item.count}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Pending Actions by Person</CardTitle>
+              <CardDescription>
+                Users with the most outstanding corrective actions.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Person</TableHead>
+                    <TableHead className="text-right">
+                      Pending Actions
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pendingActionsByPersonData.map((item) => (
+                    <TableRow key={item.person}>
+                      <TableCell className="font-medium">
+                        {item.person}
+                      </TableCell>
+                      <TableCell className="text-right">{item.count}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </AppShell>
