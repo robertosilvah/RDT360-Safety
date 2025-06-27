@@ -12,7 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { Incident, Comment } from '@/types';
+import type { Incident, Comment, Investigation } from '@/types';
 import { FilePlus2, Download, MessageSquare, User, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -28,6 +28,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAppData } from '@/context/AppDataContext';
+import Link from 'next/link';
 
 const incidentFormSchema = z.object({
   description: z.string().min(10, "Description must be at least 10 characters."),
@@ -48,7 +49,7 @@ const IncidentDetailsDialog = ({
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }) => {
-  const { updateIncident, addCommentToIncident } = useAppData();
+  const { updateIncident, addCommentToIncident, addInvestigation } = useAppData();
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
 
@@ -89,6 +90,27 @@ const IncidentDetailsDialog = ({
     toast({ title: 'Incident Updated', description: `Incident ${incident.incident_id} has been updated.` });
     onOpenChange(false);
   };
+  
+  const handleStartInvestigation = () => {
+    if (!incident) return;
+    
+    const newInvestigation: Investigation = {
+      investigation_id: `INV${incident.incident_id.replace('INC', '')}`,
+      incident_id: incident.incident_id,
+      status: 'Open',
+      root_cause: '',
+      contributing_factors: '',
+      documents: [],
+      comments: [],
+    };
+    addInvestigation(newInvestigation);
+    toast({
+      title: "Investigation Started",
+      description: `Investigation ${newInvestigation.investigation_id} has been created for incident ${incident.incident_id}.`
+    });
+    onOpenChange(false);
+  };
+
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -179,7 +201,16 @@ const IncidentDetailsDialog = ({
                   </FormItem>
                 )}
               />
-              <DialogFooter className="!justify-end">
+              <DialogFooter className="!justify-between">
+                <div>
+                  {incident.investigation_id ? (
+                     <Button type="button" variant="outline" asChild>
+                        <Link href={`/investigations?id=${incident.investigation_id}`}>View Investigation</Link>
+                      </Button>
+                  ) : (
+                    <Button type="button" variant="secondary" onClick={handleStartInvestigation}>Start Investigation</Button>
+                  )}
+                </div>
                 <Button type="submit">Save Changes</Button>
               </DialogFooter>
             </form>

@@ -29,6 +29,7 @@ import {
   Flame,
   Truck,
   HelpCircle,
+  ClipboardSearch,
 } from 'lucide-react';
 import { Header } from './Header';
 import { Button } from './ui/button';
@@ -37,6 +38,7 @@ import { Card, CardDescription } from './ui/card';
 const menuItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/incidents', label: 'Incidents', icon: Siren },
+  { href: '/investigations', label: 'Investigations', icon: ClipboardSearch },
   { href: '/observations', label: 'Observations', icon: Eye },
   { href: '/audits', label: 'Safety Walks', icon: ClipboardCheck },
   { href: '/actions', label: 'Corrective Actions', icon: Wrench },

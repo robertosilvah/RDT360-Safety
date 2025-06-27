@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, ServiceRequest } from '@/types';
+import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, ServiceRequest, Investigation } from '@/types';
 import {
   mockObservations,
   mockCorrectiveActions,
@@ -15,6 +15,7 @@ import {
   mockSafetyDocs,
   mockComplianceRecords,
   mockServiceRequests,
+  mockInvestigations,
 } from '@/lib/mockData';
 
 interface AppDataContextType {
@@ -59,6 +60,11 @@ interface AppDataContextType {
   addServiceRequest: (request: ServiceRequest) => void;
   updateServiceRequest: (request: ServiceRequest) => void;
   addCommentToServiceRequest: (requestId: string, comment: Comment) => void;
+  investigations: Investigation[];
+  addInvestigation: (investigation: Investigation) => void;
+  updateInvestigation: (investigation: Investigation) => void;
+  addCommentToInvestigation: (investigationId: string, comment: Comment) => void;
+  addDocumentToInvestigation: (investigationId: string, document: { name: string; url: string }) => void;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -76,6 +82,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [safetyDocs, setSafetyDocs] = useState<SafetyDoc[]>(mockSafetyDocs);
   const [complianceRecords, setComplianceRecords] = useState<ComplianceRecord[]>(mockComplianceRecords);
   const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>(mockServiceRequests);
+  const [investigations, setInvestigations] = useState<Investigation[]>(mockInvestigations);
 
   // Observations
   const addObservation = (observation: Observation) => {
@@ -232,6 +239,22 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       setServiceRequests(prev => prev.map(r => r.request_id === requestId ? { ...r, comments: [...r.comments, comment] } : r));
     };
 
+    // Investigations
+    const addInvestigation = (investigation: Investigation) => {
+      setInvestigations(prev => [investigation, ...prev]);
+      setIncidents(prev => prev.map(i => i.incident_id === investigation.incident_id ? {...i, investigation_id: investigation.investigation_id, status: 'Under Investigation' as const} : i));
+    };
+    const updateInvestigation = (updatedInvestigation: Investigation) => {
+        setInvestigations(prev => prev.map(i => i.investigation_id === updatedInvestigation.investigation_id ? updatedInvestigation : i));
+    };
+    const addCommentToInvestigation = (investigationId: string, comment: Comment) => {
+        setInvestigations(prev => prev.map(i => i.investigation_id === investigationId ? {...i, comments: [...i.comments, comment]} : i));
+    };
+    const addDocumentToInvestigation = (investigationId: string, document: { name: string; url: string }) => {
+        setInvestigations(prev => prev.map(i => i.investigation_id === investigationId ? {...i, documents: [...i.documents, document]} : i));
+    };
+
+
   return (
     <AppDataContext.Provider value={{
       observations, addObservation,
@@ -246,6 +269,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       safetyDocs, addSafetyDoc,
       complianceRecords, addComplianceRecord, updateComplianceRecord, removeComplianceRecord,
       serviceRequests, addServiceRequest, updateServiceRequest, addCommentToServiceRequest,
+      investigations, addInvestigation, updateInvestigation, addCommentToInvestigation, addDocumentToInvestigation,
     }}>
       {children}
     </AppDataContext.Provider>

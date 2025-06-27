@@ -4,6 +4,16 @@ export type Comment = {
   date: string;
 };
 
+export type Investigation = {
+  investigation_id: string;
+  incident_id: string;
+  status: 'Open' | 'In Progress' | 'Closed';
+  root_cause: string;
+  contributing_factors: string;
+  documents: { name: string; url: string }[];
+  comments: Comment[];
+};
+
 export type Incident = {
   incident_id: string;
   date: string;
@@ -15,6 +25,7 @@ export type Incident = {
   status: 'Open' | 'Under Investigation' | 'Closed';
   assigned_to?: string;
   comments: Comment[];
+  investigation_id?: string;
 };
 
 export type Observation = {
@@ -54,7 +65,8 @@ export type CorrectiveAction = {
   action_id: string;
   related_to_incident?: string;
   related_to_observation?: string;
-  related_to_forklift_inspection?: string; // e.g., 'FINSP-001-tires'
+  related_to_forklift_inspection?: string;
+  related_to_investigation?: string;
   due_date: string;
   status: 'Pending' | 'In Progress' | 'Completed' | 'Overdue';
   responsible_person: string;
