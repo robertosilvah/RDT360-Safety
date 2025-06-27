@@ -1,13 +1,25 @@
 'use client';
 
-import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
+import { Bar, BarChart, XAxis, YAxis } from 'recharts';
 import { mockObservationsByMonth } from '@/lib/mockData';
-import { ChartTooltipContent } from '@/components/ui/chart';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  type ChartConfig,
+} from '@/components/ui/chart';
+
+const chartConfig = {
+  total: {
+    label: 'Observations',
+    color: 'hsl(var(--primary))',
+  },
+} satisfies ChartConfig;
 
 export function ObservationsChart() {
   return (
-    <ResponsiveContainer width="100%" height={350}>
-      <BarChart data={mockObservationsByMonth}>
+    <ChartContainer config={chartConfig} className="h-[350px] w-full">
+      <BarChart accessibilityLayer data={mockObservationsByMonth}>
         <XAxis
           dataKey="name"
           stroke="#888888"
@@ -22,12 +34,12 @@ export function ObservationsChart() {
           axisLine={false}
           tickFormatter={(value) => `${value}`}
         />
-        <Tooltip
-            cursor={{ fill: 'hsl(var(--accent) / 0.2)'}}
-            content={<ChartTooltipContent />}
+        <ChartTooltip
+          cursor={{ fill: 'hsl(var(--accent) / 0.2)' }}
+          content={<ChartTooltipContent />}
         />
-        <Bar dataKey="total" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="total" fill="var(--color-total)" radius={[4, 4, 0, 0]} />
       </BarChart>
-    </ResponsiveContainer>
+    </ChartContainer>
   );
 }
