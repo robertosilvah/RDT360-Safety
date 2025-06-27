@@ -107,6 +107,12 @@ export type HotWorkPermit = {
   signatures: { employee_name: string; sign_date: string }[];
 };
 
+export type Forklift = {
+  id: string;
+  name: string;
+  area: string;
+};
+
 export type ForkliftChecklistItem = {
   id: string;
   question: string;

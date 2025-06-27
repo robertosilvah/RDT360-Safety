@@ -1,4 +1,4 @@
-import type { Incident, Observation, SafetyWalk, CorrectiveAction, SafetyDoc, Area, ComplianceRecord, JSA, HotWorkPermit, Comment, ForkliftInspection, User } from '@/types';
+import type { Incident, Observation, SafetyWalk, CorrectiveAction, SafetyDoc, Area, ComplianceRecord, JSA, HotWorkPermit, Comment, ForkliftInspection, User, Forklift } from '@/types';
 import { subDays, formatISO, subHours } from 'date-fns';
 
 const mockUser = "Safety Manager";
@@ -205,7 +205,7 @@ export const mockObservationStatus = [
     { name: 'Closed', value: mockObservations.filter(obs => obs.status === 'Closed').length, fill: 'var(--color-closed)' },
 ];
 
-export const mockForklifts = [
+export const mockForklifts: Forklift[] = [
     { id: 'FL-01', name: 'Hyster 5000lb', area: 'Warehouse' },
     { id: 'FL-02', name: 'Toyota Electric', area: 'Warehouse' },
     { id: 'FL-03', name: 'Crown Reach Truck', area: 'Assembly Line 1' },

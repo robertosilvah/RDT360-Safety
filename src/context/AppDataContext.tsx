@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User } from '@/types';
+import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift } from '@/types';
 import {
   mockObservations,
   mockCorrectiveActions,
@@ -9,6 +9,7 @@ import {
   mockSafetyWalks,
   mockForkliftInspections,
   mockUsers,
+  mockForklifts,
 } from '@/lib/mockData';
 
 interface AppDataContextType {
@@ -27,6 +28,10 @@ interface AppDataContextType {
   addCommentToSafetyWalk: (walkId: string, comment: Comment) => void;
   forkliftInspections: ForkliftInspection[];
   addForkliftInspection: (inspection: ForkliftInspection) => void;
+  forklifts: Forklift[];
+  addForklift: (forklift: Forklift) => void;
+  updateForklift: (forklift: Forklift) => void;
+  removeForklift: (forkliftId: string) => void;
   users: User[];
   addUser: (user: User) => void;
   updateUserStatus: (userId: string, status: User['status']) => void;
@@ -42,6 +47,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [safetyWalks, setSafetyWalks] = useState<SafetyWalk[]>(mockSafetyWalks);
   const [forkliftInspections, setForkliftInspections] = useState<ForkliftInspection[]>(mockForkliftInspections);
   const [users, setUsers] = useState<User[]>(mockUsers);
+  const [forklifts, setForklifts] = useState<Forklift[]>(mockForklifts);
 
   // Observations
   const addObservation = (observation: Observation) => {
@@ -88,6 +94,17 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     setForkliftInspections(prev => [inspection, ...prev]);
   };
 
+  // Forklifts
+  const addForklift = (forklift: Forklift) => {
+    setForklifts(prev => [forklift, ...prev]);
+  };
+  const updateForklift = (updatedForklift: Forklift) => {
+    setForklifts(prev => prev.map(f => f.id === updatedForklift.id ? updatedForklift : f));
+  };
+  const removeForklift = (forkliftId: string) => {
+    setForklifts(prev => prev.filter(f => f.id !== forkliftId));
+  };
+
   // Users
   const addUser = (user: User) => {
     setUsers(prev => [user, ...prev]);
@@ -108,6 +125,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       incidents, updateIncident, addCommentToIncident,
       safetyWalks, addSafetyWalk, updateSafetyWalk, addCommentToSafetyWalk,
       forkliftInspections, addForkliftInspection,
+      forklifts, addForklift, updateForklift, removeForklift,
       users, addUser, updateUserStatus, removeUser,
     }}>
       {children}

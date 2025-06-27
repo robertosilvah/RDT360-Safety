@@ -44,7 +44,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useAppData } from '@/context/AppDataContext';
-import { FORKLIFT_CHECKLIST_QUESTIONS, mockForklifts } from '@/lib/mockData';
+import { FORKLIFT_CHECKLIST_QUESTIONS } from '@/lib/mockData';
 import type { ForkliftInspection } from '@/types';
 import { PlusCircle, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
@@ -179,7 +179,7 @@ const ActionCreateDialog = ({
 
 
 export default function ForkliftInspectionPage() {
-  const { forkliftInspections, addForkliftInspection } = useAppData();
+  const { forkliftInspections, addForkliftInspection, forklifts } = useAppData();
   const { toast } = useToast();
   const [actionDialogState, setActionDialogState] = useState<{isOpen: boolean; itemIndex: number | null}>({isOpen: false, itemIndex: null});
 
@@ -256,7 +256,7 @@ export default function ForkliftInspectionPage() {
                                         <Select onValueChange={field.onChange} defaultValue={field.value}>
                                             <FormControl><SelectTrigger><SelectValue placeholder="Select a forklift" /></SelectTrigger></FormControl>
                                             <SelectContent>
-                                                {mockForklifts.map(fl => <SelectItem key={fl.id} value={fl.id}>{fl.id} - {fl.name}</SelectItem>)}
+                                                {forklifts.map(fl => <SelectItem key={fl.id} value={fl.id}>{fl.id} - {fl.name}</SelectItem>)}
                                             </SelectContent>
                                         </Select>
                                         <FormMessage />

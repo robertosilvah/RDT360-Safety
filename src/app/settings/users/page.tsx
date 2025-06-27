@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { AppShell } from '@/components/AppShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -129,12 +128,11 @@ export default function UserManagementPage() {
   };
 
   return (
-    <AppShell>
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        <div className="flex items-center justify-between space-y-2">
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight">User Management</h2>
-            <p className="text-muted-foreground">Manage user roles, access, and pending approvals.</p>
+            <CardTitle>All Users</CardTitle>
+            <CardDescription>A list of all users, including those pending approval.</CardDescription>
           </div>
           <Dialog open={isAddUserOpen} onOpenChange={setAddUserOpen}>
             <DialogTrigger asChild>
@@ -146,68 +144,60 @@ export default function UserManagementPage() {
               <AddUserForm setOpen={setAddUserOpen} />
             </DialogContent>
           </Dialog>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>All Users</CardTitle>
-            <CardDescription>A list of all users, including those pending approval.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell className="font-medium">{user.name}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>{user.role}</TableCell>
+                  <TableCell><Badge variant={statusVariant[user.status]}>{user.status}</Badge></TableCell>
+                  <TableCell className="text-right">
+                    {user.status === 'Pending' ? (
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleApprove(user.id)}>
+                          <Check className="mr-2 h-4 w-4" /> Approve
+                        </Button>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="sm">
+                                  <XCircle className="mr-2 h-4 w-4" /> Deny
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                      This will permanently deny access for {user.name}. This action cannot be undone.
+                                  </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction onClick={() => handleDeny(user.id)}>Deny Access</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    ) : (
+                      <Button variant="ghost" size="sm">Edit</Button>
+                    )}
+                  </TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {users.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>{user.role}</TableCell>
-                    <TableCell><Badge variant={statusVariant[user.status]}>{user.status}</Badge></TableCell>
-                    <TableCell className="text-right">
-                      {user.status === 'Pending' ? (
-                        <div className="flex justify-end gap-2">
-                          <Button variant="outline" size="sm" onClick={() => handleApprove(user.id)}>
-                            <Check className="mr-2 h-4 w-4" /> Approve
-                          </Button>
-                          <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                 <Button variant="destructive" size="sm">
-                                    <XCircle className="mr-2 h-4 w-4" /> Deny
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                        This will permanently deny access for {user.name}. This action cannot be undone.
-                                    </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDeny(user.id)}>Deny Access</AlertDialogAction>
-                                </AlertDialogFooter>
-                              </AlertDialogContent>
-                          </AlertDialog>
-                        </div>
-                      ) : (
-                        <Button variant="ghost" size="sm">Edit</Button>
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      </div>
-    </AppShell>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
   );
 }
