@@ -1,3 +1,9 @@
+export type Comment = {
+  user: string;
+  comment: string;
+  date: string;
+};
+
 export type Incident = {
   incident_id: string;
   date: string;
@@ -5,6 +11,9 @@ export type Incident = {
   description: string;
   severity: 'Low' | 'Medium' | 'High';
   linked_docs: string[];
+  status: 'Open' | 'Under Investigation' | 'Closed';
+  assigned_to?: string;
+  comments: Comment[];
 };
 
 export type Observation = {
@@ -40,6 +49,7 @@ export type CorrectiveAction = {
   status: 'Pending' | 'In Progress' | 'Completed' | 'Overdue';
   responsible_person: string;
   description: string;
+  comments: Comment[];
 };
 
 export type SafetyDoc = {

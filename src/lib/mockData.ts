@@ -1,12 +1,19 @@
-import type { Incident, Observation, Audit, CorrectiveAction, SafetyDoc, Area, ComplianceRecord, JSA, HotWorkPermit } from '@/types';
-import { subDays, formatISO } from 'date-fns';
+import type { Incident, Observation, Audit, CorrectiveAction, SafetyDoc, Area, ComplianceRecord, JSA, HotWorkPermit, Comment } from '@/types';
+import { subDays, formatISO, subHours } from 'date-fns';
+
+const mockUser = "Safety Manager";
+
+const mockComments: Comment[] = [
+    { user: 'John Doe', comment: 'Initial review complete.', date: formatISO(subDays(new Date(), 2)) },
+    { user: 'Jane Smith', comment: 'Follow-up needed with maintenance.', date: formatISO(subDays(new Date(), 1)) },
+];
 
 export const mockIncidents: Incident[] = [
-  { incident_id: 'INC001', date: formatISO(subDays(new Date(), 5)), area: 'Assembly Line 1', description: 'Minor slip on wet floor, no injury.', severity: 'Low', linked_docs: ['doc001.pdf'] },
-  { incident_id: 'INC002', date: formatISO(subDays(new Date(), 25)), area: 'Warehouse', description: 'Forklift collision with racking.', severity: 'Medium', linked_docs: ['doc002.pdf'] },
-  { incident_id: 'INC003', date: formatISO(subDays(new Date(), 60)), area: 'Welding Station', description: 'Improper PPE usage, resulted in minor burns.', severity: 'High', linked_docs: [] },
-  { incident_id: 'INC004', date: formatISO(subDays(new Date(), 90)), area: 'Packaging', description: 'Repetitive strain injury reported.', severity: 'Medium', linked_docs: [] },
-  { incident_id: 'INC005', date: formatISO(subDays(new Date(), 120)), area: 'Assembly Line 2', description: 'Faulty guard on machine X.', severity: 'Low', linked_docs: ['doc005.pdf'] },
+  { incident_id: 'INC001', date: formatISO(subDays(new Date(), 5)), area: 'Assembly Line 1', description: 'Minor slip on wet floor, no injury.', severity: 'Low', linked_docs: ['doc001.pdf'], status: 'Closed', assigned_to: 'John Doe', comments: [{user: 'Safety Team', comment: 'Area cleaned and "Wet Floor" sign placed. Resolved.', date: formatISO(subDays(new Date(), 4))}] },
+  { incident_id: 'INC002', date: formatISO(subDays(new Date(), 25)), area: 'Warehouse', description: 'Forklift collision with racking. Minor damage to rack, no product loss.', severity: 'Medium', linked_docs: ['doc002.pdf'], status: 'Under Investigation', assigned_to: 'Sarah Miller', comments: [{user: 'Sarah Miller', comment: 'Assessing rack stability. Forklift driver has been interviewed.', date: formatISO(subDays(new Date(), 24))}] },
+  { incident_id: 'INC003', date: formatISO(subDays(new Date(), 60)), area: 'Welding Station', description: 'Improper PPE usage (no face shield) by a contractor, resulted in minor flash burn.', severity: 'High', linked_docs: [], status: 'Closed', assigned_to: 'Safety Manager', comments: [{user: 'Safety Manager', comment: 'Contractor removed from site. Re-briefing on PPE for all contractors scheduled.', date: formatISO(subDays(new Date(), 59))}, {user: 'Safety Manager', comment: 'Corrective action ACT001 created.', date: formatISO(subDays(new Date(), 59))}] },
+  { incident_id: 'INC004', date: formatISO(subDays(new Date(), 90)), area: 'Packaging', description: 'Repetitive strain injury reported by an employee working on the palletizer.', severity: 'Medium', linked_docs: [], status: 'Open', comments: [] },
+  { incident_id: 'INC005', date: formatISO(subDays(new Date(), 120)), area: 'Assembly Line 2', description: 'Faulty guard on machine X, discovered during routine check. No incident occurred.', severity: 'Low', linked_docs: ['doc005.pdf'], status: 'Closed', assigned_to: 'Maintenance Team', comments: [{user: 'Maintenance Team', comment: 'Guard has been repaired and tested.', date: formatISO(subDays(new Date(), 119))}]},
 ];
 
 export const mockObservations: Observation[] = [
@@ -23,10 +30,10 @@ export const mockAudits: Audit[] = [
 ];
 
 export const mockCorrectiveActions: CorrectiveAction[] = [
-  { action_id: 'ACT001', related_to_incident: 'INC003', due_date: formatISO(new Date()), status: 'In Progress', responsible_person: 'Facility Manager', description: 'Review and reinforce PPE policy at Welding Station.' },
-  { action_id: 'ACT002', related_to_observation: 'OBS001', due_date: formatISO(subDays(new Date(), -5)), status: 'Pending', responsible_person: 'Warehouse Supervisor', description: 'Clear pallets from emergency exit path.' },
-  { action_id: 'ACT003', related_to_observation: 'OBS002', due_date: formatISO(new Date()), status: 'Completed', responsible_person: 'Maintenance Head', description: 'Inspect and certify all fire extinguishers.' },
-  { action_id: 'ACT004', due_date: formatISO(subDays(new Date(), 5)), status: 'Overdue', responsible_person: 'Area Supervisor', description: 'Repaint floor markings in packaging area.' },
+  { action_id: 'ACT001', related_to_incident: 'INC003', due_date: formatISO(new Date()), status: 'In Progress', responsible_person: 'Facility Manager', description: 'Review and reinforce PPE policy at Welding Station.', comments: [{user: 'Facility Manager', comment: 'Welding team has been retrained.', date: formatISO(subDays(new Date(), 1))}] },
+  { action_id: 'ACT002', related_to_observation: 'OBS001', due_date: formatISO(subDays(new Date(), -5)), status: 'Pending', responsible_person: 'Warehouse Supervisor', description: 'Clear pallets from emergency exit path.', comments: [] },
+  { action_id: 'ACT003', related_to_observation: 'OBS002', due_date: formatISO(new Date()), status: 'Completed', responsible_person: 'Maintenance Head', description: 'Inspect and certify all fire extinguishers.', comments: [{user: mockUser, comment: 'All extinguishers passed inspection.', date: formatISO(subDays(new Date(), 1))}]},
+  { action_id: 'ACT004', due_date: formatISO(subDays(new Date(), 5)), status: 'Overdue', responsible_person: 'Area Supervisor', description: 'Repaint floor markings in packaging area.', comments: [{user: 'Area Supervisor', comment: 'Paint has been ordered, vendor delay.', date: formatISO(subDays(new Date(), 3))}] },
 ];
 
 export const mockSafetyDocs: SafetyDoc[] = [
