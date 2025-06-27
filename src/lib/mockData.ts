@@ -1,4 +1,4 @@
-import type { Incident, Observation, Audit, CorrectiveAction, SafetyDoc, Area, ComplianceRecord, JSA } from '@/types';
+import type { Incident, Observation, Audit, CorrectiveAction, SafetyDoc, Area, ComplianceRecord, JSA, HotWorkPermit } from '@/types';
 import { subDays, formatISO } from 'date-fns';
 
 export const mockIncidents: Incident[] = [
@@ -131,6 +131,46 @@ export const mockJSAs: JSA[] = [
     ],
     created_by: 'Welding Supervisor',
     created_date: formatISO(subDays(new Date(), 45)),
+    signatures: [],
+  },
+];
+
+
+export const mockHotWorkPermits: HotWorkPermit[] = [
+  {
+    permit_id: 'HWP001',
+    title: 'Welding on Support Beams - Section A',
+    description: 'Repairing cracked support beams on the main assembly line platform.',
+    areaId: 'AREA01',
+    valid_from: new Date().toISOString(),
+    valid_to: new Date(new Date().setHours(new Date().getHours() + 4)).toISOString(),
+    precautions: [
+      'Fire watch assigned for duration of work + 30 mins post-work.',
+      'Area within 35-foot radius cleared of combustibles.',
+      'Appropriate fire extinguisher (Type ABC) present and inspected.',
+      'Welding curtains used to contain sparks.',
+      'Atmosphere tested for flammable gases.',
+    ],
+    created_by: 'Safety Manager',
+    created_date: formatISO(subDays(new Date(), 1)),
+    signatures: [
+      { employee_name: 'Mike Brown', sign_date: formatISO(new Date()) },
+    ],
+  },
+  {
+    permit_id: 'HWP002',
+    title: 'Grinding Rusty Railing - Warehouse Entrance',
+    description: 'Using an angle grinder to remove rust from the main warehouse entrance handrail before painting.',
+    areaId: 'AREA02',
+    valid_from: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString(),
+    valid_to: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString(),
+    precautions: [
+        'Area within 35-foot radius cleared of combustibles.',
+        'Appropriate fire extinguisher (Type ABC) present and inspected.',
+        'Sparks contained with non-combustible shields.',
+    ],
+    created_by: 'Facility Manager',
+    created_date: formatISO(new Date()),
     signatures: [],
   },
 ];

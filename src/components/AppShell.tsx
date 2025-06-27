@@ -26,6 +26,7 @@ import {
   BadgeCheck,
   Settings,
   FileSignature,
+  Flame,
 } from 'lucide-react';
 import { Header } from './Header';
 import { Button } from './ui/button';
@@ -38,6 +39,7 @@ const menuItems = [
   { href: '/audits', label: 'Audits', icon: ClipboardCheck },
   { href: '/actions', label: 'Corrective Actions', icon: Wrench },
   { href: '/jsa', label: 'JSAs', icon: FileSignature },
+  { href: '/hot-work', label: 'Hot Work Permits', icon: Flame },
   { href: '/documents', label: 'Documents', icon: FileText },
   { href: '/areas', label: 'Areas', icon: Map },
   { href: '/compliance', label: 'Compliance', icon: BadgeCheck },

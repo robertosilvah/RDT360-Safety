@@ -82,3 +82,16 @@ export type JSA = {
   created_date: string;
   signatures: { employee_name: string; sign_date: string }[];
 };
+
+export type HotWorkPermit = {
+  permit_id: string;
+  title: string;
+  description: string;
+  areaId: string;
+  valid_from: string;
+  valid_to: string;
+  precautions: string[];
+  created_by: string;
+  created_date: string;
+  signatures: { employee_name: string; sign_date: string }[];
+};
