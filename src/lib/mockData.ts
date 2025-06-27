@@ -1,4 +1,4 @@
-import type { Incident, Observation, Audit, CorrectiveAction, SafetyDoc, Area, ComplianceRecord } from '@/types';
+import type { Incident, Observation, Audit, CorrectiveAction, SafetyDoc, Area, ComplianceRecord, JSA } from '@/types';
 import { subDays, formatISO } from 'date-fns';
 
 export const mockIncidents: Incident[] = [
@@ -79,6 +79,60 @@ export const mockComplianceRecords: ComplianceRecord[] = [
   { employee_id: 'EMP002', name: 'Jane Smith', training_completed: [{ course: 'Fire Safety', date: '2023-01-15' }], cert_renewals_due: 'N/A', next_review_date: '2024-02-15' },
   { employee_id: 'EMP003', name: 'Mike Brown', training_completed: [{ course: 'Forklift Certified', date: '2022-11-10' }], cert_renewals_due: '2024-11-10', next_review_date: '2023-12-10' },
 ];
+
+export const mockJSAs: JSA[] = [
+  {
+    jsa_id: 'JSA001',
+    title: 'Forklift Operation and Battery Changeout',
+    job_description: 'Operating a forklift to move materials within the warehouse and performing battery changeouts as needed.',
+    required_ppe: ['High-visibility vest', 'Steel-toed boots', 'Safety glasses', 'Acid-resistant gloves'],
+    steps: [
+      {
+        step_description: 'Pre-operation inspection of forklift.',
+        hazards: ['Mechanical failure', 'Hydraulic leaks', 'Damaged tires'],
+        controls: ['Follow daily inspection checklist', 'Do not operate if faults are found', 'Report any issues to supervisor immediately'],
+      },
+      {
+        step_description: 'Driving and maneuvering the forklift.',
+        hazards: ['Collisions with pedestrians or structures', 'Tip-overs', 'Falling loads'],
+        controls: ['Maintain safe speed', 'Sound horn at intersections', 'Keep forks low when traveling', 'Ensure load is stable and secure'],
+      },
+      {
+        step_description: 'Battery changeout procedure.',
+        hazards: ['Acid splash', 'Electrical shock', 'Crushing injury from battery'],
+        controls: ['Wear required PPE (gloves, glasses)', 'Use designated lifting equipment', 'Ensure charging area is well-ventilated', 'Follow lockout/tagout procedure'],
+      }
+    ],
+    created_by: 'Safety Team',
+    created_date: formatISO(subDays(new Date(), 20)),
+    signatures: [
+      { employee_name: 'John Doe', sign_date: formatISO(subDays(new Date(), 19)) },
+      { employee_name: 'Jane Smith', sign_date: formatISO(subDays(new Date(), 18)) },
+    ],
+  },
+  {
+    jsa_id: 'JSA002',
+    title: 'Welding in Designated Area',
+    job_description: 'Performing standard welding tasks on steel components within the designated welding station.',
+    required_ppe: ['Welding helmet', 'Flame-resistant jacket', 'Leather gloves', 'Respirator'],
+    steps: [
+      {
+        step_description: 'Area preparation.',
+        hazards: ['Fire from sparks', 'Combustible materials nearby'],
+        controls: ['Clear a 35-foot radius of all flammable materials', 'Have a fire extinguisher readily available', 'Use welding screens to contain sparks'],
+      },
+      {
+        step_description: 'Equipment setup and inspection.',
+        hazards: ['Electric shock', 'Damaged cables'],
+        controls: ['Inspect all cables and connections before starting', 'Ensure proper grounding of welding machine'],
+      },
+    ],
+    created_by: 'Welding Supervisor',
+    created_date: formatISO(subDays(new Date(), 45)),
+    signatures: [],
+  },
+];
+
 
 export const mockObservationsByMonth = [
     { name: 'Jan', total: Math.floor(Math.random() * 30) + 10 },

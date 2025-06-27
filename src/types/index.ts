@@ -64,3 +64,20 @@ export type ComplianceRecord = {
   cert_renewals_due: string;
   next_review_date: string;
 };
+
+export type JsaStep = {
+  step_description: string;
+  hazards: string[];
+  controls: string[];
+};
+
+export type JSA = {
+  jsa_id: string;
+  title: string;
+  job_description: string;
+  required_ppe: string[];
+  steps: JsaStep[];
+  created_by: string;
+  created_date: string;
+  signatures: { employee_name: string; sign_date: string }[];
+};
