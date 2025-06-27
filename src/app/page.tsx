@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/table';
 import { useAppData } from '@/context/AppDataContext';
 import type { Incident } from '@/types';
-import { ArrowUpRight, Ban, Clock, ShieldCheck, Siren, Calendar as CalendarIcon } from 'lucide-react';
+import { ArrowUpRight, Ban, Clock, ShieldAlert, Siren, Calendar as CalendarIcon } from 'lucide-react';
 import Link from 'next/link';
 import { differenceInDays, format, isWithinInterval } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -36,11 +36,24 @@ export default function DashboardPage() {
   const { incidents, correctiveActions, observations } = useAppData();
   const [date, setDate] = useState<DateRange | undefined>();
 
-  const daysSinceLastIncident = useMemo(() => {
-    if (incidents.length === 0) {
-      return { value: 'N/A', description: 'No incidents recorded yet.' };
+  const daysSinceLastAccident = useMemo(() => {
+    const accidents = incidents.filter(i => i.type === 'Accident');
+    if (accidents.length === 0) {
+      return { value: 'N/A', description: 'No accidents recorded yet.' };
     }
-    const lastIncidentDate = incidents.reduce((max, incident) =>
+    const lastAccidentDate = accidents.reduce((max, incident) =>
+      new Date(incident.date) > new Date(max.date) ? incident : max
+    ).date;
+    const days = differenceInDays(new Date(), new Date(lastAccidentDate));
+    return { value: days.toString(), description: 'All areas included' };
+  }, [incidents]);
+  
+  const daysSinceLastIncident = useMemo(() => {
+    const allIncidents = incidents.filter(i => i.type === 'Incident');
+    if (allIncidents.length === 0) {
+        return { value: 'N/A', description: 'No incidents recorded yet.' };
+    }
+    const lastIncidentDate = allIncidents.reduce((max, incident) =>
       new Date(incident.date) > new Date(max.date) ? incident : max
     ).date;
     const days = differenceInDays(new Date(), new Date(lastIncidentDate));
@@ -112,8 +125,14 @@ export default function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <KpiCard
             title="Days Since Last Accident"
-            value={daysSinceLastIncident.value}
+            value={daysSinceLastAccident.value}
             icon={<Siren className="h-4 w-4 text-muted-foreground" />}
+            description={daysSinceLastAccident.description}
+          />
+          <KpiCard
+            title="Days Since Last Incident"
+            value={daysSinceLastIncident.value}
+            icon={<ShieldAlert className="h-4 w-4 text-muted-foreground" />}
             description={daysSinceLastIncident.description}
           />
           <KpiCard
@@ -121,12 +140,6 @@ export default function DashboardPage() {
             value={pendingActions.toString()}
             icon={<Clock className="h-4 w-4 text-muted-foreground" />}
             description="Corrective actions open"
-          />
-          <KpiCard
-            title="Compliance Rate"
-            value="98.7%"
-            icon={<ShieldCheck className="h-4 w-4 text-muted-foreground" />}
-            description="+1.2% from last month"
           />
           <KpiCard
             title="Near Misses Reported"

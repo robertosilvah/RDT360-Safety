@@ -8,6 +8,7 @@ export type Incident = {
   incident_id: string;
   date: string;
   area: string;
+  type: 'Incident' | 'Accident';
   description: string;
   severity: 'Low' | 'Medium' | 'High';
   linked_docs: string[];

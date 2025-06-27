@@ -31,6 +31,7 @@ import { useAppData } from '@/context/AppDataContext';
 
 const incidentFormSchema = z.object({
   description: z.string().min(10, "Description must be at least 10 characters."),
+  type: z.enum(['Incident', 'Accident']),
   severity: z.enum(['Low', 'Medium', 'High']),
   status: z.enum(['Open', 'Under Investigation', 'Closed']),
   assigned_to: z.string().optional(),
@@ -55,6 +56,7 @@ const IncidentDetailsDialog = ({
     resolver: zodResolver(incidentFormSchema),
     defaultValues: {
       description: '',
+      type: 'Incident',
       severity: 'Low',
       status: 'Open',
       assigned_to: '',
@@ -65,6 +67,7 @@ const IncidentDetailsDialog = ({
     if (incident) {
       form.reset({
         description: incident.description,
+        type: incident.type,
         severity: incident.severity,
         status: incident.status,
         assigned_to: incident.assigned_to || '',
@@ -99,7 +102,24 @@ const IncidentDetailsDialog = ({
         <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                 <FormField
+                    control={form.control}
+                    name="type"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Type</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                            <SelectContent>
+                                <SelectItem value="Incident">Incident</SelectItem>
+                                <SelectItem value="Accident">Accident</SelectItem>
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                  <FormField
                     control={form.control}
                     name="status"
@@ -216,6 +236,11 @@ export default function IncidentsPage() {
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [isDialogOpen, setDialogOpen] = useState(false);
     
+  const typeVariant: { [key in Incident['type']]: 'destructive' | 'secondary' } = {
+    'Accident': 'destructive',
+    'Incident': 'secondary',
+  };
+
   const severityVariant: { [key in Incident['severity']]: 'destructive' | 'secondary' | 'default' } = {
     'High': 'destructive',
     'Medium': 'secondary',
@@ -256,6 +281,7 @@ export default function IncidentsPage() {
                   <TableHead>ID</TableHead>
                   <TableHead>Date</TableHead>
                   <TableHead>Area</TableHead>
+                  <TableHead>Type</TableHead>
                   <TableHead className="w-[40%]">Description</TableHead>
                   <TableHead>Severity</TableHead>
                   <TableHead>Status</TableHead>
@@ -269,6 +295,9 @@ export default function IncidentsPage() {
                     <TableCell className="font-medium">{incident.incident_id}</TableCell>
                     <TableCell>{new Date(incident.date).toLocaleDateString()}</TableCell>
                     <TableCell>{incident.area}</TableCell>
+                    <TableCell>
+                      <Badge variant={typeVariant[incident.type]}>{incident.type}</Badge>
+                    </TableCell>
                     <TableCell className="max-w-md truncate">{incident.description}</TableCell>
                     <TableCell>
                       <Badge variant={severityVariant[incident.severity]}>{incident.severity}</Badge>
