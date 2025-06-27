@@ -44,7 +44,7 @@ export const mockCorrectiveActions: CorrectiveAction[] = [
   { action_id: 'ACT002', related_to_observation: 'OBS001', due_date: formatISO(subDays(new Date(), -5)), status: 'Pending', responsible_person: 'Warehouse Supervisor', description: 'Clear pallets from emergency exit path.', comments: [] },
   { action_id: 'ACT003', related_to_observation: 'OBS002', due_date: formatISO(new Date()), status: 'Completed', responsible_person: 'Maintenance Head', description: 'Inspect and certify all fire extinguishers.', comments: [{user: mockUser, comment: 'All extinguishers passed inspection.', date: formatISO(subDays(new Date(), 1))}]},
   { action_id: 'ACT004', due_date: formatISO(subDays(new Date(), 5)), status: 'Overdue', responsible_person: 'Area Supervisor', description: 'Repaint floor markings in packaging area.', comments: [{user: 'Area Supervisor', comment: 'Paint has been ordered, vendor delay.', date: formatISO(subDays(new Date(), 3))}] },
-  { action_id: 'ACT-FL-001', related_to_forklift_inspection: 'FINSP-001-tires', due_date: new Date().toISOString(), status: 'Pending', responsible_person: 'Maintenance', description: 'Replace front left tire on Forklift FL-01.', comments: [] },
+  { action_id: 'ACT-FL-001', related_to_forklift_inspection: 'FL-01-tires', due_date: new Date().toISOString(), status: 'Pending', responsible_person: 'Maintenance', description: 'Replace front left tire on Forklift FL-01.', comments: [] },
 ];
 
 export const mockSafetyDocs: SafetyDoc[] = [
@@ -247,6 +247,13 @@ export const mockForkliftInspections: ForkliftInspection[] = [
             { id: 'leaks', question: 'No visible hydraulic, fuel, or oil leaks?', status: 'Pass' },
             { id: 'battery', question: 'Battery charged and connectors are clean?', status: 'Pass' },
         ]
+    },
+    {
+        inspection_id: 'FINSP-002',
+        forklift_id: 'FL-02',
+        operator_name: 'Sarah Miller',
+        date: subDays(new Date(), 2).toISOString(),
+        checklist: FORKLIFT_CHECKLIST_QUESTIONS.map(q => ({...q, status: 'Pass', comment: ''}))
     }
 ];
 

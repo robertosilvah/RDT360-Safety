@@ -48,6 +48,7 @@ import { FORKLIFT_CHECKLIST_QUESTIONS } from '@/lib/mockData';
 import type { ForkliftInspection } from '@/types';
 import { PlusCircle, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
+import { Badge } from '@/components/ui/badge';
 
 // Schema for the corrective action creation dialog
 const actionFormSchema = z.object({
@@ -177,11 +178,84 @@ const ActionCreateDialog = ({
     )
 }
 
+const ForkliftInspectionDetailsDialog = ({ 
+    inspection,
+    isOpen,
+    onOpenChange
+}: {
+    inspection: ForkliftInspection | null;
+    isOpen: boolean;
+    onOpenChange: (open: boolean) => void;
+}) => {
+    if (!inspection) return null;
+
+    const statusVariant: { [key in 'Pass' | 'Fail' | 'N/A']: 'outline' | 'destructive' | 'secondary' } = {
+        'Pass': 'outline',
+        'Fail': 'destructive',
+        'N/A': 'secondary',
+    };
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="max-w-3xl">
+                <DialogHeader>
+                    <DialogTitle>Inspection Details: {inspection.inspection_id}</DialogTitle>
+                    <DialogDescription>
+                        For Forklift {inspection.forklift_id} by {inspection.operator_name} on {new Date(inspection.date).toLocaleString()}
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-4">
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Checklist Results</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-[50%]">Item</TableHead>
+                                        <TableHead>Status</TableHead>
+                                        <TableHead>Comment / Action</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {inspection.checklist.map((item) => (
+                                        <TableRow key={item.id}>
+                                            <TableCell>{item.question}</TableCell>
+                                            <TableCell><Badge variant={statusVariant[item.status]}>{item.status}</Badge></TableCell>
+                                            <TableCell>
+                                                {item.comment}
+                                                {item.actionId && (
+                                                    <Button variant="link" asChild className="p-0 h-auto font-semibold">
+                                                        <Link href="/actions">Action: {item.actionId}</Link>
+                                                    </Button>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                    <div className="p-4 border rounded-md bg-muted/50">
+                        <h4 className="font-semibold text-base">Operator Signature</h4>
+                        <p className="text-sm text-muted-foreground mt-2">
+                            This inspection was submitted by <strong>{inspection.operator_name}</strong> on {new Date(inspection.date).toLocaleString()}.
+                        </p>
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
 
 export default function ForkliftInspectionPage() {
   const { forkliftInspections, addForkliftInspection, forklifts } = useAppData();
   const { toast } = useToast();
   const [actionDialogState, setActionDialogState] = useState<{isOpen: boolean; itemIndex: number | null}>({isOpen: false, itemIndex: null});
+  const [selectedInspection, setSelectedInspection] = useState<ForkliftInspection | null>(null);
+  const [isDetailsOpen, setDetailsOpen] = useState(false);
 
   const form = useForm<InspectionFormValues>({
     resolver: zodResolver(inspectionFormSchema),
@@ -231,6 +305,11 @@ export default function ForkliftInspectionPage() {
         form.setValue(`checklist.${actionDialogState.itemIndex}.actionId`, actionId);
     }
   };
+
+  const handleRowClick = (inspection: ForkliftInspection) => {
+    setSelectedInspection(inspection);
+    setDetailsOpen(true);
+  }
 
   return (
     <AppShell>
@@ -332,7 +411,7 @@ export default function ForkliftInspectionPage() {
             <Card className="lg:col-span-1">
                 <CardHeader>
                     <CardTitle>Inspection History</CardTitle>
-                    <CardDescription>A log of the most recent forklift inspections.</CardDescription>
+                    <CardDescription>A log of the most recent forklift inspections. Click a row to view details.</CardDescription>
                 </CardHeader>
                 <CardContent className="max-h-[75vh] overflow-y-auto">
                     <Table>
@@ -349,7 +428,7 @@ export default function ForkliftInspectionPage() {
                             {forkliftInspections.map(insp => {
                                 const failedItems = insp.checklist.filter(item => item.status === 'Fail');
                                 return (
-                                <TableRow key={insp.inspection_id}>
+                                <TableRow key={insp.inspection_id} onClick={() => handleRowClick(insp)} className="cursor-pointer">
                                     <TableCell className="font-medium">{insp.inspection_id}</TableCell>
                                     <TableCell>{insp.forklift_id}</TableCell>
                                     <TableCell>{insp.operator_name}</TableCell>
@@ -381,6 +460,12 @@ export default function ForkliftInspectionPage() {
                 onActionCreated={handleActionCreated}
              />
         )}
+
+        <ForkliftInspectionDetailsDialog
+            inspection={selectedInspection}
+            isOpen={isDetailsOpen}
+            onOpenChange={setDetailsOpen}
+        />
       </div>
     </AppShell>
   );

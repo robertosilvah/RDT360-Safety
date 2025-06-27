@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { mockIncidents, mockObservations } from '@/lib/mockData';
 import type { CorrectiveAction, Incident, Observation, Comment } from '@/types';
-import { PlusCircle, Siren, Eye, MessageSquare, User, Clock, CheckCircle, AlertTriangle, List } from 'lucide-react';
+import { PlusCircle, Siren, Eye, MessageSquare, User, Clock, CheckCircle, AlertTriangle, List, Truck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
@@ -438,6 +438,14 @@ export default function CorrectiveActionsPage() {
                                 <Link href="/observations">
                                     <Eye className="mr-2 h-4 w-4 text-blue-500" />
                                     {action.related_to_observation}
+                                </Link>
+                                </Button>
+                            )}
+                            {action.related_to_forklift_inspection && (
+                                <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
+                                <Link href="/forklift-inspections">
+                                    <Truck className="mr-2 h-4 w-4 text-green-500" />
+                                    {action.related_to_forklift_inspection}
                                 </Link>
                                 </Button>
                             )}
