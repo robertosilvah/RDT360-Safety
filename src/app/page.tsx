@@ -1,3 +1,6 @@
+'use client';
+
+import React, { useState, useMemo } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { KpiSummary } from '@/components/dashboard/KpiSummary';
@@ -19,34 +22,41 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import {
-  mockIncidents,
-  mockCorrectiveActions,
-  mockObservations,
-} from '@/lib/mockData';
+import { useAppData } from '@/context/AppDataContext';
 import type { Incident } from '@/types';
-import { ArrowUpRight, Ban, Clock, ShieldCheck, Siren } from 'lucide-react';
+import { ArrowUpRight, Ban, Clock, ShieldCheck, Siren, Calendar as CalendarIcon } from 'lucide-react';
 import Link from 'next/link';
-import { differenceInDays } from 'date-fns';
+import { differenceInDays, format, isWithinInterval } from 'date-fns';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import type { DateRange } from 'react-day-picker';
+import { cn } from '@/lib/utils';
 
 export default function DashboardPage() {
-  const daysSinceLastIncident = () => {
-    if (mockIncidents.length === 0) {
+  const { incidents, correctiveActions, observations } = useAppData();
+  const [date, setDate] = useState<DateRange | undefined>();
+
+  const daysSinceLastIncident = useMemo(() => {
+    if (incidents.length === 0) {
       return 365; // Default if no incidents
     }
-    const lastIncidentDate = mockIncidents.reduce((max, incident) =>
+    const lastIncidentDate = incidents.reduce((max, incident) =>
       new Date(incident.date) > new Date(max.date) ? incident : max
     ).date;
     return differenceInDays(new Date(), new Date(lastIncidentDate));
-  };
+  }, [incidents]);
 
-  const pendingActions = mockCorrectiveActions.filter(
-    (action) => action.status !== 'Completed'
-  ).length;
+  const pendingActions = useMemo(() => {
+    return correctiveActions.filter(
+      (action) => action.status !== 'Completed'
+    ).length;
+  }, [correctiveActions]);
 
-  const recentIncidents = [...mockIncidents]
-    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    .slice(0, 5);
+  const recentIncidents = useMemo(() => {
+    return [...incidents]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 5);
+  }, [incidents]);
 
   const severityClasses: { [key: string]: string } = {
     High: 'text-red-500',
@@ -54,29 +64,39 @@ export default function DashboardPage() {
     Low: 'text-green-500',
   };
 
-  const observationsByPerson = mockObservations.reduce(
-    (acc: Record<string, number>, obs) => {
-      acc[obs.submitted_by] = (acc[obs.submitted_by] || 0) + 1;
-      return acc;
-    },
-    {}
-  );
+  const observationsByPersonData = useMemo(() => {
+    const filteredObservations = observations.filter(obs => {
+      if (!date?.from) return true;
+      const toDate = date.to ?? date.from;
+      return isWithinInterval(new Date(obs.date), { start: date.from, end: toDate });
+    });
+    
+    const observationsByPerson = filteredObservations.reduce(
+      (acc: Record<string, number>, obs) => {
+        acc[obs.submitted_by] = (acc[obs.submitted_by] || 0) + 1;
+        return acc;
+      },
+      {}
+    );
 
-  const observationsByPersonData = Object.entries(observationsByPerson)
-    .map(([person, count]) => ({ person, count }))
-    .sort((a, b) => b.count - a.count);
+    return Object.entries(observationsByPerson)
+      .map(([person, count]) => ({ person, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [observations, date]);
 
-  const pendingActionsByPerson = mockCorrectiveActions
-    .filter((action) => action.status !== 'Completed')
-    .reduce((acc: Record<string, number>, action) => {
-      acc[action.responsible_person] =
-        (acc[action.responsible_person] || 0) + 1;
-      return acc;
-    }, {});
+  const pendingActionsByPersonData = useMemo(() => {
+    const pendingActionsByPerson = correctiveActions
+      .filter((action) => action.status !== 'Completed')
+      .reduce((acc: Record<string, number>, action) => {
+        acc[action.responsible_person] =
+          (acc[action.responsible_person] || 0) + 1;
+        return acc;
+      }, {});
 
-  const pendingActionsByPersonData = Object.entries(pendingActionsByPerson)
-    .map(([person, count]) => ({ person, count }))
-    .sort((a, b) => b.count - a.count);
+    return Object.entries(pendingActionsByPerson)
+      .map(([person, count]) => ({ person, count }))
+      .sort((a, b) => b.count - a.count);
+  }, [correctiveActions]);
 
   return (
     <AppShell>
@@ -87,7 +107,7 @@ export default function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <KpiCard
             title="Days Since Last Accident"
-            value={daysSinceLastIncident().toString()}
+            value={daysSinceLastIncident.toString()}
             icon={<Siren className="h-4 w-4 text-muted-foreground" />}
             description="All areas included"
           />
@@ -178,11 +198,49 @@ export default function DashboardPage() {
         </div>
         <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
           <Card>
-            <CardHeader>
-              <CardTitle>Observations by Person</CardTitle>
-              <CardDescription>
-                Top contributors for safety observations.
-              </CardDescription>
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+              <div>
+                <CardTitle>Observations by Person</CardTitle>
+                <CardDescription>
+                  Top contributors for safety observations.
+                </CardDescription>
+              </div>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    id="date"
+                    variant={"outline"}
+                    className={cn(
+                      "w-[260px] justify-start text-left font-normal",
+                      !date && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {date?.from ? (
+                      date.to ? (
+                        <>
+                          {format(date.from, "LLL dd, y")} -{" "}
+                          {format(date.to, "LLL dd, y")}
+                        </>
+                      ) : (
+                        format(date.from, "LLL dd, y")
+                      )
+                    ) : (
+                      <span>Pick a date range</span>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    initialFocus
+                    mode="range"
+                    defaultMonth={date?.from}
+                    selected={date}
+                    onSelect={setDate}
+                    numberOfMonths={2}
+                  />
+                </PopoverContent>
+              </Popover>
             </CardHeader>
             <CardContent>
               <Table>
