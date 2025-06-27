@@ -220,7 +220,7 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
         if (walk) {
             form.reset({
                 status: walk.status,
-                checklist_items: walk.checklist_items.map(item => ({ ...item }))
+                checklist_items: walk.checklist_items ? [...walk.checklist_items.map(item => ({ ...item }))] : []
             });
             setIsEditing(false);
         }
@@ -230,35 +230,37 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
     
     const isLocked = walk.status === 'Completed' && !isEditing;
 
-    const handleSave = () => {
-        const formValues = form.getValues();
-        const allItemsAnswered = formValues.checklist_items.every(item => item.status !== 'Pending');
-        let finalStatus = formValues.status;
+    const onValidSubmit = (data: { status: SafetyWalk['status'], checklist_items: SafetyWalkChecklistItem[] }) => {
+        const allItemsAnswered = data.checklist_items.every(item => item.status !== 'Pending');
+        let finalStatus = data.status;
         
-        if (formValues.status === 'In Progress' && allItemsAnswered) {
+        if (data.status === 'In Progress' && allItemsAnswered) {
             finalStatus = 'Completed';
         }
 
         const updatedWalk: SafetyWalk = {
             ...walk,
             status: finalStatus,
-            checklist_items: formValues.checklist_items,
+            checklist_items: data.checklist_items,
         };
         
-        if (newComment.trim()) {
+        updateSafetyWalk(updatedWalk);
+        toast({ title: 'Safety Walk Updated' });
+
+        if(finalStatus === 'Completed') {
+          setIsEditing(false); // relock if now completed
+        }
+    };
+    
+    const handleAddComment = () => {
+        if(newComment.trim()) {
             addCommentToSafetyWalk(walk.safety_walk_id, {
                 user: 'Safety Manager',
                 comment: newComment.trim(),
                 date: new Date().toISOString(),
             });
-             // We need to add the comment to the updatedWalk object as well so it appears instantly
-            updatedWalk.comments.push({user: 'Safety Manager', comment: newComment.trim(), date: new Date().toISOString()});
             setNewComment('');
         }
-        
-        updateSafetyWalk(updatedWalk);
-        toast({ title: 'Safety Walk Updated' });
-        onOpenChange(false);
     };
 
     const handleEdit = () => {
@@ -268,7 +270,7 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-3xl">
+            <DialogContent className="max-w-4xl">
                  <DialogHeader>
                     <DialogTitle>Safety Walk Details: {walk.safety_walk_id}</DialogTitle>
                     <DialogDescription>
@@ -276,108 +278,121 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
                     </DialogDescription>
                 </DialogHeader>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-h-[70vh]">
-                    <div className="md:col-span-2 space-y-6 overflow-y-auto pr-4">
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                                <div className="flex items-center gap-2">
-                                    <User className="h-4 w-4 text-muted-foreground" />
-                                    <div>
-                                        <p className="font-semibold">Walker / Team</p>
-                                        <p className="text-muted-foreground">{walk.walker}</p>
+                    <div className="md:col-span-2 flex flex-col">
+                        <div className="flex-1 space-y-6 overflow-y-auto pr-4">
+                            <div className="space-y-4">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                    <div className="flex items-center gap-2">
+                                        <User className="h-4 w-4 text-muted-foreground" />
+                                        <div>
+                                            <p className="font-semibold">Walker / Team</p>
+                                            <p className="text-muted-foreground">{walk.walker}</p>
+                                        </div>
                                     </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <Users className="h-4 w-4 text-muted-foreground" />
-                                    <div>
-                                        <p className="font-semibold">People Involved</p>
-                                        <p className="text-muted-foreground">{walk.people_involved || 'N/A'}</p>
-                                    </div>
-                                </div>
-                            </div>
-                            {walk.safety_feeling_scale && (
-                                <div className="flex items-center gap-2 mt-4">
-                                    <Star className="h-4 w-4 text-muted-foreground" />
-                                    <div>
-                                        <p className="font-semibold">Perceived Safety Rating</p>
-                                        <div className="flex items-center">
-                                            {[...Array(5)].map((_, i) => (
-                                                <Star key={i} className={`h-5 w-5 ${i < walk.safety_feeling_scale! ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
-                                            ))}
-                                            <span className="ml-2 text-muted-foreground">({walk.safety_feeling_scale} out of 5)</span>
+                                    <div className="flex items-center gap-2">
+                                        <Users className="h-4 w-4 text-muted-foreground" />
+                                        <div>
+                                            <p className="font-semibold">People Involved</p>
+                                            <p className="text-muted-foreground">{walk.people_involved || 'N/A'}</p>
                                         </div>
                                     </div>
                                 </div>
-                            )}
-                        </div>
-                        <Separator />
-                        <Form {...form}>
-                            <form>
-                                <FormField
-                                    control={form.control}
-                                    name="status"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                        <FormLabel>Status</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLocked}>
-                                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                                            <SelectContent>
-                                                <SelectItem value="Scheduled">Scheduled</SelectItem>
-                                                <SelectItem value="In Progress">In Progress</SelectItem>
-                                                <SelectItem value="Completed">Completed</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                        </FormItem>
-                                    )}
-                                />
-                                <Separator className="my-6" />
-                                <div>
-                                    <h3 className="text-lg font-semibold mb-4">Checklist Items</h3>
-                                    <div className="space-y-4">
-                                    {form.watch('checklist_items')?.map((item, index) => (
-                                        <Card key={index} className="p-4 bg-muted/30">
-                                            <FormLabel>{item.item}</FormLabel>
-                                            <FormField
-                                                control={form.control}
-                                                name={`checklist_items.${index}.status`}
-                                                render={({ field }) => (
-                                                <FormItem className="mt-2">
-                                                    <FormControl>
-                                                    <RadioGroup
-                                                        onValueChange={field.onChange}
-                                                        value={field.value}
-                                                        className="flex gap-4 pt-2"
-                                                        disabled={isLocked}
-                                                    >
-                                                        <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Pass" /></FormControl><FormLabel className="font-normal">Pass</FormLabel></FormItem>
-                                                        <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Fail" /></FormControl><FormLabel className="font-normal">Fail</FormLabel></FormItem>
-                                                        <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="N/A" /></FormControl><FormLabel className="font-normal">N/A</FormLabel></FormItem>
-                                                    </RadioGroup>
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                                )}
-                                            />
-                                            {form.watch(`checklist_items.${index}.status`) === 'Fail' && (
+                                {walk.safety_feeling_scale && (
+                                    <div className="flex items-center gap-2 mt-4">
+                                        <Star className="h-4 w-4 text-muted-foreground" />
+                                        <div>
+                                            <p className="font-semibold">Perceived Safety Rating</p>
+                                            <div className="flex items-center">
+                                                {[...Array(5)].map((_, i) => (
+                                                    <Star key={i} className={`h-5 w-5 ${i < walk.safety_feeling_scale! ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`} />
+                                                ))}
+                                                <span className="ml-2 text-muted-foreground">({walk.safety_feeling_scale} out of 5)</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            <Separator />
+                            <Form {...form}>
+                                <form className="space-y-6">
+                                    <FormField
+                                        control={form.control}
+                                        name="status"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Status</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLocked}>
+                                                <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="Scheduled">Scheduled</SelectItem>
+                                                    <SelectItem value="In Progress">In Progress</SelectItem>
+                                                    <SelectItem value="Completed">Completed</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <Separator />
+                                    <div>
+                                        <h3 className="text-lg font-semibold mb-4">Checklist Items</h3>
+                                        <div className="space-y-4">
+                                        {form.watch('checklist_items')?.map((item, index) => (
+                                            <Card key={index} className="p-4 bg-muted/30">
+                                                <FormLabel>{item.item}</FormLabel>
                                                 <FormField
                                                     control={form.control}
-                                                    name={`checklist_items.${index}.comment`}
+                                                    name={`checklist_items.${index}.status`}
                                                     render={({ field }) => (
-                                                        <FormItem className="mt-4">
-                                                        <FormLabel>Comments</FormLabel>
-                                                        <FormControl><Textarea placeholder="Describe the issue..." {...field} value={field.value ?? ''} disabled={isLocked} /></FormControl>
+                                                    <FormItem className="mt-2">
+                                                        <FormControl>
+                                                        <RadioGroup
+                                                            onValueChange={field.onChange}
+                                                            value={field.value}
+                                                            className="flex gap-4 pt-2"
+                                                            disabled={isLocked}
+                                                        >
+                                                            <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Pass" /></FormControl><FormLabel className="font-normal">Pass</FormLabel></FormItem>
+                                                            <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Fail" /></FormControl><FormLabel className="font-normal">Fail</FormLabel></FormItem>
+                                                            <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="N/A" /></FormControl><FormLabel className="font-normal">N/A</FormLabel></FormItem>
+                                                        </RadioGroup>
+                                                        </FormControl>
                                                         <FormMessage />
-                                                        </FormItem>
+                                                    </FormItem>
                                                     )}
                                                 />
-                                            )}
-                                        </Card>
-                                    ))}
+                                                {form.watch(`checklist_items.${index}.status`) === 'Fail' && (
+                                                    <FormField
+                                                        control={form.control}
+                                                        name={`checklist_items.${index}.comment`}
+                                                        render={({ field }) => (
+                                                            <FormItem className="mt-4">
+                                                            <FormLabel>Comments</FormLabel>
+                                                            <FormControl><Textarea placeholder="Describe the issue..." {...field} value={field.value ?? ''} disabled={isLocked} /></FormControl>
+                                                            <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                )}
+                                            </Card>
+                                        ))}
+                                        </div>
                                     </div>
-                                </div>
-                            </form>
-                        </Form>
+                                </form>
+                            </Form>
+                        </div>
+                        <DialogFooter className="mt-auto pt-4 border-t">
+                            {isLocked ? (
+                                <Button onClick={handleEdit}>
+                                    <Edit className="mr-2 h-4 w-4" /> Re-open and Edit
+                                </Button>
+                            ) : (
+                                <Button onClick={form.handleSubmit(onValidSubmit)} disabled={!form.formState.isDirty}>
+                                    Save Changes
+                                </Button>
+                            )}
+                        </DialogFooter>
                     </div>
-                    <div className="md:col-span-1 flex flex-col gap-4">
+                    <div className="md:col-span-1 flex flex-col gap-4 border-l pl-6">
                         <h3 className="text-lg font-semibold flex items-center gap-2"><MessageSquare className="h-5 w-5" /> Comments</h3>
                         <div className="flex-1 space-y-4 overflow-y-auto pr-2">
                             {walk.comments.map((comment, index) => (
@@ -397,16 +412,10 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
                             ))}
                         </div>
                         <div className="flex flex-col gap-2 mt-auto">
-                            <Textarea placeholder="Add a comment..." value={newComment} onChange={(e) => setNewComment(e.target.value)} rows={2} disabled={isLocked}/>
-                            {isLocked ? (
-                                <Button size="sm" onClick={handleEdit}>
-                                    <Edit className="mr-2 h-4 w-4" /> Re-open and Edit
-                                </Button>
-                            ) : (
-                                <Button size="sm" onClick={handleSave} disabled={!newComment.trim() && !form.formState.isDirty}>
-                                    {newComment.trim() ? 'Save and Add Comment' : 'Save Changes'}
-                                </Button>
-                            )}
+                            <Textarea placeholder="Add a comment..." value={newComment} onChange={(e) => setNewComment(e.target.value)} rows={2}/>
+                            <Button size="sm" onClick={handleAddComment} disabled={!newComment.trim()}>
+                                Add Comment
+                            </Button>
                         </div>
                     </div>
                 </div>
