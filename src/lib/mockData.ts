@@ -1,4 +1,4 @@
-import type { Incident, Observation, Audit, CorrectiveAction, SafetyDoc, Area, ComplianceRecord, JSA, HotWorkPermit, Comment } from '@/types';
+import type { Incident, Observation, SafetyWalk, CorrectiveAction, SafetyDoc, Area, ComplianceRecord, JSA, HotWorkPermit, Comment } from '@/types';
 import { subDays, formatISO, subHours } from 'date-fns';
 
 const mockUser = "Safety Manager";
@@ -17,17 +17,18 @@ export const mockIncidents: Incident[] = [
 ];
 
 export const mockObservations: Observation[] = [
-  { observation_id: 'OBS001', submitted_by: 'John Doe', date: formatISO(subDays(new Date(), 2)), areaId: 'AREA01', description: 'Emergency exit blocked by pallets.', status: 'Open', imageUrl: 'https://placehold.co/600x400.png', report_type: 'Safety Concern', risk_level: 3, actions: 'Pallets to be moved immediately. Area to be inspected daily.', unsafe_category: 'Unsafe Condition', person_involved: 'Warehouse Staff' },
+  { observation_id: 'OBS001', submitted_by: 'John Doe', date: formatISO(subDays(new Date(), 2)), areaId: 'AREA01', description: 'Emergency exit blocked by pallets.', status: 'Open', imageUrl: 'https://placehold.co/600x400.png', report_type: 'Safety Concern', risk_level: 3, actions: 'Pallets to be moved immediately. Area to be inspected daily.', unsafe_category: 'Unsafe Condition', person_involved: 'Warehouse Staff', safety_walk_id: 'SWALK001' },
   { observation_id: 'OBS002', submitted_by: 'Emily Jones', date: formatISO(subDays(new Date(), 10)), areaId: 'AREA02', description: 'Fire extinguisher needs inspection. Tag is expired.', status: 'Open', imageUrl: 'https://placehold.co/600x400.png', report_type: 'Safety Concern', risk_level: 2, actions: 'Scheduled for inspection by EOD.', unsafe_category: 'Unsafe Condition' },
   { observation_id: 'OBS003', submitted_by: 'John Doe', date: formatISO(subDays(new Date(), 15)), areaId: 'AREA03', description: 'Excellent housekeeping observed. Clear walkways and properly stored materials.', status: 'Closed', report_type: 'Positive Observation', risk_level: 1, actions: 'Acknowledged with team lead.', unsafe_category: 'N/A' },
   { observation_id: 'OBS004', submitted_by: 'Sarah Miller', date: formatISO(subDays(new Date(), 32)), areaId: 'AREA04', description: 'Employee seen running with scissors.', status: 'Closed', imageUrl: 'https://placehold.co/600x400.png', report_type: 'Near Miss', risk_level: 4, actions: 'Employee coached on safe conduct. Review of tool handling procedures.', unsafe_category: 'Unsafe Behavior', person_involved: 'Mark Johnson' },
 ];
 
-export const mockAudits: Audit[] = [
-  { audit_id: 'AUD001', auditor: 'Safety Team', date: formatISO(subDays(new Date(), 7)), checklist_items: [{ item: 'PPE Compliance', checked: true }, { item: 'Machine Guarding', checked: false }], status: 'Completed', assigned_actions: ['ACT001'], schedule: '2023-10-15' },
-  { audit_id: 'AUD002', auditor: 'External Auditor', date: formatISO(subDays(new Date(), 45)), checklist_items: [{ item: 'Lockout/Tagout Procedures', checked: true }], status: 'Completed', assigned_actions: [], schedule: '2023-09-01' },
-  { audit_id: 'AUD003', auditor: 'Safety Team', date: formatISO(new Date()), checklist_items: [], status: 'In Progress', assigned_actions: [], schedule: '2023-11-01' },
+export const mockSafetyWalks: SafetyWalk[] = [
+  { safety_walk_id: 'SWALK001', walker: 'Safety Team', date: formatISO(subDays(new Date(), 7)), checklist_items: [{ item: 'PPE Compliance', checked: true }, { item: 'Machine Guarding', checked: true }, { item: 'E-Stops Accessible', checked: true}], status: 'Completed', schedule: '2023-10-15' },
+  { safety_walk_id: 'SWALK002', walker: 'External Consultant', date: formatISO(subDays(new Date(), 45)), checklist_items: [{ item: 'Lockout/Tagout Procedures', checked: true }], status: 'Completed', schedule: '2023-09-01' },
+  { safety_walk_id: 'SWALK003', walker: 'Safety Team', date: formatISO(new Date()), checklist_items: [{ item: 'Housekeeping', checked: true }, {item: 'Chemical Storage', checked: false}], status: 'In Progress', schedule: '2023-11-01' },
 ];
+
 
 export const mockCorrectiveActions: CorrectiveAction[] = [
   { action_id: 'ACT001', related_to_incident: 'INC003', due_date: formatISO(new Date()), status: 'In Progress', responsible_person: 'Facility Manager', description: 'Review and reinforce PPE policy at Welding Station.', comments: [{user: 'Facility Manager', comment: 'Welding team has been retrained.', date: formatISO(subDays(new Date(), 1))}] },

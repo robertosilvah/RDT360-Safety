@@ -1,11 +1,12 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import type { Observation, CorrectiveAction, Incident, Comment } from '@/types';
+import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk } from '@/types';
 import {
   mockObservations,
   mockCorrectiveActions,
   mockIncidents,
+  mockSafetyWalks,
 } from '@/lib/mockData';
 
 interface AppDataContextType {
@@ -18,6 +19,7 @@ interface AppDataContextType {
   incidents: Incident[];
   updateIncident: (updatedIncident: Incident) => void;
   addCommentToIncident: (incidentId: string, comment: Comment) => void;
+  safetyWalks: SafetyWalk[];
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -26,6 +28,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [observations, setObservations] = useState<Observation[]>(mockObservations);
   const [correctiveActions, setCorrectiveActions] = useState<CorrectiveAction[]>(mockCorrectiveActions);
   const [incidents, setIncidents] = useState<Incident[]>(mockIncidents);
+  const [safetyWalks, setSafetyWalks] = useState<SafetyWalk[]>(mockSafetyWalks);
 
   // Observations
   const addObservation = (observation: Observation) => {
@@ -59,6 +62,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       observations, addObservation,
       correctiveActions, addCorrectiveAction, updateCorrectiveAction, addCommentToAction,
       incidents, updateIncident, addCommentToIncident,
+      safetyWalks,
     }}>
       {children}
     </AppDataContext.Provider>

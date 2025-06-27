@@ -37,7 +37,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { mockAreas, mockIncidents, mockObservations, mockAudits } from '@/lib/mockData';
+import { mockAreas, mockIncidents, mockObservations, mockSafetyWalks } from '@/lib/mockData';
 import type { Area } from '@/types';
 import { MapPin, PlusCircle, Siren, Eye, ClipboardCheck, Edit, Trash2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -136,7 +136,7 @@ const AreaDetailsDialog = ({ area, isOpen, onOpenChange }: { area: Area | null; 
 
     const incidentsInArea = mockIncidents.filter((i) => i.area === area.name);
     const observationsInArea = mockObservations.filter((o) => o.areaId === area.area_id);
-    const auditsInArea = mockAudits.filter((a) => a.auditor.includes(area.name));
+    const safetyWalksInArea = mockSafetyWalks.filter((a) => a.walker.includes(area.name));
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -155,7 +155,7 @@ const AreaDetailsDialog = ({ area, isOpen, onOpenChange }: { area: Area | null; 
                         <TabsList className="grid w-full grid-cols-3 mb-4">
                             <TabsTrigger value="incidents"><Siren className="mr-2 h-4 w-4" />Incidents ({incidentsInArea.length})</TabsTrigger>
                             <TabsTrigger value="observations"><Eye className="mr-2 h-4 w-4" />Observations ({observationsInArea.length})</TabsTrigger>
-                            <TabsTrigger value="audits"><ClipboardCheck className="mr-2 h-4 w-4" />Audits ({auditsInArea.length})</TabsTrigger>
+                            <TabsTrigger value="safety-walks"><ClipboardCheck className="mr-2 h-4 w-4" />Safety Walks ({safetyWalksInArea.length})</TabsTrigger>
                         </TabsList>
                         <TabsContent value="incidents">
                             <Card>
@@ -211,7 +211,7 @@ const AreaDetailsDialog = ({ area, isOpen, onOpenChange }: { area: Area | null; 
                                 </CardContent>
                             </Card>
                         </TabsContent>
-                        <TabsContent value="audits">
+                        <TabsContent value="safety-walks">
                             <Card>
                                 <CardContent className="pt-6">
                                      <Table>
@@ -219,19 +219,19 @@ const AreaDetailsDialog = ({ area, isOpen, onOpenChange }: { area: Area | null; 
                                             <TableRow>
                                             <TableHead>ID</TableHead>
                                             <TableHead>Date</TableHead>
-                                            <TableHead>Auditor</TableHead>
+                                            <TableHead>Walker</TableHead>
                                             <TableHead>Status</TableHead>
                                             </TableRow>
                                         </TableHeader>
                                         <TableBody>
-                                            {auditsInArea.length > 0 ? auditsInArea.map((audit) => (
-                                            <TableRow key={audit.audit_id}>
-                                                <TableCell>{audit.audit_id}</TableCell>
-                                                <TableCell>{new Date(audit.date).toLocaleDateString()}</TableCell>
-                                                <TableCell>{audit.auditor}</TableCell>
-                                                <TableCell><Badge variant={audit.status === 'Completed' ? 'default' : 'secondary'}>{audit.status}</Badge></TableCell>
+                                            {safetyWalksInArea.length > 0 ? safetyWalksInArea.map((walk) => (
+                                            <TableRow key={walk.safety_walk_id}>
+                                                <TableCell>{walk.safety_walk_id}</TableCell>
+                                                <TableCell>{new Date(walk.date).toLocaleDateString()}</TableCell>
+                                                <TableCell>{walk.walker}</TableCell>
+                                                <TableCell><Badge variant={walk.status === 'Completed' ? 'default' : 'secondary'}>{walk.status}</Badge></TableCell>
                                             </TableRow>
-                                            )) : <TableRow><TableCell colSpan={4} className="text-center">No audits recorded in this area.</TableCell></TableRow>}
+                                            )) : <TableRow><TableCell colSpan={4} className="text-center">No safety walks recorded in this area.</TableCell></TableRow>}
                                         </TableBody>
                                     </Table>
                                 </CardContent>
@@ -258,24 +258,24 @@ const AreaDisplay = ({
   onAddSubArea: (parentId: string) => void;
   onViewDetails: (area: Area) => void;
 }) => {
-  const getAreaStats = (area: Area): { incidentsCount: number; observationsCount: number; auditsCount: number } => {
+  const getAreaStats = (area: Area): { incidentsCount: number; observationsCount: number; safetyWalksCount: number } => {
     let incidentsCount = mockIncidents.filter((i) => i.area === area.name).length;
     let observationsCount = mockObservations.filter((o) => o.areaId === area.area_id).length;
-    let auditsCount = mockAudits.filter((a) => a.auditor.includes(area.name)).length;
+    let safetyWalksCount = mockSafetyWalks.filter((a) => a.walker.includes(area.name)).length;
 
     if (area.children) {
       area.children.forEach((child) => {
         const childStats = getAreaStats(child);
         incidentsCount += childStats.incidentsCount;
         observationsCount += childStats.observationsCount;
-        auditsCount += childStats.auditsCount;
+        safetyWalksCount += childStats.safetyWalksCount;
       });
     }
 
-    return { incidentsCount, observationsCount, auditsCount };
+    return { incidentsCount, observationsCount, safetyWalksCount };
   };
 
-  const { incidentsCount, observationsCount, auditsCount } = getAreaStats(area);
+  const { incidentsCount, observationsCount, safetyWalksCount } = getAreaStats(area);
 
   return (
     <Card>
@@ -330,8 +330,8 @@ const AreaDisplay = ({
           </div>
           <div className="text-center">
             <ClipboardCheck className="h-6 w-6 mx-auto text-green-500" />
-            <p className="font-bold text-xl">{auditsCount}</p>
-            <p className="text-xs text-muted-foreground">Audits</p>
+            <p className="font-bold text-xl">{safetyWalksCount}</p>
+            <p className="text-xs text-muted-foreground">Safety Walks</p>
           </div>
         </div>
 

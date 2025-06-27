@@ -36,7 +36,7 @@ const menuItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/incidents', label: 'Incidents', icon: Siren },
   { href: '/observations', label: 'Observations', icon: Eye },
-  { href: '/audits', label: 'Audits', icon: ClipboardCheck },
+  { href: '/audits', label: 'Safety Walks', icon: ClipboardCheck },
   { href: '/actions', label: 'Corrective Actions', icon: Wrench },
   { href: '/jsa', label: 'JSAs', icon: FileSignature },
   { href: '/hot-work', label: 'Hot Work Permits', icon: Flame },

@@ -29,15 +29,15 @@ export type Observation = {
   unsafe_category: 'Unsafe Behavior' | 'Unsafe Condition' | 'N/A';
   status: 'Open' | 'Closed';
   imageUrl?: string;
+  safety_walk_id?: string;
 };
 
-export type Audit = {
-  audit_id: string;
-  auditor: string;
+export type SafetyWalk = {
+  safety_walk_id: string;
+  walker: string;
   date: string;
   checklist_items: { item: string; checked: boolean }[];
   status: 'Scheduled' | 'In Progress' | 'Completed';
-  assigned_actions: string[];
   schedule: string;
 };
 

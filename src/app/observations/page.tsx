@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
-import { Camera, Eye, Siren, User, Users, FileText } from 'lucide-react';
+import { Camera, Eye, Siren, User, Users, FileText, ClipboardCheck } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -57,6 +57,7 @@ import { format } from 'date-fns';
 import { useAppData } from '@/context/AppDataContext';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
+import Link from 'next/link';
 
 const observationFormSchema = z.object({
   report_type: z.enum(['Safety Concern', 'Positive Observation', 'Near Miss'], {
@@ -118,7 +119,7 @@ const findAreaPathById = (areas: Area[], id: string, path: string[] = []): strin
   return 'Unknown Area';
 };
 
-const riskLabels: { [key: number]: string } = {
+export const riskLabels: { [key: number]: string } = {
   1: '1 - Low',
   2: '2 - Medium',
   3: '3 - High',
@@ -187,6 +188,20 @@ const ObservationDetailsDialog = ({
               </div>
             </div>
           </div>
+          {observation.safety_walk_id && (
+            <>
+            <Separator />
+            <div className="flex items-center gap-2">
+                <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
+                <div>
+                    <p className="text-sm font-medium">Linked To</p>
+                    <Button variant="link" className="p-0 h-auto" asChild>
+                        <Link href={`/audits`}>Safety Walk: {observation.safety_walk_id}</Link>
+                    </Button>
+                </div>
+            </div>
+            </>
+          )}
           <Separator />
           <div>
             <h4 className="font-semibold text-sm mb-2">Description</h4>
