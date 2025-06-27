@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAppData } from '@/context/AppDataContext';
 import type { SafetyWalk, PredefinedChecklistItem, SafetyWalkChecklistItem } from '@/types';
-import { PlusCircle, Trash2, CheckCircle2, PlayCircle, Clock, MessageSquare, User, Users, Star } from 'lucide-react';
+import { PlusCircle, Trash2, CheckCircle2, PlayCircle, Clock, MessageSquare, User, Users, Star, Edit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
@@ -209,6 +209,7 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
     const { updateSafetyWalk, addCommentToSafetyWalk } = useAppData();
     const [newComment, setNewComment] = useState('');
     const { toast } = useToast();
+    const [isEditing, setIsEditing] = useState(false);
 
     const form = useForm<{
         status: SafetyWalk['status'];
@@ -221,11 +222,14 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
                 status: walk.status,
                 checklist_items: walk.checklist_items.map(item => ({ ...item }))
             });
+            setIsEditing(false);
         }
-    }, [walk, form.reset]);
+    }, [walk, form, isOpen]);
 
     if (!walk) return null;
     
+    const isLocked = walk.status === 'Completed' && !isEditing;
+
     const handleSave = () => {
         const formValues = form.getValues();
         const allItemsAnswered = formValues.checklist_items.every(item => item.status !== 'Pending');
@@ -255,6 +259,11 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
         updateSafetyWalk(updatedWalk);
         toast({ title: 'Safety Walk Updated' });
         onOpenChange(false);
+    };
+
+    const handleEdit = () => {
+        form.setValue('status', 'In Progress', { shouldDirty: true });
+        setIsEditing(true);
     };
 
     return (
@@ -309,7 +318,7 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
                                     render={({ field }) => (
                                         <FormItem>
                                         <FormLabel>Status</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLocked}>
                                             <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                             <SelectContent>
                                                 <SelectItem value="Scheduled">Scheduled</SelectItem>
@@ -337,6 +346,7 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
                                                         onValueChange={field.onChange}
                                                         value={field.value}
                                                         className="flex gap-4 pt-2"
+                                                        disabled={isLocked}
                                                     >
                                                         <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Pass" /></FormControl><FormLabel className="font-normal">Pass</FormLabel></FormItem>
                                                         <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Fail" /></FormControl><FormLabel className="font-normal">Fail</FormLabel></FormItem>
@@ -354,7 +364,7 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
                                                     render={({ field }) => (
                                                         <FormItem className="mt-4">
                                                         <FormLabel>Comments</FormLabel>
-                                                        <FormControl><Textarea placeholder="Describe the issue..." {...field} value={field.value ?? ''} /></FormControl>
+                                                        <FormControl><Textarea placeholder="Describe the issue..." {...field} value={field.value ?? ''} disabled={isLocked} /></FormControl>
                                                         <FormMessage />
                                                         </FormItem>
                                                     )}
@@ -387,10 +397,16 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
                             ))}
                         </div>
                         <div className="flex flex-col gap-2 mt-auto">
-                            <Textarea placeholder="Add a comment..." value={newComment} onChange={(e) => setNewComment(e.target.value)} rows={2}/>
-                            <Button size="sm" onClick={handleSave} disabled={!newComment.trim() && !form.formState.isDirty}>
-                                {newComment.trim() ? 'Save and Add Comment' : 'Save Changes'}
-                            </Button>
+                            <Textarea placeholder="Add a comment..." value={newComment} onChange={(e) => setNewComment(e.target.value)} rows={2} disabled={isLocked}/>
+                            {isLocked ? (
+                                <Button size="sm" onClick={handleEdit}>
+                                    <Edit className="mr-2 h-4 w-4" /> Re-open and Edit
+                                </Button>
+                            ) : (
+                                <Button size="sm" onClick={handleSave} disabled={!newComment.trim() && !form.formState.isDirty}>
+                                    {newComment.trim() ? 'Save and Add Comment' : 'Save Changes'}
+                                </Button>
+                            )}
                         </div>
                     </div>
                 </div>
