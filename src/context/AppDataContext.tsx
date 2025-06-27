@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem } from '@/types';
+import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area } from '@/types';
 import {
   mockObservations,
   mockCorrectiveActions,
@@ -11,6 +11,7 @@ import {
   mockUsers,
   mockForklifts,
   mockPredefinedChecklistItems,
+  mockAreas,
 } from '@/lib/mockData';
 
 interface AppDataContextType {
@@ -41,6 +42,10 @@ interface AppDataContextType {
   addPredefinedChecklistItem: (item: PredefinedChecklistItem) => void;
   updatePredefinedChecklistItem: (item: PredefinedChecklistItem) => void;
   removePredefinedChecklistItem: (itemId: string) => void;
+  areas: Area[];
+  addArea: (area: Area, parentId?: string | null) => void;
+  updateArea: (updatedArea: Area) => void;
+  deleteArea: (areaId: string) => void;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -54,6 +59,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [users, setUsers] = useState<User[]>(mockUsers);
   const [forklifts, setForklifts] = useState<Forklift[]>(mockForklifts);
   const [predefinedChecklistItems, setPredefinedChecklistItems] = useState<PredefinedChecklistItem[]>(mockPredefinedChecklistItems);
+  const [areas, setAreas] = useState<Area[]>(mockAreas);
 
   // Observations
   const addObservation = (observation: Observation) => {
@@ -135,6 +141,54 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     setPredefinedChecklistItems(prev => prev.filter(item => item.id !== itemId));
   };
 
+  // Areas
+    const addArea = (area: Area, parentId?: string | null) => {
+        if (!parentId) {
+            setAreas(prev => [...prev, area]);
+            return;
+        }
+
+        const addRecursive = (items: Area[]): Area[] => {
+            return items.map(item => {
+                if (item.area_id === parentId) {
+                    return { ...item, children: [...(item.children || []), area] };
+                }
+                if (item.children) {
+                    return { ...item, children: addRecursive(item.children) };
+                }
+                return item;
+            });
+        };
+        setAreas(addRecursive);
+    };
+
+    const updateArea = (updatedArea: Area) => {
+        const updateRecursive = (items: Area[]): Area[] => {
+            return items.map(item => {
+                if (item.area_id === updatedArea.area_id) {
+                    return { ...updatedArea, children: item.children || [] };
+                }
+                if (item.children) {
+                    return { ...item, children: updateRecursive(item.children) };
+                }
+                return item;
+            });
+        };
+        setAreas(updateRecursive);
+    };
+
+    const deleteArea = (areaId: string) => {
+        const deleteRecursive = (items: Area[], id: string): Area[] => {
+            return items.filter(item => item.area_id !== id).map(item => {
+                if (item.children) {
+                    return { ...item, children: deleteRecursive(item.children, id) };
+                }
+                return item;
+            });
+        };
+        setAreas(prev => deleteRecursive(prev, areaId));
+    };
+
 
   return (
     <AppDataContext.Provider value={{
@@ -146,6 +200,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       forklifts, addForklift, updateForklift, removeForklift,
       users, addUser, updateUserStatus, removeUser,
       predefinedChecklistItems, addPredefinedChecklistItem, updatePredefinedChecklistItem, removePredefinedChecklistItem,
+      areas, addArea, updateArea, deleteArea,
     }}>
       {children}
     </AppDataContext.Provider>

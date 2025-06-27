@@ -5,12 +5,16 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Truck, ListChecks } from 'lucide-react';
+import { Users, Truck, ListChecks, FolderTree } from 'lucide-react';
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
     const pathname = usePathname();
 
-    const activeTab = pathname.includes('/users') ? 'users' : pathname.includes('/forklifts') ? 'forklifts' : pathname.includes('/checklist') ? 'checklist' : '';
+    const activeTab = pathname.includes('/users') ? 'users' 
+        : pathname.includes('/forklifts') ? 'forklifts' 
+        : pathname.includes('/checklist') ? 'checklist' 
+        : pathname.includes('/areas') ? 'areas'
+        : '';
 
     return (
         <AppShell>
@@ -27,6 +31,11 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
                         <TabsTrigger value="users" asChild>
                            <Link href="/settings/users">
                                <Users className="mr-2 h-4 w-4" /> Users
+                           </Link>
+                        </TabsTrigger>
+                         <TabsTrigger value="areas" asChild>
+                           <Link href="/settings/areas">
+                               <FolderTree className="mr-2 h-4 w-4" /> Areas
                            </Link>
                         </TabsTrigger>
                         <TabsTrigger value="forklifts" asChild>
