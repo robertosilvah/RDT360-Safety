@@ -1,4 +1,4 @@
-import type { Incident, Observation, SafetyWalk, CorrectiveAction, SafetyDoc, Area, ComplianceRecord, JSA, HotWorkPermit, Comment, ForkliftInspection, User, Forklift, PredefinedChecklistItem } from '@/types';
+import type { Incident, Observation, SafetyWalk, CorrectiveAction, SafetyDoc, Area, ComplianceRecord, JSA, HotWorkPermit, Comment, ForkliftInspection, User, Forklift, PredefinedChecklistItem, SafetyWalkChecklistItem } from '@/types';
 import { subDays, formatISO, subHours } from 'date-fns';
 
 const mockUser = "Safety Manager";
@@ -24,9 +24,18 @@ export const mockObservations: Observation[] = [
 ];
 
 export const mockSafetyWalks: SafetyWalk[] = [
-  { safety_walk_id: 'SWALK001', walker: 'Safety Team', date: formatISO(subDays(new Date(), 7)), checklist_items: [{ item: 'PPE Compliance', checked: true }, { item: 'Machine Guarding', checked: true }, { item: 'E-Stops Accessible', checked: true}], status: 'Completed', comments: [], people_involved: 'Mechanic Team A', safety_feeling_scale: 4 },
-  { safety_walk_id: 'SWALK002', walker: 'External Consultant', date: formatISO(subDays(new Date(), 45)), checklist_items: [{ item: 'Lockout/Tagout Procedures', checked: true }], status: 'Completed', comments: [], people_involved: 'John Smith', safety_feeling_scale: 5 },
-  { safety_walk_id: 'SWALK003', walker: 'Safety Team', date: formatISO(new Date()), checklist_items: [{ item: 'Housekeeping', checked: true }, {item: 'Chemical Storage', checked: false}], status: 'In Progress', comments: [], people_involved: 'Warehouse Staff' },
+  { safety_walk_id: 'SWALK001', walker: 'Safety Team', date: formatISO(subDays(new Date(), 7)), checklist_items: [
+      { item: 'PPE Compliance', status: 'Pass', comment: '' },
+      { item: 'Machine Guarding', status: 'Pass', comment: '' },
+      { item: 'E-Stops Accessible', status: 'Pass', comment: '' }
+    ], status: 'Completed', comments: [], people_involved: 'Mechanic Team A', safety_feeling_scale: 4 },
+  { safety_walk_id: 'SWALK002', walker: 'External Consultant', date: formatISO(subDays(new Date(), 45)), checklist_items: [
+      { item: 'Lockout/Tagout Procedures', status: 'Pass', comment: '' }
+    ], status: 'Completed', comments: [], people_involved: 'John Smith', safety_feeling_scale: 5 },
+  { safety_walk_id: 'SWALK003', walker: 'Safety Team', date: formatISO(new Date()), checklist_items: [
+      { item: 'Housekeeping', status: 'Pass', comment: '' }, 
+      {item: 'Chemical Storage', status: 'Fail', comment: 'Drums are not properly labeled.'}
+    ], status: 'In Progress', comments: [], people_involved: 'Warehouse Staff' },
 ];
 
 

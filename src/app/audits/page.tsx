@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAppData } from '@/context/AppDataContext';
-import type { SafetyWalk, PredefinedChecklistItem } from '@/types';
+import type { SafetyWalk, PredefinedChecklistItem, SafetyWalkChecklistItem } from '@/types';
 import { PlusCircle, Trash2, CheckCircle2, PlayCircle, Clock, MessageSquare, User, Users, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -21,10 +21,10 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from "@/lib/utils";
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 
 const walkFormSchema = z.object({
@@ -70,7 +70,11 @@ const CreateWalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
   });
 
   const onSubmit = (values: WalkFormValues) => {
-    const checklistItems = values.checklist_items.map(item => ({ item: item.text, checked: false }));
+    const checklistItems = values.checklist_items.map(item => ({
+        item: item.text,
+        status: 'Pending' as const,
+        comment: '',
+     }));
 
     const newWalk: SafetyWalk = {
       safety_walk_id: `SWALK${Date.now()}`,
@@ -208,14 +212,14 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
 
     const form = useForm<{
         status: SafetyWalk['status'];
-        checklist_items: { item: string; checked: boolean }[];
+        checklist_items: SafetyWalkChecklistItem[];
     }>();
     
     useEffect(() => {
         if (walk) {
             form.reset({
                 status: walk.status,
-                checklist_items: [...walk.checklist_items]
+                checklist_items: walk.checklist_items.map(item => ({ ...item }))
             });
         }
     }, [walk, form]);
@@ -224,10 +228,10 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
     
     const handleSave = () => {
         const formValues = form.getValues();
-        const allItemsChecked = formValues.checklist_items.every(item => item.checked);
+        const allItemsAnswered = formValues.checklist_items.every(item => item.status !== 'Pending');
         let finalStatus = formValues.status;
         
-        if (formValues.status === 'In Progress' && allItemsChecked) {
+        if (formValues.status === 'In Progress' && allItemsAnswered) {
             finalStatus = 'Completed';
         }
 
@@ -319,23 +323,44 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
                                 <Separator className="my-6" />
                                 <div>
                                     <h3 className="text-lg font-semibold mb-4">Checklist Items</h3>
-                                    <div className="space-y-2">
-                                    {walk.checklist_items.map((item, index) => (
-                                        <FormField
-                                            key={index}
-                                            control={form.control}
-                                            name={`checklist_items.${index}.checked`}
-                                            render={({ field }) => (
-                                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                                                     <FormControl>
-                                                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                                                     </FormControl>
-                                                     <div className="space-y-1 leading-none">
-                                                        <FormLabel>{item.item}</FormLabel>
-                                                     </div>
+                                    <div className="space-y-4">
+                                    {form.watch('checklist_items').map((item, index) => (
+                                        <Card key={index} className="p-4 bg-muted/30">
+                                            <FormLabel>{item.item}</FormLabel>
+                                            <FormField
+                                                control={form.control}
+                                                name={`checklist_items.${index}.status`}
+                                                render={({ field }) => (
+                                                <FormItem className="mt-2">
+                                                    <FormControl>
+                                                    <RadioGroup
+                                                        onValueChange={field.onChange}
+                                                        value={field.value}
+                                                        className="flex gap-4 pt-2"
+                                                    >
+                                                        <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Pass" /></FormControl><FormLabel className="font-normal">Pass</FormLabel></FormItem>
+                                                        <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Fail" /></FormControl><FormLabel className="font-normal">Fail</FormLabel></FormItem>
+                                                        <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="N/A" /></FormControl><FormLabel className="font-normal">N/A</FormLabel></FormItem>
+                                                    </RadioGroup>
+                                                    </FormControl>
+                                                    <FormMessage />
                                                 </FormItem>
+                                                )}
+                                            />
+                                            {form.watch(`checklist_items.${index}.status`) === 'Fail' && (
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`checklist_items.${index}.comment`}
+                                                    render={({ field }) => (
+                                                        <FormItem className="mt-4">
+                                                        <FormLabel>Comments</FormLabel>
+                                                        <FormControl><Textarea placeholder="Describe the issue..." {...field} value={field.value ?? ''} /></FormControl>
+                                                        <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
                                             )}
-                                        />
+                                        </Card>
                                     ))}
                                     </div>
                                 </div>
@@ -390,9 +415,9 @@ export default function SafetyWalksPage() {
     if (walk.status === 'Completed') return 100;
     if (walk.status === 'Scheduled') return 0;
     const totalItems = walk.checklist_items.length;
-    if (totalItems === 0) return 50; 
-    const checkedItems = walk.checklist_items.filter(item => item.checked).length;
-    return (checkedItems / totalItems) * 100;
+    if (totalItems === 0) return 50;
+    const completedItems = walk.checklist_items.filter(item => item.status !== 'Pending').length;
+    return (completedItems / totalItems) * 100;
   }
   
   const handleRowClick = (walk: SafetyWalk) => {

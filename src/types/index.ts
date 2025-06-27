@@ -32,11 +32,17 @@ export type Observation = {
   safety_walk_id?: string;
 };
 
+export type SafetyWalkChecklistItem = {
+  item: string;
+  status: 'Pass' | 'Fail' | 'N/A' | 'Pending';
+  comment?: string;
+};
+
 export type SafetyWalk = {
   safety_walk_id: string;
   walker: string;
   date: string;
-  checklist_items: { item: string; checked: boolean }[];
+  checklist_items: SafetyWalkChecklistItem[];
   status: 'Scheduled' | 'In Progress' | 'Completed';
   comments: Comment[];
   people_involved?: string;
