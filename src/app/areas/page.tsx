@@ -3,20 +3,7 @@
 import React, { useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardFooter,
-} from '@/components/ui/card';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -37,19 +24,25 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { mockAreas, mockIncidents, mockObservations, mockSafetyWalks } from '@/lib/mockData';
+import { mockAreas } from '@/lib/mockData';
 import type { Area } from '@/types';
-import { MapPin, PlusCircle, Siren, Eye, ClipboardCheck, Edit, Trash2, ListTree, List } from 'lucide-react';
+import {
+  PlusCircle,
+  Edit,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+  FolderTree,
+  MapPin,
+} from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 const areaFormSchema = z.object({
   name: z.string().min(3, { message: 'Area name must be at least 3 characters.' }),
@@ -131,248 +124,92 @@ const AreaForm = ({
   );
 };
 
-const AreaDetailsDialog = ({ area, isOpen, onOpenChange }: { area: Area | null; isOpen: boolean; onOpenChange: (open: boolean) => void; }) => {
-    if (!area) return null;
-
-    const incidentsInArea = mockIncidents.filter((i) => i.area === area.name);
-    const observationsInArea = mockObservations.filter((o) => o.areaId === area.area_id);
-    const safetyWalksInArea = mockSafetyWalks.filter((a) => a.walker.includes(area.name));
-
-    return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <MapPin className="h-6 w-6 text-primary" />
-                        Area Details: {area.name}
-                    </DialogTitle>
-                    <DialogDescription>
-                        {area.machines.length > 0 ? `Machines: ${area.machines.join(', ')}` : 'This is a container for sub-areas.'}
-                    </DialogDescription>
-                </DialogHeader>
-                <div className="max-h-[70vh] overflow-y-auto pr-4">
-                    <Tabs defaultValue="incidents">
-                        <TabsList className="grid w-full grid-cols-3 mb-4">
-                            <TabsTrigger value="incidents"><Siren className="mr-2 h-4 w-4" />Incidents ({incidentsInArea.length})</TabsTrigger>
-                            <TabsTrigger value="observations"><Eye className="mr-2 h-4 w-4" />Observations ({observationsInArea.length})</TabsTrigger>
-                            <TabsTrigger value="safety-walks"><ClipboardCheck className="mr-2 h-4 w-4" />Safety Walks ({safetyWalksInArea.length})</TabsTrigger>
-                        </TabsList>
-                        <TabsContent value="incidents">
-                            <Card>
-                                <CardContent className="pt-6">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>ID</TableHead>
-                                                <TableHead>Date</TableHead>
-                                                <TableHead>Description</TableHead>
-                                                <TableHead>Severity</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {incidentsInArea.length > 0 ? incidentsInArea.map((incident) => (
-                                                <TableRow key={incident.incident_id}>
-                                                    <TableCell>{incident.incident_id}</TableCell>
-                                                    <TableCell>{new Date(incident.date).toLocaleDateString()}</TableCell>
-                                                    <TableCell>{incident.description}</TableCell>
-                                                    <TableCell><Badge variant={incident.severity === 'High' ? 'destructive' : incident.severity === 'Medium' ? 'secondary' : 'default'}>{incident.severity}</Badge></TableCell>
-                                                </TableRow>
-                                            )) : <TableRow><TableCell colSpan={4} className="text-center">No incidents recorded in this area.</TableCell></TableRow>}
-                                        </TableBody>
-                                    </Table>
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-                        <TabsContent value="observations">
-                           <Card>
-                                <CardContent className="pt-6">
-                                    <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                                <TableHead>ID</TableHead>
-                                                <TableHead>Date</TableHead>
-                                                <TableHead>Submitted By</TableHead>
-                                                <TableHead>Description</TableHead>
-                                                <TableHead>Status</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {observationsInArea.length > 0 ? observationsInArea.map((obs) => (
-                                            <TableRow key={obs.observation_id}>
-                                                <TableCell>{obs.observation_id}</TableCell>
-                                                <TableCell>{new Date(obs.date).toLocaleDateString()}</TableCell>
-                                                <TableCell>{obs.submitted_by}</TableCell>
-                                                <TableCell>{obs.description}</TableCell>
-                                                <TableCell><Badge variant={obs.status === 'Open' ? 'default' : 'outline'}>{obs.status}</Badge></TableCell>
-                                            </TableRow>
-                                            )) : <TableRow><TableCell colSpan={5} className="text-center">No observations recorded in this area.</TableCell></TableRow>}
-                                        </TableBody>
-                                    </Table>
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-                        <TabsContent value="safety-walks">
-                            <Card>
-                                <CardContent className="pt-6">
-                                     <Table>
-                                        <TableHeader>
-                                            <TableRow>
-                                            <TableHead>ID</TableHead>
-                                            <TableHead>Date</TableHead>
-                                            <TableHead>Walker</TableHead>
-                                            <TableHead>Status</TableHead>
-                                            </TableRow>
-                                        </TableHeader>
-                                        <TableBody>
-                                            {safetyWalksInArea.length > 0 ? safetyWalksInArea.map((walk) => (
-                                            <TableRow key={walk.safety_walk_id}>
-                                                <TableCell>{walk.safety_walk_id}</TableCell>
-                                                <TableCell>{new Date(walk.date).toLocaleDateString()}</TableCell>
-                                                <TableCell>{walk.walker}</TableCell>
-                                                <TableCell><Badge variant={walk.status === 'Completed' ? 'default' : 'secondary'}>{walk.status}</Badge></TableCell>
-                                            </TableRow>
-                                            )) : <TableRow><TableCell colSpan={4} className="text-center">No safety walks recorded in this area.</TableCell></TableRow>}
-                                        </TableBody>
-                                    </Table>
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-                    </Tabs>
-                </div>
-            </DialogContent>
-        </Dialog>
-    )
-}
-
-
-const AreaDisplay = ({
+const AreaHierarchyItem = ({
   area,
+  level = 0,
   onEdit,
   onDelete,
   onAddSubArea,
-  onViewDetails,
 }: {
   area: Area;
+  level?: number;
   onEdit: (area: Area) => void;
   onDelete: (areaId: string) => void;
   onAddSubArea: (parentId: string) => void;
-  onViewDetails: (area: Area) => void;
 }) => {
-  const getAreaStats = (area: Area): { incidentsCount: number; observationsCount: number; safetyWalksCount: number } => {
-    let incidentsCount = mockIncidents.filter((i) => i.area === area.name).length;
-    let observationsCount = mockObservations.filter((o) => o.areaId === area.area_id).length;
-    let safetyWalksCount = mockSafetyWalks.filter((a) => a.walker.includes(area.name)).length;
-
-    if (area.children) {
-      area.children.forEach((child) => {
-        const childStats = getAreaStats(child);
-        incidentsCount += childStats.incidentsCount;
-        observationsCount += childStats.observationsCount;
-        safetyWalksCount += childStats.safetyWalksCount;
-      });
-    }
-
-    return { incidentsCount, observationsCount, safetyWalksCount };
-  };
-
-  const { incidentsCount, observationsCount, safetyWalksCount } = getAreaStats(area);
+  const [isOpen, setIsOpen] = useState(true);
+  const hasChildren = area.children && area.children.length > 0;
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="h-6 w-6 text-primary" />
-              {area.name}
-            </CardTitle>
-            <CardDescription className="pt-2">
-              {area.machines.length > 0 ? `Machines: ${area.machines.join(', ')}` : 'This is a container for sub-areas.'}
-            </CardDescription>
-          </div>
-          <div className="flex gap-1">
-            <Button variant="ghost" size="icon" onClick={() => onEdit(area)}>
-              <Edit className="h-4 w-4" />
-            </Button>
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This action cannot be undone. This will permanently delete the area and all its sub-areas.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => onDelete(area.area_id)}>Delete</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex justify-around items-center bg-muted/50 p-4 rounded-lg">
-          <div className="text-center">
-            <Siren className="h-6 w-6 mx-auto text-destructive" />
-            <p className="font-bold text-xl">{incidentsCount}</p>
-            <p className="text-xs text-muted-foreground">Incidents</p>
-          </div>
-          <div className="text-center">
-            <Eye className="h-6 w-6 mx-auto text-blue-500" />
-            <p className="font-bold text-xl">{observationsCount}</p>
-            <p className="text-xs text-muted-foreground">Observations</p>
-          </div>
-          <div className="text-center">
-            <ClipboardCheck className="h-6 w-6 mx-auto text-green-500" />
-            <p className="font-bold text-xl">{safetyWalksCount}</p>
-            <p className="text-xs text-muted-foreground">Safety Walks</p>
-          </div>
-        </div>
-
-        {area.children && area.children.length > 0 && (
-          <Accordion type="single" collapsible className="w-full">
-            <AccordionItem value="sub-areas">
-              <AccordionTrigger>Sub-Areas</AccordionTrigger>
-              <AccordionContent className="pt-4 space-y-4">
-                {area.children.map((childArea) => (
-                  <AreaDisplay
-                    key={childArea.area_id}
-                    area={childArea}
-                    onEdit={onEdit}
-                    onDelete={onDelete}
-                    onAddSubArea={onAddSubArea}
-                    onViewDetails={onViewDetails}
-                  />
-                ))}
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
+    <div className="relative">
+      <div className="absolute left-3 top-0 h-full w-px bg-border -z-10" style={{ marginLeft: `${level * 20}px` }}></div>
+      <div
+        className="group flex items-center gap-1 rounded-md hover:bg-muted/50"
+        style={{ paddingLeft: `${level * 20}px` }}
+      >
+        {hasChildren ? (
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsOpen(!isOpen)}>
+            {isOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          </Button>
+        ) : (
+          <div className="w-8 h-8" />
         )}
-      </CardContent>
-      <CardFooter className="border-t pt-4 flex justify-between">
-        <Button variant="outline" onClick={() => onViewDetails(area)}>View Area Details</Button>
-        <Button variant="secondary" onClick={() => onAddSubArea(area.area_id)}>
-          <PlusCircle className="mr-2 h-4 w-4" /> Add Sub-Area
-        </Button>
-      </CardFooter>
-    </Card>
+        <FolderTree className="h-4 w-4 text-muted-foreground" />
+        <span className="flex-1 font-medium text-sm truncate">{area.name}</span>
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 pr-2">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onEdit(area)}>
+            <Edit className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onAddSubArea(area.area_id)}>
+            <PlusCircle className="h-4 w-4" />
+          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This action cannot be undone. This will permanently delete "{area.name}" and all its sub-areas.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={() => onDelete(area.area_id)}>Delete</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </div>
+      {hasChildren && isOpen && (
+        <div className="relative">
+          {area.children.map((child) => (
+            <AreaHierarchyItem
+              key={child.area_id}
+              area={child}
+              level={level + 1}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onAddSubArea={onAddSubArea}
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 };
 
+
 export default function AreasPage() {
   const [areas, setAreas] = useState<Area[]>(mockAreas);
+  const [selectedAreaId, setSelectedAreaId] = useState<string | null>(mockAreas[0]?.area_id || null);
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingArea, setEditingArea] = useState<Area | undefined>(undefined);
   const [currentParentId, setCurrentParentId] = useState<string | null>(null);
   const { toast } = useToast();
-  const [selectedArea, setSelectedArea] = useState<Area | null>(null);
-  const [isDetailsOpen, setDetailsOpen] = useState(false);
 
   const handleSaveArea = (data: AreaFormValues, areaId?: string) => {
     const newArea: Area = {
@@ -383,7 +220,6 @@ export default function AreasPage() {
     };
 
     if (areaId) {
-      // Update
       const updateRecursive = (items: Area[]): Area[] => {
         return items.map((item) => {
           if (item.area_id === areaId) {
@@ -398,7 +234,6 @@ export default function AreasPage() {
       setAreas(updateRecursive(areas));
       toast({ title: 'Area Updated', description: `"${newArea.name}" has been updated.` });
     } else {
-      // Create
       if (data.parentId) {
         const addRecursive = (items: Area[]): Area[] => {
           return items.map((item) => {
@@ -444,38 +279,23 @@ export default function AreasPage() {
     setFormOpen(true);
   };
   
-  const openViewDetails = (area: Area) => {
-    setSelectedArea(area);
-    setDetailsOpen(true);
-  };
+  const getSubAssetCount = (area: Area): number => {
+    let count = area.children?.length || 0;
+    if (area.children) {
+        area.children.forEach(child => {
+            count += getSubAssetCount(child);
+        });
+    }
+    return count;
+  }
 
-  const flattenAreas = (areas: Area[], path: string[] = []): (Area & { path: string })[] => {
-    let flatList: (Area & { path: string })[] = [];
-    areas.forEach(area => {
-        const currentPath = [...path, area.name];
-        const areaWithPath = { ...area, path: currentPath.join(' / ') };
-        flatList.push(areaWithPath);
-        if (area.children && area.children.length > 0) {
-            flatList = flatList.concat(flattenAreas(area.children, currentPath));
-        }
-    });
-    return flatList;
-  };
-
-  const getStatsForSingleArea = (area: Area): { incidentsCount: number; observationsCount: number; safetyWalksCount: number } => {
-    const incidentsCount = mockIncidents.filter((i) => i.area === area.name).length;
-    const observationsCount = mockObservations.filter((o) => o.areaId === area.area_id).length;
-    const safetyWalksCount = mockSafetyWalks.filter((a) => a.walker.includes(area.name)).length;
-    return { incidentsCount, observationsCount, safetyWalksCount };
-  };
-
-  const flatAreas = flattenAreas(areas);
+  const selectedArea = areas.find(a => a.area_id === selectedAreaId);
 
   return (
     <AppShell>
-      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6 flex flex-col h-[calc(100vh-60px)]">
         <div className="flex items-center justify-between space-y-2">
-          <h2 className="text-3xl font-bold tracking-tight">Area Profiles</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Areas</h2>
           <Dialog open={isFormOpen} onOpenChange={setFormOpen}>
             <DialogTrigger asChild>
               <Button onClick={() => openCreateForm(null)}>
@@ -492,95 +312,79 @@ export default function AreasPage() {
             </DialogContent>
           </Dialog>
         </div>
-        <p className="text-muted-foreground">
-          An overview of all safety events, categorized by area.
-        </p>
 
-        <Tabs defaultValue="hierarchical">
-            <TabsList>
-                <TabsTrigger value="hierarchical"><ListTree className="mr-2 h-4 w-4"/>Hierarchical View</TabsTrigger>
-                <TabsTrigger value="table"><List className="mr-2 h-4 w-4"/>Table View</TabsTrigger>
-            </TabsList>
-            <TabsContent value="hierarchical" className="pt-4">
-                 <div className="space-y-4">
-                    {areas.map((area) => (
-                        <AreaDisplay
-                        key={area.area_id}
-                        area={area}
-                        onEdit={openEditForm}
-                        onDelete={handleDeleteArea}
-                        onAddSubArea={(parentId) => openCreateForm(parentId)}
-                        onViewDetails={openViewDetails}
-                        />
-                    ))}
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6 flex-1 min-h-0">
+          <Card className="md:col-span-1 lg:col-span-1 flex flex-col">
+            <CardHeader>
+              <CardTitle>All Areas</CardTitle>
+            </CardHeader>
+            <CardContent className="flex-1 p-2 min-h-0">
+              <ScrollArea className="h-full">
+                <div className="space-y-1 pr-2">
+                {areas.map(area => (
+                  <button
+                    key={area.area_id}
+                    onClick={() => setSelectedAreaId(area.area_id)}
+                    className={cn(
+                        "w-full text-left p-3 rounded-lg border",
+                        selectedAreaId === area.area_id ? "bg-muted border-primary" : "border-transparent hover:bg-muted/50"
+                    )}
+                  >
+                    <div className="flex items-start gap-3">
+                        <div className="p-2 bg-muted rounded-md">
+                            <MapPin className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                            <p className="font-semibold">{area.name}</p>
+                            <p className="text-xs text-blue-600 font-semibold mt-1">{getSubAssetCount(area)} Sub-Areas</p>
+                        </div>
+                    </div>
+                  </button>
+                ))}
                 </div>
-            </TabsContent>
-            <TabsContent value="table" className="pt-4">
-                <Card>
-                    <CardContent className="pt-6">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Area Name</TableHead>
-                                    <TableHead>Full Path</TableHead>
-                                    <TableHead>Machines</TableHead>
-                                    <TableHead>Incidents</TableHead>
-                                    <TableHead>Observations</TableHead>
-                                    <TableHead>Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {flatAreas.map((area) => {
-                                    const stats = getStatsForSingleArea(area);
-                                    return (
-                                        <TableRow key={area.area_id} onClick={() => openViewDetails(area)} className="cursor-pointer">
-                                            <TableCell className="font-medium">{area.name}</TableCell>
-                                            <TableCell className="text-muted-foreground">{area.path}</TableCell>
-                                            <TableCell>{area.machines.length > 0 ? area.machines.join(', ') : 'N/A'}</TableCell>
-                                            <TableCell>{stats.incidentsCount > 0 ? <Badge variant="destructive">{stats.incidentsCount}</Badge> : 0}</TableCell>
-                                            <TableCell>{stats.observationsCount > 0 ? <Badge>{stats.observationsCount}</Badge> : 0}</TableCell>
-                                            <TableCell className="text-right">
-                                                 <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); openEditForm(area); }}>
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
-                                                <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); openCreateForm(area.area_id); }}>
-                                                    <PlusCircle className="h-4 w-4" />
-                                                </Button>
-                                                <AlertDialog>
-                                                    <AlertDialogTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={(e) => e.stopPropagation()}>
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </Button>
-                                                    </AlertDialogTrigger>
-                                                    <AlertDialogContent>
-                                                        <AlertDialogHeader>
-                                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                        <AlertDialogDescription>
-                                                            This will permanently delete "{area.name}". If it has sub-areas, they will be deleted too.
-                                                        </AlertDialogDescription>
-                                                        </AlertDialogHeader>
-                                                        <AlertDialogFooter>
-                                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => handleDeleteArea(area.area_id)}>Delete</AlertDialogAction>
-                                                        </AlertDialogFooter>
-                                                    </AlertDialogContent>
-                                                </AlertDialog>
-                                            </TableCell>
-                                        </TableRow>
-                                    )
-                                })}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
-            </TabsContent>
-        </Tabs>
-        
-        <AreaDetailsDialog 
-          area={selectedArea}
-          isOpen={isDetailsOpen}
-          onOpenChange={setDetailsOpen}
-        />
+              </ScrollArea>
+            </CardContent>
+          </Card>
+
+          <Card className="md:col-span-2 lg:col-span-3 flex flex-col">
+            {selectedArea ? (
+              <>
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <CardTitle>{selectedArea.name}</CardTitle>
+                  <Button variant="outline" onClick={() => openCreateForm(selectedArea.area_id)}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Create Sub-Area
+                  </Button>
+                </CardHeader>
+                <CardContent className="flex-1 p-2 min-h-0">
+                    <ScrollArea className="h-full">
+                         <div className="space-y-1">
+                            {selectedArea.children && selectedArea.children.length > 0 ? (
+                                selectedArea.children.map(child => (
+                                    <AreaHierarchyItem
+                                        key={child.area_id}
+                                        area={child}
+                                        onEdit={openEditForm}
+                                        onDelete={handleDeleteArea}
+                                        onAddSubArea={openCreateForm}
+                                    />
+                                ))
+                            ) : (
+                                <div className="text-center text-muted-foreground p-8">
+                                    No sub-areas have been created for {selectedArea.name}.
+                                </div>
+                            )}
+                         </div>
+                    </ScrollArea>
+                </CardContent>
+              </>
+            ) : (
+              <div className="flex flex-1 items-center justify-center text-muted-foreground">
+                <p>Select an area from the left to view its hierarchy.</p>
+              </div>
+            )}
+          </Card>
+        </div>
       </div>
     </AppShell>
   );
