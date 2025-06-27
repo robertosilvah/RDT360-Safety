@@ -24,7 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Slider } from '@/components/ui/slider';
+import { cn } from "@/lib/utils";
 
 
 const walkFormSchema = z.object({
@@ -40,6 +40,7 @@ type WalkFormValues = z.infer<typeof walkFormSchema>;
 const CreateWalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
   const { addSafetyWalk } = useAppData();
   const { toast } = useToast();
+  const [hoveredStars, setHoveredStars] = useState<number | null>(null);
   const form = useForm<WalkFormValues>({
     resolver: zodResolver(walkFormSchema),
     defaultValues: {
@@ -97,16 +98,24 @@ const CreateWalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
               <FormItem>
                 <FormLabel>How safe does the involved person feel? (1=Unsafe, 5=Very Safe)</FormLabel>
                 <FormControl>
-                  <div className="flex items-center gap-4 pt-2">
-                    <Slider
-                      defaultValue={[3]}
-                      min={1}
-                      max={5}
-                      step={1}
-                      onValueChange={(value) => field.onChange(value[0])}
-                      className="w-[90%]"
-                    />
-                    <span className="w-[10%] text-center font-bold text-lg text-primary">{field.value}</span>
+                  <div className="flex items-center gap-2 pt-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <Star
+                        key={star}
+                        className={cn(
+                          "h-8 w-8 cursor-pointer transition-colors",
+                          (hoveredStars ?? field.value ?? 0) >= star
+                            ? "text-yellow-400 fill-yellow-400"
+                            : "text-gray-300"
+                        )}
+                        onClick={() => field.onChange(star)}
+                        onMouseEnter={() => setHoveredStars(star)}
+                        onMouseLeave={() => setHoveredStars(null)}
+                      />
+                    ))}
+                    <span className="text-lg font-bold text-primary w-12 text-center">
+                      {field.value} / 5
+                    </span>
                   </div>
                 </FormControl>
                 <FormMessage />
