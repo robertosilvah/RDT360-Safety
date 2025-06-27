@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { KpiCard } from '@/components/dashboard/KpiCard';
-import { KpiSummary } from '@/components/dashboard/KpiSummary';
+import { SafetyQuoteCard } from '@/components/dashboard/SafetyQuoteCard';
 import { ObservationsChart } from '@/components/dashboard/ObservationsChart';
 import { StatusPieChart } from '@/components/dashboard/StatusPieChart';
 import { Button } from '@/components/ui/button';
@@ -194,7 +194,7 @@ export default function DashboardPage() {
               </Table>
             </CardContent>
           </Card>
-          <KpiSummary />
+          <SafetyQuoteCard />
         </div>
         <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
           <Card>
