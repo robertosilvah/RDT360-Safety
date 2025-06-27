@@ -54,6 +54,7 @@ export type Area = {
   area_id: string;
   name: string;
   machines: string[];
+  children?: Area[];
 };
 
 export type ComplianceRecord = {
