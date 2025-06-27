@@ -32,11 +32,10 @@ const walkFormSchema = z.object({
   date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: 'A valid date is required.' }),
   people_involved: z.string().optional(),
   safety_feeling_scale: z.number().min(1).max(5).optional(),
-  predefined_checklist_ids: z.array(z.string()).optional(),
-  custom_checklist_items: z.array(z.object({ item: z.string().min(3, 'Checklist item must be at least 3 characters.') })).optional(),
-}).refine((data) => (data.predefined_checklist_ids?.length || 0) + (data.custom_checklist_items?.length || 0) > 0, {
-  message: 'At least one checklist item is required.',
-  path: ['predefined_checklist_ids'],
+  checklist_items: z.array(z.object({
+    id: z.string(),
+    text: z.string(),
+  })).min(1, 'At least one checklist item is required.'),
 });
 
 type WalkFormValues = z.infer<typeof walkFormSchema>;
@@ -45,6 +44,15 @@ const CreateWalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
   const { addSafetyWalk, predefinedChecklistItems } = useAppData();
   const { toast } = useToast();
   const [hoveredStars, setHoveredStars] = useState<number | null>(null);
+  const [newItemId, setNewItemId] = useState('');
+
+  const defaultPpeItem = predefinedChecklistItems.find(i => i.text === 'PPE Compliance');
+  const defaultHousekeepingItem = predefinedChecklistItems.find(i => i.text === 'Housekeeping & Slip/Trip Hazards');
+
+  const defaultItems = [];
+  if (defaultPpeItem) defaultItems.push({ id: defaultPpeItem.id, text: defaultPpeItem.text });
+  if (defaultHousekeepingItem) defaultItems.push({ id: defaultHousekeepingItem.id, text: defaultHousekeepingItem.text });
+
 
   const form = useForm<WalkFormValues>({
     resolver: zodResolver(walkFormSchema),
@@ -52,27 +60,17 @@ const CreateWalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
       walker: '',
       people_involved: '',
       safety_feeling_scale: 3,
-      predefined_checklist_ids: [],
-      custom_checklist_items: [],
+      checklist_items: defaultItems,
     },
   });
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
-    name: 'custom_checklist_items',
+    name: 'checklist_items',
   });
 
   const onSubmit = (values: WalkFormValues) => {
-    const selectedPredefinedItems = values.predefined_checklist_ids
-      ?.map(id => {
-          const foundItem = predefinedChecklistItems.find(item => item.id === id);
-          return foundItem ? { item: foundItem.text, checked: false } : null;
-      })
-      .filter((item): item is { item: string; checked: boolean } => item !== null) || [];
-    
-    const customItems = values.custom_checklist_items?.map(item => ({ ...item, checked: false })) || [];
-
-    const allChecklistItems = [...selectedPredefinedItems, ...customItems];
+    const checklistItems = values.checklist_items.map(item => ({ item: item.text, checked: false }));
 
     const newWalk: SafetyWalk = {
       safety_walk_id: `SWALK${Date.now()}`,
@@ -82,7 +80,7 @@ const CreateWalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
       date: new Date(values.date).toISOString(),
       people_involved: values.people_involved,
       safety_feeling_scale: values.safety_feeling_scale,
-      checklist_items: allChecklistItems,
+      checklist_items: checklistItems,
     };
     addSafetyWalk(newWalk);
     toast({
@@ -97,7 +95,7 @@ const CreateWalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <DialogHeader>
           <DialogTitle>Create New Safety Walk</DialogTitle>
-          <DialogDescription>Schedule a new safety walk and define its checklist.</DialogDescription>
+          <DialogDescription>Schedule a new safety walk. Default items can be removed, and more can be added from your predefined list.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -145,68 +143,52 @@ const CreateWalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
           <Separator />
           <div>
             <h3 className="text-lg font-semibold">Checklist Items</h3>
-            <FormField
-              control={form.control}
-              name="predefined_checklist_ids"
-              render={() => (
-                <FormItem className="mt-4">
-                  <div className="mb-4">
-                    <FormLabel className="text-base">Predefined Items</FormLabel>
-                    <FormDescription>Select from the master list of checklist items.</FormDescription>
-                  </div>
-                  {predefinedChecklistItems.map((item) => (
-                    <FormField
-                      key={item.id}
-                      control={form.control}
-                      name="predefined_checklist_ids"
-                      render={({ field }) => (
-                        <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0 mb-2">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value?.includes(item.id)}
-                              onCheckedChange={(checked) => {
-                                return checked
-                                  ? field.onChange([...(field.value || []), item.id])
-                                  : field.onChange(field.value?.filter((value) => value !== item.id));
-                              }}
-                            />
-                          </FormControl>
-                          <FormLabel className="font-normal">{item.text}</FormLabel>
-                        </FormItem>
-                      )}
-                    />
-                  ))}
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-          <Separator />
-          <div>
-            <FormLabel className="text-base">Custom Items</FormLabel>
-            <FormDescription>Add any walk-specific items not on the predefined list.</FormDescription>
+            <FormDescription>Default items are added. Add more from the list below or remove items as needed.</FormDescription>
             <div className="space-y-2 mt-4">
               {fields.map((field, index) => (
-                <div key={field.id} className="flex items-center gap-2">
-                  <FormField
-                    control={form.control}
-                    name={`custom_checklist_items.${index}.item`}
-                    render={({ field }) => (
-                      <FormItem className="flex-grow">
-                        <FormControl><Input {...field} placeholder="Enter custom item text..."/></FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                <div key={field.id} className="flex items-center justify-between gap-2 border p-3 rounded-md bg-muted/30">
+                  <span className="font-medium">{field.text}</span>
                   <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>
               ))}
+              {fields.length === 0 && <p className="text-sm text-muted-foreground pt-2">No checklist items. Please add at least one.</p>}
+              <FormField control={form.control} name="checklist_items" render={() => <FormMessage />} />
             </div>
-            <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => append({ item: '' })}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Custom Item
-            </Button>
+          </div>
+          <Separator />
+          <div>
+            <FormLabel>Add a predefined item</FormLabel>
+            <div className="flex items-center gap-2 mt-2">
+              <Select onValueChange={setNewItemId} value={newItemId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select an item to add..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {predefinedChecklistItems
+                    .filter(item => !fields.some(field => field.id === item.id))
+                    .map(item => (
+                      <SelectItem key={item.id} value={item.id}>{item.text}</SelectItem>
+                    ))
+                  }
+                </SelectContent>
+              </Select>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  const itemToAdd = predefinedChecklistItems.find(i => i.id === newItemId);
+                  if (itemToAdd) {
+                    append({ id: itemToAdd.id, text: itemToAdd.text });
+                    setNewItemId('');
+                  }
+                }}
+                disabled={!newItemId}
+              >
+                <PlusCircle className="mr-2 h-4 w-4" /> Add
+              </Button>
+            </div>
           </div>
         </div>
         <DialogFooter>
