@@ -85,6 +85,7 @@ export const mockJSAs: JSA[] = [
     jsa_id: 'JSA001',
     title: 'Forklift Operation and Battery Changeout',
     job_description: 'Operating a forklift to move materials within the warehouse and performing battery changeouts as needed.',
+    areaId: 'AREA02',
     required_ppe: ['High-visibility vest', 'Steel-toed boots', 'Safety glasses', 'Acid-resistant gloves'],
     steps: [
       {
@@ -114,6 +115,7 @@ export const mockJSAs: JSA[] = [
     jsa_id: 'JSA002',
     title: 'Welding in Designated Area',
     job_description: 'Performing standard welding tasks on steel components within the designated welding station.',
+    areaId: 'AREA03',
     required_ppe: ['Welding helmet', 'Flame-resistant jacket', 'Leather gloves', 'Respirator'],
     steps: [
       {

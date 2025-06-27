@@ -75,6 +75,7 @@ export type JSA = {
   jsa_id: string;
   title: string;
   job_description: string;
+  areaId: string;
   required_ppe: string[];
   steps: JsaStep[];
   created_by: string;

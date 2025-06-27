@@ -5,10 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { mockJSAs } from '@/lib/mockData';
-import type { JSA } from '@/types';
-import { PlusCircle, Users, Shield, FileSignature, Edit, UserCheck, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import { mockJSAs, mockAreas } from '@/lib/mockData';
+import type { JSA, Area } from '@/types';
+import { PlusCircle, Users, Shield, FileSignature, Edit, UserCheck, Trash2, MapPin } from 'lucide-react';
+import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +17,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const jsaStepSchema = z.object({
   step_description: z.string().min(1, { message: 'Step description cannot be empty.' }),
@@ -26,12 +27,29 @@ const jsaStepSchema = z.object({
 
 const jsaFormSchema = z.object({
   title: z.string().min(3, { message: 'Title must be at least 3 characters long.' }),
+  areaId: z.string({ required_error: 'Please select an area.' }).min(1, { message: 'Please select an area.' }),
   job_description: z.string().min(10, { message: 'Description must be at least 10 characters long.' }),
   required_ppe: z.string().min(1, { message: 'Please list required PPE.' }),
   steps: z.array(jsaStepSchema).min(1, 'At least one job step is required.'),
 });
 
 type JsaFormValues = z.infer<typeof jsaFormSchema>;
+
+// Helper component to render nested area options for the select dropdown
+const AreaSelectOptions = ({ areas, level = 0 }: { areas: Area[]; level?: number }) => {
+  return (
+    <>
+      {areas.map(area => (
+        <React.Fragment key={area.area_id}>
+          <SelectItem value={area.area_id}>
+             <span style={{ paddingLeft: `${level * 1.25}rem` }}>{area.name}</span>
+          </SelectItem>
+          {area.children && <AreaSelectOptions areas={area.children} level={level + 1} />}
+        </React.Fragment>
+      ))}
+    </>
+  );
+};
 
 
 const CreateJsaForm = ({ onAddJsa, setOpen }: { onAddJsa: (jsa: JSA) => void, setOpen: (open: boolean) => void }) => {
@@ -41,6 +59,7 @@ const CreateJsaForm = ({ onAddJsa, setOpen }: { onAddJsa: (jsa: JSA) => void, se
       title: '',
       job_description: '',
       required_ppe: '',
+      areaId: '',
       steps: [{ step_description: '', hazards: '', controls: '' }],
     },
   });
@@ -57,6 +76,7 @@ const CreateJsaForm = ({ onAddJsa, setOpen }: { onAddJsa: (jsa: JSA) => void, se
         jsa_id: `JSA${String(Math.floor(Math.random() * 900) + 100)}`,
         title: data.title,
         job_description: data.job_description,
+        areaId: data.areaId,
         required_ppe: data.required_ppe.split(',').map(s => s.trim()).filter(Boolean),
         steps: data.steps.map(step => ({
             step_description: step.step_description,
@@ -94,6 +114,26 @@ const CreateJsaForm = ({ onAddJsa, setOpen }: { onAddJsa: (jsa: JSA) => void, se
                     <FormMessage />
                     </FormItem>
                 )}
+            />
+            <FormField
+              control={form.control}
+              name="areaId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Area / Operation</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select an area or operation" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <AreaSelectOptions areas={mockAreas} />
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
             <FormField
               control={form.control}
@@ -185,8 +225,22 @@ const CreateJsaForm = ({ onAddJsa, setOpen }: { onAddJsa: (jsa: JSA) => void, se
   )
 }
 
+const findAreaPathById = (areas: Area[], id: string, path: string[] = []): string => {
+    for (const area of areas) {
+        const newPath = [...path, area.name];
+        if (area.area_id === id) {
+            return newPath.join(' / ');
+        }
+        if (area.children) {
+            const foundPath = findAreaPathById(area.children, id, newPath);
+            if (foundPath) return foundPath;
+        }
+    }
+    return '';
+};
+
 // This component now takes a jsa and handles its own dialog state.
-const JsaCard = ({ jsa, onSign, currentUser }: { jsa: JSA, onSign: (jsaId: string, name: string) => void, currentUser: string }) => {
+const JsaCard = ({ jsa, onSign, currentUser, areaPath }: { jsa: JSA, onSign: (jsaId: string, name: string) => void, currentUser: string, areaPath: string }) => {
     const [signatureName, setSignatureName] = useState(currentUser);
     const hasSigned = jsa.signatures.some(s => s.employee_name === currentUser);
 
@@ -206,10 +260,14 @@ const JsaCard = ({ jsa, onSign, currentUser }: { jsa: JSA, onSign: (jsaId: strin
                     </CardTitle>
                     <CardDescription className="line-clamp-2 h-10">{jsa.job_description}</CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-2">
                     <div className="flex items-center text-sm text-muted-foreground gap-2">
                         <Users className="h-4 w-4" />
                         <span>{jsa.signatures.length} Signature(s)</span>
+                    </div>
+                     <div className="flex items-center text-sm text-muted-foreground gap-2 pt-1">
+                        <MapPin className="h-4 w-4" />
+                        <span className="truncate">{areaPath}</span>
                     </div>
                 </CardContent>
                 <CardFooter className="mt-auto border-t pt-4">
@@ -227,6 +285,11 @@ const JsaCard = ({ jsa, onSign, currentUser }: { jsa: JSA, onSign: (jsaId: strin
                     <DialogDescription>{jsa.job_description}</DialogDescription>
                 </DialogHeader>
                 <div className="flex-1 overflow-y-auto pr-6 space-y-6">
+                    <div>
+                        <h3 className="font-semibold mb-2 flex items-center gap-2"><MapPin /> Area / Operation</h3>
+                        <p className="text-muted-foreground">{areaPath}</p>
+                    </div>
+                    <Separator />
                     <div>
                         <h3 className="font-semibold mb-2 flex items-center gap-2"><Shield /> Required PPE</h3>
                         <div className="flex flex-wrap gap-2">
@@ -332,9 +395,12 @@ export default function JsaPage() {
                 </p>
 
                 <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
-                    {jsas.map((jsa) => (
-                        <JsaCard key={jsa.jsa_id} jsa={jsa} onSign={handleSignJsa} currentUser={MOCKED_CURRENT_USER} />
-                    ))}
+                    {jsas.map((jsa) => {
+                        const areaPath = findAreaPathById(mockAreas, jsa.areaId) || 'Unknown Area';
+                        return (
+                          <JsaCard key={jsa.jsa_id} jsa={jsa} onSign={handleSignJsa} currentUser={MOCKED_CURRENT_USER} areaPath={areaPath} />
+                        )
+                    })}
                 </div>
             </div>
         </AppShell>
