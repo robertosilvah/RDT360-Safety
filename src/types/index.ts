@@ -12,7 +12,7 @@ export type Observation = {
   report_type: 'Safety Concern' | 'Positive Observation' | 'Near Miss';
   submitted_by: string;
   date: string;
-  location: string;
+  areaId: string;
   person_involved?: string;
   risk_level: 1 | 2 | 3 | 4;
   description: string;
