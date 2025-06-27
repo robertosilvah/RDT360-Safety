@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Separator } from '@/components/ui/separator';
 import { mockJSAs, mockAreas } from '@/lib/mockData';
 import type { JSA, Area } from '@/types';
-import { PlusCircle, Users, Shield, FileSignature, Edit, UserCheck, Trash2, MapPin } from 'lucide-react';
+import { PlusCircle, Users, Shield, FileSignature, Edit, UserCheck, Trash2, MapPin, Share2 } from 'lucide-react';
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -18,6 +18,7 @@ import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useSearchParams } from 'next/navigation';
 
 const jsaStepSchema = z.object({
   step_description: z.string().min(1, { message: 'Step description cannot be empty.' }),
@@ -240,7 +241,7 @@ const findAreaPathById = (areas: Area[], id: string, path: string[] = []): strin
 };
 
 // This component now takes a jsa and handles its own dialog state.
-const JsaCard = ({ jsa, onSign, currentUser, areaPath }: { jsa: JSA, onSign: (jsaId: string, name: string) => void, currentUser: string, areaPath: string }) => {
+const JsaCard = ({ jsa, onSign, currentUser, areaPath, isOpen, onOpenChange, onShare }: { jsa: JSA, onSign: (jsaId: string, name: string) => void, currentUser: string, areaPath: string, isOpen: boolean, onOpenChange: (open: boolean) => void, onShare: () => void }) => {
     const [signatureName, setSignatureName] = useState(currentUser);
     const hasSigned = jsa.signatures.some(s => s.employee_name === currentUser);
 
@@ -251,7 +252,7 @@ const JsaCard = ({ jsa, onSign, currentUser, areaPath }: { jsa: JSA, onSign: (js
     };
 
     return (
-        <Dialog>
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <Card className="flex flex-col">
                 <CardHeader>
                     <CardTitle className="flex items-start justify-between">
@@ -281,7 +282,13 @@ const JsaCard = ({ jsa, onSign, currentUser, areaPath }: { jsa: JSA, onSign: (js
 
             <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
                 <DialogHeader>
-                    <DialogTitle className="text-2xl flex items-center gap-2"><FileSignature /> {jsa.title}</DialogTitle>
+                    <DialogTitle className="text-2xl flex items-center justify-between gap-2">
+                        <span className="flex items-center gap-2"><FileSignature /> {jsa.title}</span>
+                         <Button type="button" variant="ghost" size="icon" onClick={onShare}>
+                            <Share2 className="h-5 w-5" />
+                            <span className="sr-only">Share</span>
+                         </Button>
+                    </DialogTitle>
                     <DialogDescription>{jsa.job_description}</DialogDescription>
                 </DialogHeader>
                 <div className="flex-1 overflow-y-auto pr-6 space-y-6">
@@ -349,6 +356,25 @@ export default function JsaPage() {
     const [jsas, setJsas] = useState<JSA[]>(mockJSAs);
     const { toast } = useToast();
     const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
+    const searchParams = useSearchParams();
+    const [openDialogId, setOpenDialogId] = useState<string | null>(null);
+
+    React.useEffect(() => {
+        const jsaIdFromUrl = searchParams.get('id');
+        if (jsaIdFromUrl && jsas.some(j => j.jsa_id === jsaIdFromUrl)) {
+            setOpenDialogId(jsaIdFromUrl);
+        }
+    }, [searchParams, jsas]);
+
+    const handleShare = (jsaId: string) => {
+        const url = `${window.location.origin}/jsa?id=${jsaId}`;
+        navigator.clipboard.writeText(url).then(() => {
+            toast({
+                title: "Link Copied",
+                description: "A shareable link has been copied to your clipboard.",
+            });
+        });
+    };
 
     const handleSignJsa = (jsaId: string, employeeName: string) => {
         setJsas(prevJsas => {
@@ -398,7 +424,16 @@ export default function JsaPage() {
                     {jsas.map((jsa) => {
                         const areaPath = findAreaPathById(mockAreas, jsa.areaId) || 'Unknown Area';
                         return (
-                          <JsaCard key={jsa.jsa_id} jsa={jsa} onSign={handleSignJsa} currentUser={MOCKED_CURRENT_USER} areaPath={areaPath} />
+                          <JsaCard 
+                            key={jsa.jsa_id} 
+                            jsa={jsa} 
+                            onSign={handleSignJsa} 
+                            currentUser={MOCKED_CURRENT_USER} 
+                            areaPath={areaPath}
+                            isOpen={openDialogId === jsa.jsa_id}
+                            onOpenChange={(open) => setOpenDialogId(open ? jsa.jsa_id : null)}
+                            onShare={() => handleShare(jsa.jsa_id)}
+                          />
                         )
                     })}
                 </div>

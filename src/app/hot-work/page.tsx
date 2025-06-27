@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Separator } from '@/components/ui/separator';
 import { mockHotWorkPermits, mockAreas } from '@/lib/mockData';
 import type { HotWorkPermit, Area } from '@/types';
-import { PlusCircle, Users, FileSignature, Edit, UserCheck, Trash2, MapPin, Flame, Clock, CheckSquare } from 'lucide-react';
+import { PlusCircle, Users, FileSignature, Edit, UserCheck, Trash2, MapPin, Flame, Clock, CheckSquare, Share2 } from 'lucide-react';
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { format } from 'date-fns';
+import { useSearchParams } from 'next/navigation';
 
 
 const permitFormSchema = z.object({
@@ -257,7 +258,7 @@ const findAreaPathById = (areas: Area[], id: string, path: string[] = []): strin
 };
 
 // This component now takes a permit and handles its own dialog state.
-const PermitCard = ({ permit, onSign, currentUser, areaPath }: { permit: HotWorkPermit, onSign: (permitId: string, name: string) => void, currentUser: string, areaPath: string }) => {
+const PermitCard = ({ permit, onSign, currentUser, areaPath, isOpen, onOpenChange, onShare }: { permit: HotWorkPermit, onSign: (permitId: string, name: string) => void, currentUser: string, areaPath: string, isOpen: boolean, onOpenChange: (open: boolean) => void, onShare: () => void }) => {
     const [signatureName, setSignatureName] = useState(currentUser);
     const hasSigned = permit.signatures.some(s => s.employee_name === currentUser);
 
@@ -268,7 +269,7 @@ const PermitCard = ({ permit, onSign, currentUser, areaPath }: { permit: HotWork
     };
 
     return (
-        <Dialog>
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <Card className="flex flex-col">
                 <CardHeader>
                     <CardTitle className="flex items-start justify-between">
@@ -302,7 +303,13 @@ const PermitCard = ({ permit, onSign, currentUser, areaPath }: { permit: HotWork
 
             <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
                 <DialogHeader>
-                    <DialogTitle className="text-2xl flex items-center gap-2"><Flame /> {permit.title}</DialogTitle>
+                    <DialogTitle className="text-2xl flex items-center justify-between gap-2">
+                      <span className="flex items-center gap-2"><Flame /> {permit.title}</span>
+                      <Button type="button" variant="ghost" size="icon" onClick={onShare}>
+                        <Share2 className="h-5 w-5" />
+                        <span className="sr-only">Share</span>
+                      </Button>
+                    </DialogTitle>
                     <DialogDescription>{permit.description}</DialogDescription>
                 </DialogHeader>
                 <div className="flex-1 overflow-y-auto pr-6 space-y-6">
@@ -363,6 +370,25 @@ export default function HotWorkPermitsPage() {
     const [permits, setPermits] = useState<HotWorkPermit[]>(mockHotWorkPermits);
     const { toast } = useToast();
     const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
+    const searchParams = useSearchParams();
+    const [openDialogId, setOpenDialogId] = useState<string | null>(null);
+
+    React.useEffect(() => {
+        const permitIdFromUrl = searchParams.get('id');
+        if (permitIdFromUrl && permits.some(p => p.permit_id === permitIdFromUrl)) {
+            setOpenDialogId(permitIdFromUrl);
+        }
+    }, [searchParams, permits]);
+
+    const handleShare = (permitId: string) => {
+        const url = `${window.location.origin}/hot-work?id=${permitId}`;
+        navigator.clipboard.writeText(url).then(() => {
+            toast({
+                title: "Link Copied",
+                description: "A shareable link has been copied to your clipboard.",
+            });
+        });
+    };
 
     const handleSignPermit = (permitId: string, employeeName: string) => {
         setPermits(prevPermits => {
@@ -412,7 +438,16 @@ export default function HotWorkPermitsPage() {
                     {permits.map((permit) => {
                         const areaPath = findAreaPathById(mockAreas, permit.areaId) || 'Unknown Area';
                         return (
-                          <PermitCard key={permit.permit_id} permit={permit} onSign={handleSignPermit} currentUser={MOCKED_CURRENT_USER} areaPath={areaPath} />
+                          <PermitCard 
+                            key={permit.permit_id} 
+                            permit={permit} 
+                            onSign={handleSignPermit} 
+                            currentUser={MOCKED_CURRENT_USER} 
+                            areaPath={areaPath}
+                            isOpen={openDialogId === permit.permit_id}
+                            onOpenChange={(open) => setOpenDialogId(open ? permit.permit_id : null)}
+                            onShare={() => handleShare(permit.permit_id)}
+                          />
                         )
                     })}
                 </div>
