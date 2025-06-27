@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc } from '@/types';
+import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord } from '@/types';
 import {
   mockObservations,
   mockCorrectiveActions,
@@ -13,6 +13,7 @@ import {
   mockPredefinedChecklistItems,
   mockAreas,
   mockSafetyDocs,
+  mockComplianceRecords,
 } from '@/lib/mockData';
 
 interface AppDataContextType {
@@ -49,6 +50,10 @@ interface AppDataContextType {
   deleteArea: (areaId: string) => void;
   safetyDocs: SafetyDoc[];
   addSafetyDoc: (doc: SafetyDoc) => void;
+  complianceRecords: ComplianceRecord[];
+  addComplianceRecord: (record: ComplianceRecord) => void;
+  updateComplianceRecord: (record: ComplianceRecord) => void;
+  removeComplianceRecord: (employeeId: string) => void;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -64,6 +69,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [predefinedChecklistItems, setPredefinedChecklistItems] = useState<PredefinedChecklistItem[]>(mockPredefinedChecklistItems);
   const [areas, setAreas] = useState<Area[]>(mockAreas);
   const [safetyDocs, setSafetyDocs] = useState<SafetyDoc[]>(mockSafetyDocs);
+  const [complianceRecords, setComplianceRecords] = useState<ComplianceRecord[]>(mockComplianceRecords);
 
   // Observations
   const addObservation = (observation: Observation) => {
@@ -198,6 +204,16 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       setSafetyDocs(prev => [doc, ...prev]);
     };
 
+    // Compliance Records
+    const addComplianceRecord = (record: ComplianceRecord) => {
+      setComplianceRecords(prev => [record, ...prev]);
+    };
+    const updateComplianceRecord = (updatedRecord: ComplianceRecord) => {
+      setComplianceRecords(prev => prev.map(r => r.employee_id === updatedRecord.employee_id ? updatedRecord : r));
+    };
+    const removeComplianceRecord = (employeeId: string) => {
+      setComplianceRecords(prev => prev.filter(r => r.employee_id !== employeeId));
+    };
 
   return (
     <AppDataContext.Provider value={{
@@ -211,6 +227,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       predefinedChecklistItems, addPredefinedChecklistItem, updatePredefinedChecklistItem, removePredefinedChecklistItem,
       areas, addArea, updateArea, deleteArea,
       safetyDocs, addSafetyDoc,
+      complianceRecords, addComplianceRecord, updateComplianceRecord, removeComplianceRecord,
     }}>
       {children}
     </AppDataContext.Provider>
