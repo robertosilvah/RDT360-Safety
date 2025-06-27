@@ -222,7 +222,7 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
                 checklist_items: walk.checklist_items.map(item => ({ ...item }))
             });
         }
-    }, [walk, form]);
+    }, [walk, form.reset]);
 
     if (!walk) return null;
     
@@ -324,7 +324,7 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
                                 <div>
                                     <h3 className="text-lg font-semibold mb-4">Checklist Items</h3>
                                     <div className="space-y-4">
-                                    {form.watch('checklist_items').map((item, index) => (
+                                    {form.watch('checklist_items')?.map((item, index) => (
                                         <Card key={index} className="p-4 bg-muted/30">
                                             <FormLabel>{item.item}</FormLabel>
                                             <FormField
