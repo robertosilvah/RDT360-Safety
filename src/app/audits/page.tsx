@@ -354,7 +354,7 @@ export default function SafetyWalksPage() {
     <AppShell>
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center justify-between space-y-2">
-          <h2 className="text-3xl font-bold tracking-tight">Safety Walk Tracker</h2>
+          <h2 className="text-3xl font-bold tracking-tight">Safety Walks</h2>
           <Dialog open={isCreateOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
                 <Button>
@@ -369,8 +369,8 @@ export default function SafetyWalksPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Scheduled & Completed Safety Walks</CardTitle>
-            <CardDescription>Track and manage all safety walks. Click a row for details.</CardDescription>
+            <CardTitle>All Safety Walks</CardTitle>
+            <CardDescription>A proactive tool to observe work environments, identify potential hazards, and engage with employees in real-time to foster a strong safety culture.</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
