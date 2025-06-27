@@ -1,6 +1,7 @@
+
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { Button } from '@/components/ui/button';
 import {
@@ -24,7 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
-import { Camera, Eye, Siren, User, Users, FileText, ClipboardCheck } from 'lucide-react';
+import { Camera, Eye, Siren, User, Users, FileText, ClipboardCheck, Upload, Download } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -235,6 +236,7 @@ export default function ObservationsPage() {
   const [selectedObservation, setSelectedObservation] = useState<Observation | null>(null);
   const [isDetailsOpen, setDetailsOpen] = useState(false);
   const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const statusVariant: { [key in Observation['status']]: 'outline' | 'default' } = {
     Open: 'default',
@@ -320,6 +322,122 @@ export default function ObservationsPage() {
   const handleRowClick = (observation: Observation) => {
     setSelectedObservation(observation);
     setDetailsOpen(true);
+  };
+
+  const handleExport = () => {
+    const headers = [
+      'observation_id', 'report_type', 'submitted_by', 'date', 'areaId', 
+      'person_involved', 'risk_level', 'description', 'actions', 
+      'unsafe_category', 'status', 'imageUrl', 'safety_walk_id'
+    ] as (keyof Observation)[];
+
+    const csvRows = [
+      headers.join(','), // header row
+      ...observations.map(obs => {
+        const values = headers.map(header => {
+          const value = header in obs ? obs[header] : '';
+          const stringValue = String(value ?? '');
+          // Escape double quotes by doubling them and wrap value in quotes if it contains a comma or a quote
+          if (stringValue.includes(',') || stringValue.includes('"')) {
+            return `"${stringValue.replace(/"/g, '""')}"`;
+          }
+          return stringValue;
+        });
+        return values.join(',');
+      })
+    ];
+
+    const csvString = csvRows.join('\n');
+    const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', 'observations_export.csv');
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({ title: "Export Successful", description: "Observations exported to CSV." });
+  };
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const text = event.target?.result as string;
+        if (!text) {
+            toast({ variant: 'destructive', title: 'Import Failed', description: 'Could not read file.' });
+            return;
+        }
+
+        try {
+            const rows = text.split('\n').filter(row => row.trim() !== '');
+            if (rows.length < 2) {
+              toast({ variant: 'destructive', title: 'Import Failed', description: 'CSV file is empty or has no data rows.' });
+              return;
+            }
+
+            const headers = rows[0].split(',').map(h => h.trim());
+            const requiredHeaders = ['observation_id', 'report_type', 'submitted_by', 'areaId', 'description'];
+            for(const reqHeader of requiredHeaders) {
+                if (!headers.includes(reqHeader)) {
+                    toast({ variant: 'destructive', title: 'Import Failed', description: `Missing required CSV column: ${reqHeader}` });
+                    return;
+                }
+            }
+
+            const observationsToAdd: Observation[] = [];
+            for (let i = 1; i < rows.length; i++) {
+                const values = rows[i].split(',');
+                const obsData: { [key: string]: string } = {};
+                headers.forEach((header, index) => {
+                    obsData[header] = values[index]?.trim();
+                });
+
+                if (observations.some(o => o.observation_id === obsData.observation_id)) {
+                  continue; // Skip if observation already exists
+                }
+
+                const newObservation: Observation = {
+                    observation_id: obsData.observation_id,
+                    report_type: obsData.report_type as Observation['report_type'] || 'Safety Concern',
+                    submitted_by: obsData.submitted_by,
+                    date: obsData.date || new Date().toISOString(),
+                    areaId: obsData.areaId,
+                    person_involved: obsData.person_involved,
+                    risk_level: (parseInt(obsData.risk_level, 10) as Observation['risk_level']) || 1,
+                    description: obsData.description,
+                    actions: obsData.actions || 'No immediate actions logged.',
+                    unsafe_category: obsData.unsafe_category as Observation['unsafe_category'] || 'N/A',
+                    status: (obsData.status as Observation['status']) || 'Open',
+                    imageUrl: obsData.imageUrl,
+                    safety_walk_id: obsData.safety_walk_id
+                };
+                observationsToAdd.push(newObservation);
+            }
+
+            if (observationsToAdd.length > 0) {
+              observationsToAdd.forEach(obs => addObservation(obs));
+              toast({ title: 'Import Successful', description: `${observationsToAdd.length} new observations imported.` });
+            } else {
+              toast({ title: 'Import Complete', description: 'No new observations to import.' });
+            }
+
+        } catch (error) {
+            console.error('Import error:', error);
+            toast({ variant: 'destructive', title: 'Import Failed', description: 'There was an error parsing the CSV file.' });
+        } finally {
+            if (e.target) e.target.value = '';
+        }
+    };
+    reader.readAsText(file);
   };
 
   return (
@@ -594,10 +712,29 @@ export default function ObservationsPage() {
           <div className="lg:col-span-3">
             <Card>
               <CardHeader>
-                <CardTitle>Observation History</CardTitle>
-                <CardDescription>
-                  A list of all submitted safety observations. Click a row to see details.
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle>Observation History</CardTitle>
+                        <CardDescription>
+                        A list of all submitted safety observations. Click a row to see details.
+                        </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            className="hidden"
+                            accept=".csv"
+                            onChange={handleFileImport}
+                        />
+                        <Button variant="outline" size="sm" onClick={handleImportClick}>
+                            <Upload className="mr-2 h-4 w-4" /> Import
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={handleExport}>
+                            <Download className="mr-2 h-4 w-4" /> Export
+                        </Button>
+                    </div>
+                </div>
               </CardHeader>
               <CardContent>
                 <Table>
