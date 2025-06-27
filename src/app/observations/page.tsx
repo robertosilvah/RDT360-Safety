@@ -9,7 +9,6 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
-  CardFooter,
 } from '@/components/ui/card';
 import {
   Table,
@@ -19,13 +18,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { mockObservations, mockAreas } from '@/lib/mockData';
-import type { Observation, Area } from '@/types';
+import { mockAreas } from '@/lib/mockData';
+import type { Observation, Area, CorrectiveAction } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
-import { Camera, Check, Clock, Edit, Eye, FileText, Siren, User, Users } from 'lucide-react';
+import { Camera, Eye, Siren, User, Users, FileText, Checkbox } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -36,6 +35,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription
 } from '@/components/ui/form';
 import {
   Select,
@@ -54,6 +54,8 @@ import {
 } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
+import { useAppData } from '@/context/AppDataContext';
+import { useToast } from '@/hooks/use-toast';
 
 const observationFormSchema = z.object({
   report_type: z.enum(['Safety Concern', 'Positive Observation', 'Near Miss'], {
@@ -71,7 +73,20 @@ const observationFormSchema = z.object({
   unsafe_category: z.enum(['Unsafe Behavior', 'Unsafe Condition', 'N/A'], {
     required_error: 'You need to select a category.',
   }),
+  createAction: z.boolean().default(false).optional(),
+  actionDescription: z.string().optional(),
+  actionResponsiblePerson: z.string().optional(),
+  actionDueDate: z.string().optional(),
+}).refine(data => {
+    if (data.createAction) {
+        return data.actionDescription && data.actionResponsiblePerson && data.actionDueDate && !isNaN(Date.parse(data.actionDueDate));
+    }
+    return true;
+}, {
+    message: 'If creating a corrective action, its description, responsible person, and a valid due date are required.',
+    path: ['actionDescription'],
 });
+
 
 const AreaSelectOptions = ({ areas, level = 0 }: { areas: Area[]; level?: number }) => {
   return (
@@ -200,9 +215,10 @@ const ObservationDetailsDialog = ({
 };
 
 export default function ObservationsPage() {
-  const [observations, setObservations] = useState(mockObservations);
+  const { observations, addObservation, addCorrectiveAction } = useAppData();
   const [selectedObservation, setSelectedObservation] = useState<Observation | null>(null);
   const [isDetailsOpen, setDetailsOpen] = useState(false);
+  const { toast } = useToast();
 
   const statusVariant: { [key in Observation['status']]: 'outline' | 'default' } = {
     Open: 'default',
@@ -221,6 +237,10 @@ export default function ObservationsPage() {
       person_involved: '',
       risk_level: 1,
       areaId: '',
+      createAction: false,
+      actionDescription: '',
+      actionResponsiblePerson: '',
+      actionDueDate: '',
     },
   });
 
@@ -237,13 +257,48 @@ export default function ObservationsPage() {
   };
 
   function onSubmit(values: z.infer<typeof observationFormSchema>) {
-    console.log({ ...values, file: selectedFile });
-    // Here you would typically handle the form submission, e.g., send to a server
-    // For now, we just log it and reset.
-    alert('Observation submitted!');
+    const newObservationId = `OBS${Date.now()}`;
+    const newObservation: Observation = {
+        observation_id: newObservationId,
+        report_type: values.report_type,
+        submitted_by: values.submitted_by,
+        date: new Date(values.date).toISOString(),
+        areaId: values.areaId,
+        person_involved: values.person_involved,
+        risk_level: values.risk_level,
+        description: values.description,
+        actions: values.actions,
+        unsafe_category: values.unsafe_category,
+        status: 'Open',
+        imageUrl: imagePreview || undefined,
+    };
+    addObservation(newObservation);
+
+    if (values.createAction && values.actionDescription && values.actionResponsiblePerson && values.actionDueDate) {
+        const newAction: CorrectiveAction = {
+            action_id: `ACT${Date.now()}`,
+            description: values.actionDescription,
+            responsible_person: values.actionResponsiblePerson,
+            due_date: new Date(values.actionDueDate).toISOString(),
+            status: 'Pending',
+            related_to_observation: newObservationId,
+            comments: [],
+        };
+        addCorrectiveAction(newAction);
+        toast({
+            title: 'Observation & Action Created',
+            description: `Observation ${newObservationId} and a linked corrective action have been submitted.`,
+        });
+    } else {
+        toast({
+            title: 'Observation Submitted',
+            description: `Observation ${newObservationId} has been submitted.`,
+        });
+    }
+
     form.reset();
-    setSelectedFile(null);
     setImagePreview(null);
+    setSelectedFile(null);
   }
 
   const handleRowClick = (observation: Observation) => {
@@ -359,7 +414,7 @@ export default function ObservationsPage() {
                           <FormLabel>Risk Evaluation (1-4)</FormLabel>
                           <FormControl>
                             <RadioGroup
-                              onValueChange={field.onChange}
+                              onValueChange={(value) => field.onChange(parseInt(value))}
                               defaultValue={String(field.value)}
                               className="flex space-x-4"
                             >
@@ -398,7 +453,7 @@ export default function ObservationsPage() {
                       name="actions"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Actions Taken</FormLabel>
+                          <FormLabel>Immediate Actions Taken</FormLabel>
                           <FormControl>
                             <Textarea
                               placeholder="Describe immediate actions taken..."
@@ -446,6 +501,72 @@ export default function ObservationsPage() {
                         />
                       </div>
                     )}
+                    
+                    <Separator />
+
+                    <FormField
+                      control={form.control}
+                      name="createAction"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4 shadow-sm">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>
+                              Create Corrective Action
+                            </FormLabel>
+                            <FormDescription>
+                              Check this box to create a linked corrective action for this observation.
+                            </FormDescription>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+
+                    {form.watch('createAction') && (
+                      <div className="space-y-4 p-4 border rounded-md bg-muted/30">
+                        <FormField
+                          control={form.control}
+                          name="actionDescription"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Action Description</FormLabel>
+                              <FormControl><Textarea placeholder="Describe the required follow-up action..." {...field} /></FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="actionResponsiblePerson"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Responsible Person</FormLabel>
+                                <FormControl><Input placeholder="e.g., Facility Manager" {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="actionDueDate"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Due Date</FormLabel>
+                                <FormControl><Input type="date" {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </div>
+                    )}
+
                     <Button type="submit" className="w-full">
                       Submit Observation
                     </Button>

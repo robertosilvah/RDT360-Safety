@@ -12,7 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { mockIncidents } from '@/lib/mockData';
 import type { Incident, Comment } from '@/types';
 import { FilePlus2, Download, MessageSquare, User, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +27,7 @@ import { Separator } from '@/components/ui/separator';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useAppData } from '@/context/AppDataContext';
 
 const incidentFormSchema = z.object({
   description: z.string().min(10, "Description must be at least 10 characters."),
@@ -42,13 +42,12 @@ const IncidentDetailsDialog = ({
   incident,
   isOpen,
   onOpenChange,
-  onUpdateIncident,
 }: {
   incident: Incident | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onUpdateIncident: (incidentId: string, values: IncidentFormValues, newComment?: string) => void;
 }) => {
+  const { updateIncident, addCommentToIncident } = useAppData();
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
 
@@ -72,12 +71,18 @@ const IncidentDetailsDialog = ({
       });
       setNewComment('');
     }
-  }, [incident, form]);
+  }, [incident, form, isOpen]);
 
   if (!incident) return null;
 
   const handleSubmit = (values: IncidentFormValues) => {
-    onUpdateIncident(incident.incident_id, values, newComment);
+    const updatedIncident = { ...incident, ...values, assigned_to: values.assigned_to || undefined };
+    updateIncident(updatedIncident);
+
+    if (newComment.trim()) {
+      addCommentToIncident(incident.incident_id, { user: 'Safety Manager', comment: newComment.trim(), date: new Date().toISOString() });
+    }
+    
     toast({ title: 'Incident Updated', description: `Incident ${incident.incident_id} has been updated.` });
     onOpenChange(false);
   };
@@ -207,7 +212,7 @@ const IncidentDetailsDialog = ({
 
 
 export default function IncidentsPage() {
-  const [incidents, setIncidents] = useState<Incident[]>(mockIncidents);
+  const { incidents } = useAppData();
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [isDialogOpen, setDialogOpen] = useState(false);
     
@@ -224,29 +229,10 @@ export default function IncidentsPage() {
   };
 
   const handleRowClick = (incident: Incident) => {
-    setSelectedIncident(incident);
+    const currentIncidentState = incidents.find(i => i.incident_id === incident.incident_id);
+    setSelectedIncident(currentIncidentState || incident);
     setDialogOpen(true);
   }
-
-  const handleUpdateIncident = (incidentId: string, values: IncidentFormValues, newComment?: string) => {
-    setIncidents(prev => prev.map(inc => {
-      if (inc.incident_id === incidentId) {
-        const updatedInc = {
-          ...inc,
-          ...values,
-          assigned_to: values.assigned_to || undefined,
-        };
-        if (newComment?.trim()) {
-            updatedInc.comments = [
-                ...updatedInc.comments,
-                { user: 'Safety Manager', comment: newComment, date: new Date().toISOString() }
-            ];
-        }
-        return updatedInc;
-      }
-      return inc;
-    }));
-  };
 
   return (
     <AppShell>
@@ -310,7 +296,6 @@ export default function IncidentsPage() {
         incident={selectedIncident}
         isOpen={isDialogOpen}
         onOpenChange={setDialogOpen}
-        onUpdateIncident={handleUpdateIncident}
       />
     </AppShell>
   );

@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { mockCorrectiveActions, mockIncidents, mockObservations } from '@/lib/mockData';
+import { mockIncidents, mockObservations } from '@/lib/mockData';
 import type { CorrectiveAction, Incident, Observation, Comment } from '@/types';
 import { PlusCircle, Siren, Eye, MessageSquare, User, Clock, CheckCircle, AlertTriangle, List } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +24,7 @@ import { Separator } from '@/components/ui/separator';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { KanbanSquare } from 'lucide-react';
+import { useAppData } from '@/context/AppDataContext';
 
 const actionFormSchema = z.object({
   description: z.string().min(10, 'Description must be at least 10 characters.'),
@@ -220,20 +221,39 @@ const ActionForm = ({
 };
 
 const ActionDetailsDialog = ({
-    action, isOpen, onOpenChange, onUpdateAction,
+    action, isOpen, onOpenChange,
 } : {
     action: CorrectiveAction | null;
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
-    onUpdateAction: (actionId: string, values: ActionFormValues, newComment?: string) => void;
 }) => {
-    const { toast } = useToast();
+    const { correctiveActions, updateCorrectiveAction, addCommentToAction } = useAppData();
     const [newComment, setNewComment] = useState('');
     
     if (!action) return null;
 
     const handleSave = (values: ActionFormValues) => {
-        onUpdateAction(action.action_id, values, newComment);
+        const actionToUpdate = correctiveActions.find(a => a.action_id === action.action_id);
+        if (!actionToUpdate) return;
+        
+        const updatedAction = { 
+            ...actionToUpdate, 
+            ...values,
+            due_date: values.due_date ? new Date(values.due_date).toISOString() : actionToUpdate.due_date,
+        };
+        updateCorrectiveAction(updatedAction);
+
+        if (newComment.trim()) {
+            addCommentToAction(action.action_id, { user: 'Safety Manager', comment: newComment.trim(), date: new Date().toISOString() });
+            setNewComment('');
+        }
+    }
+
+    const handleAddComment = () => {
+        if(newComment.trim()) {
+            addCommentToAction(action.action_id, { user: 'Safety Manager', comment: newComment.trim(), date: new Date().toISOString() });
+            setNewComment('');
+        }
     }
     
     return (
@@ -264,7 +284,7 @@ const ActionDetailsDialog = ({
                         </div>
                         <div className="flex flex-col gap-2">
                             <Textarea placeholder="Add a comment..." value={newComment} onChange={(e) => setNewComment(e.target.value)} rows={2}/>
-                            <Button size="sm" onClick={() => onUpdateAction(action.action_id, action, newComment)} disabled={!newComment.trim()}>Add Comment</Button>
+                            <Button size="sm" onClick={handleAddComment} disabled={!newComment.trim()}>Add Comment</Button>
                         </div>
                     </div>
                 </div>
@@ -310,17 +330,12 @@ const KanbanCard = ({ action, onClick }: { action: CorrectiveAction; onClick: ()
 
 
 export default function CorrectiveActionsPage() {
-  const [actions, setActions] = useState<CorrectiveAction[]>(mockCorrectiveActions);
+  const { correctiveActions: actions, addCorrectiveAction } = useAppData();
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<CorrectiveAction | null>(null);
   const [isDetailsOpen, setDetailsOpen] = useState(false);
 
-  const handleSaveAction = (values: ActionFormValues, actionId?: string) => {
-    if (actionId) {
-      // Update
-      setActions(prev => prev.map(a => a.action_id === actionId ? {...a, ...values, due_date: new Date(values.due_date).toISOString()} : a));
-    } else {
-      // Create
+  const handleSaveAction = (values: ActionFormValues) => {
       const newAction: CorrectiveAction = {
         action_id: `ACT${String(Math.floor(Math.random() * 900) + 100)}`,
         description: values.description,
@@ -331,29 +346,12 @@ export default function CorrectiveActionsPage() {
         related_to_incident: values.linkType === 'incident' ? values.linked_id : undefined,
         related_to_observation: values.linkType === 'observation' ? values.linked_id : undefined,
       };
-      setActions(prev => [newAction, ...prev]);
-    }
+      addCorrectiveAction(newAction);
   };
   
-  const handleUpdateAction = (actionId: string, values: Partial<ActionFormValues>, newComment?: string) => {
-     setActions(prev => prev.map(a => {
-        if (a.action_id === actionId) {
-            const updatedAction = {...a, ...values};
-            if (values.due_date) {
-                updatedAction.due_date = new Date(values.due_date).toISOString();
-            }
-            if(newComment?.trim()){
-                updatedAction.comments = [...a.comments, { user: 'Safety Manager', comment: newComment, date: new Date().toISOString() }];
-            }
-            return updatedAction;
-        }
-        return a;
-    }));
-    setDetailsOpen(false);
-  }
-
   const openDetailsDialog = (action: CorrectiveAction) => {
-    setSelectedAction(action);
+    const currentActionState = actions.find(a => a.action_id === action.action_id);
+    setSelectedAction(currentActionState || action);
     setDetailsOpen(true);
   }
   
@@ -462,7 +460,6 @@ export default function CorrectiveActionsPage() {
             action={selectedAction}
             isOpen={isDetailsOpen}
             onOpenChange={setDetailsOpen}
-            onUpdateAction={handleUpdateAction}
         />
       </div>
     </AppShell>
