@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
-import { Camera, Eye, Siren, User, Users, FileText, Checkbox } from 'lucide-react';
+import { Camera, Eye, Siren, User, Users, FileText } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -56,6 +56,7 @@ import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { useAppData } from '@/context/AppDataContext';
 import { useToast } from '@/hooks/use-toast';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const observationFormSchema = z.object({
   report_type: z.enum(['Safety Concern', 'Positive Observation', 'Near Miss'], {
