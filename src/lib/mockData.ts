@@ -1,4 +1,4 @@
-import type { Incident, Observation, SafetyWalk, CorrectiveAction, SafetyDoc, Area, ComplianceRecord, JSA, HotWorkPermit, Comment, ForkliftInspection, User, Forklift, PredefinedChecklistItem, SafetyWalkChecklistItem } from '@/types';
+import type { Incident, Observation, SafetyWalk, CorrectiveAction, SafetyDoc, Area, ComplianceRecord, JSA, HotWorkPermit, Comment, ForkliftInspection, User, Forklift, PredefinedChecklistItem, SafetyWalkChecklistItem, ServiceRequest } from '@/types';
 import { subDays, formatISO, subHours } from 'date-fns';
 
 const mockUser = "Safety Manager";
@@ -273,4 +273,40 @@ export const mockPredefinedChecklistItems: PredefinedChecklistItem[] = [
   { id: 'pcl-3', text: 'Housekeeping & Slip/Trip Hazards' },
   { id: 'pcl-4', text: 'Fire Extinguisher Accessibility' },
   { id: 'pcl-5', text: 'Emergency E-Stops Clear' },
+];
+
+export const mockServiceRequests: ServiceRequest[] = [
+    {
+        request_id: 'SR001',
+        submitted_by: 'John Doe',
+        date: formatISO(subDays(new Date(), 1)),
+        areaId: 'AREA01',
+        request_type: 'Maintenance',
+        description: 'The guard on the Press Machine 3 is rattling and seems loose. Needs immediate inspection.',
+        status: 'Open',
+        assigned_to: 'Maintenance Team',
+        comments: [],
+    },
+    {
+        request_id: 'SR002',
+        submitted_by: 'Sarah Miller',
+        date: formatISO(subDays(new Date(), 3)),
+        areaId: 'AREA04',
+        request_type: 'PPE Request',
+        description: 'Requesting a new set of size L cut-resistant gloves.',
+        status: 'Completed',
+        assigned_to: 'Safety Manager',
+        comments: [{ user: 'Safety Manager', comment: 'PPE has been delivered to the area supervisor.', date: formatISO(subDays(new Date(), 2)) }],
+    },
+    {
+        request_id: 'SR003',
+        submitted_by: 'Mike Brown',
+        date: formatISO(subDays(new Date(), 5)),
+        areaId: 'AREA02',
+        request_type: 'Information',
+        description: 'Where can I find the JSA for operating the pallet wrapper?',
+        status: 'Completed',
+        assigned_to: 'Safety Manager',
+        comments: [{ user: 'Safety Manager', comment: 'The JSA is available in the Document Hub under "Procedures". JSA ID: JSA001.', date: formatISO(subDays(new Date(), 5)) }],
+    }
 ];

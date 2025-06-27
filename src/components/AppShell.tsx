@@ -28,6 +28,7 @@ import {
   FileSignature,
   Flame,
   Truck,
+  HelpCircle,
 } from 'lucide-react';
 import { Header } from './Header';
 import { Button } from './ui/button';
@@ -42,6 +43,7 @@ const menuItems = [
   { href: '/jsa', label: 'JSAs', icon: FileSignature },
   { href: '/hot-work', label: 'Hot Work Permits', icon: Flame },
   { href: '/forklift-inspections', label: 'Forklift Inspections', icon: Truck },
+  { href: '/service-requests', label: 'Service Requests', icon: HelpCircle },
   { href: '/documents', label: 'Documents', icon: FileText },
   { href: '/areas', label: 'Areas', icon: Map },
   { href: '/compliance', label: 'Compliance', icon: BadgeCheck },

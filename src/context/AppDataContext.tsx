@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord } from '@/types';
+import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, ServiceRequest } from '@/types';
 import {
   mockObservations,
   mockCorrectiveActions,
@@ -14,6 +14,7 @@ import {
   mockAreas,
   mockSafetyDocs,
   mockComplianceRecords,
+  mockServiceRequests,
 } from '@/lib/mockData';
 
 interface AppDataContextType {
@@ -54,6 +55,10 @@ interface AppDataContextType {
   addComplianceRecord: (record: ComplianceRecord) => void;
   updateComplianceRecord: (record: ComplianceRecord) => void;
   removeComplianceRecord: (employeeId: string) => void;
+  serviceRequests: ServiceRequest[];
+  addServiceRequest: (request: ServiceRequest) => void;
+  updateServiceRequest: (request: ServiceRequest) => void;
+  addCommentToServiceRequest: (requestId: string, comment: Comment) => void;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -70,6 +75,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [areas, setAreas] = useState<Area[]>(mockAreas);
   const [safetyDocs, setSafetyDocs] = useState<SafetyDoc[]>(mockSafetyDocs);
   const [complianceRecords, setComplianceRecords] = useState<ComplianceRecord[]>(mockComplianceRecords);
+  const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>(mockServiceRequests);
 
   // Observations
   const addObservation = (observation: Observation) => {
@@ -215,6 +221,17 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       setComplianceRecords(prev => prev.filter(r => r.employee_id !== employeeId));
     };
 
+    // Service Requests
+    const addServiceRequest = (request: ServiceRequest) => {
+      setServiceRequests(prev => [request, ...prev]);
+    };
+    const updateServiceRequest = (updatedRequest: ServiceRequest) => {
+      setServiceRequests(prev => prev.map(r => r.request_id === updatedRequest.request_id ? updatedRequest : r));
+    };
+    const addCommentToServiceRequest = (requestId: string, comment: Comment) => {
+      setServiceRequests(prev => prev.map(r => r.request_id === requestId ? { ...r, comments: [...r.comments, comment] } : r));
+    };
+
   return (
     <AppDataContext.Provider value={{
       observations, addObservation,
@@ -228,6 +245,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       areas, addArea, updateArea, deleteArea,
       safetyDocs, addSafetyDoc,
       complianceRecords, addComplianceRecord, updateComplianceRecord, removeComplianceRecord,
+      serviceRequests, addServiceRequest, updateServiceRequest, addCommentToServiceRequest,
     }}>
       {children}
     </AppDataContext.Provider>

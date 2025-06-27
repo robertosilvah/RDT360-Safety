@@ -150,3 +150,15 @@ export type PredefinedChecklistItem = {
   id: string;
   text: string;
 };
+
+export type ServiceRequest = {
+  request_id: string;
+  submitted_by: string;
+  date: string;
+  areaId: string;
+  request_type: 'Maintenance' | 'PPE Request' | 'Information' | 'Other';
+  description: string;
+  status: 'Open' | 'In Progress' | 'Completed';
+  assigned_to?: string;
+  comments: Comment[];
+};
