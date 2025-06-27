@@ -15,6 +15,7 @@ export type Observation = {
   details: string;
   status: 'Open' | 'Closed';
   assigned_to: string;
+  imageUrl?: string;
 };
 
 export type Audit = {

@@ -10,10 +10,10 @@ export const mockIncidents: Incident[] = [
 ];
 
 export const mockObservations: Observation[] = [
-  { observation_id: 'OBS001', submitted_by: 'John Doe', date: formatISO(subDays(new Date(), 2)), location: 'Assembly Line 1', details: 'Emergency exit blocked by pallets.', status: 'Open', assigned_to: 'Jane Smith' },
-  { observation_id: 'OBS002', submitted_by: 'Emily Jones', date: formatISO(subDays(new Date(), 10)), location: 'Warehouse', details: 'Fire extinguisher needs inspection.', status: 'Open', assigned_to: 'Mike Brown' },
+  { observation_id: 'OBS001', submitted_by: 'John Doe', date: formatISO(subDays(new Date(), 2)), location: 'Assembly Line 1', details: 'Emergency exit blocked by pallets.', status: 'Open', assigned_to: 'Jane Smith', imageUrl: 'https://placehold.co/600x400.png' },
+  { observation_id: 'OBS002', submitted_by: 'Emily Jones', date: formatISO(subDays(new Date(), 10)), location: 'Warehouse', details: 'Fire extinguisher needs inspection.', status: 'Open', assigned_to: 'Mike Brown', imageUrl: 'https://placehold.co/600x400.png' },
   { observation_id: 'OBS003', submitted_by: 'John Doe', date: formatISO(subDays(new Date(), 15)), location: 'Welding Station', details: 'Excellent housekeeping observed.', status: 'Closed', assigned_to: 'N/A' },
-  { observation_id: 'OBS004', submitted_by: 'Sarah Miller', date: formatISO(subDays(new Date(), 32)), location: 'Packaging', details: 'Floor markings are faded.', status: 'Closed', assigned_to: 'Jane Smith' },
+  { observation_id: 'OBS004', submitted_by: 'Sarah Miller', date: formatISO(subDays(new Date(), 32)), location: 'Packaging', details: 'Floor markings are faded.', status: 'Closed', assigned_to: 'Jane Smith', imageUrl: 'https://placehold.co/600x400.png' },
 ];
 
 export const mockAudits: Audit[] = [
