@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area } from '@/types';
+import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc } from '@/types';
 import {
   mockObservations,
   mockCorrectiveActions,
@@ -12,6 +12,7 @@ import {
   mockForklifts,
   mockPredefinedChecklistItems,
   mockAreas,
+  mockSafetyDocs,
 } from '@/lib/mockData';
 
 interface AppDataContextType {
@@ -46,6 +47,8 @@ interface AppDataContextType {
   addArea: (area: Area, parentId?: string | null) => void;
   updateArea: (updatedArea: Area) => void;
   deleteArea: (areaId: string) => void;
+  safetyDocs: SafetyDoc[];
+  addSafetyDoc: (doc: SafetyDoc) => void;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -60,6 +63,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [forklifts, setForklifts] = useState<Forklift[]>(mockForklifts);
   const [predefinedChecklistItems, setPredefinedChecklistItems] = useState<PredefinedChecklistItem[]>(mockPredefinedChecklistItems);
   const [areas, setAreas] = useState<Area[]>(mockAreas);
+  const [safetyDocs, setSafetyDocs] = useState<SafetyDoc[]>(mockSafetyDocs);
 
   // Observations
   const addObservation = (observation: Observation) => {
@@ -189,6 +193,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         setAreas(prev => deleteRecursive(prev, areaId));
     };
 
+    // Safety Docs
+    const addSafetyDoc = (doc: SafetyDoc) => {
+      setSafetyDocs(prev => [doc, ...prev]);
+    };
+
 
   return (
     <AppDataContext.Provider value={{
@@ -201,6 +210,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       users, addUser, updateUserStatus, removeUser,
       predefinedChecklistItems, addPredefinedChecklistItem, updatePredefinedChecklistItem, removePredefinedChecklistItem,
       areas, addArea, updateArea, deleteArea,
+      safetyDocs, addSafetyDoc,
     }}>
       {children}
     </AppDataContext.Provider>
