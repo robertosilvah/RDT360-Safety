@@ -3,74 +3,65 @@
 import React, { useState, useEffect } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAppData } from '@/context/AppDataContext';
-import type { SafetyWalk, Observation, Area } from '@/types';
-import { FileUp, CheckCircle2, PlayCircle, Clock, Eye, PlusCircle, Check, X } from 'lucide-react';
+import type { SafetyWalk, Observation, Comment } from '@/types';
+import { PlusCircle, Trash2, CheckCircle2, PlayCircle, Clock, MessageSquare, User, Avatar as AvatarIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { format } from 'date-fns';
-import { useForm } from 'react-hook-form';
+import { format, formatDistanceToNow } from 'date-fns';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
-import { mockAreas } from '@/lib/mockData';
-import { riskLabels } from '@/app/observations/page';
+import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
-const observationFormSchema = z.object({
-  report_type: z.enum(['Safety Concern', 'Positive Observation', 'Near Miss']),
-  submitted_by: z.string().min(2),
-  description: z.string().min(10),
-  actions: z.string().min(10),
-  risk_level: z.coerce.number().min(1).max(4),
-  unsafe_category: z.enum(['Unsafe Behavior', 'Unsafe Condition', 'N/A']),
+
+const walkFormSchema = z.object({
+  walker: z.string().min(2, 'Walker name is required.'),
+  date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: 'A valid date is required.' }),
+  checklist_items: z.array(z.object({ item: z.string().min(3, 'Checklist item must be at least 3 characters.') })).min(1, 'At least one checklist item is required.'),
 });
 
-type ObservationFormValues = z.infer<typeof observationFormSchema>;
+type WalkFormValues = z.infer<typeof walkFormSchema>;
 
-const AddObservationForm = ({
-  safetyWalk,
-  setOpen,
-}: {
-  safetyWalk: SafetyWalk;
-  setOpen: (open: boolean) => void;
-}) => {
-  const { addObservation } = useAppData();
+const CreateWalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
+  const { addSafetyWalk } = useAppData();
   const { toast } = useToast();
-  const form = useForm<ObservationFormValues>({
-    resolver: zodResolver(observationFormSchema),
-    defaultValues: { risk_level: 1 },
+  const form = useForm<WalkFormValues>({
+    resolver: zodResolver(walkFormSchema),
+    defaultValues: {
+      walker: '',
+      checklist_items: [{ item: 'PPE Compliance' }, { item: 'Machine Guarding' }, { item: 'Housekeeping' }],
+    },
+  });
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: 'checklist_items',
   });
 
-  const onSubmit = (values: ObservationFormValues) => {
-    const newObservation: Observation = {
-      observation_id: `OBS${Date.now()}`,
-      safety_walk_id: safetyWalk.safety_walk_id,
-      areaId: mockAreas.find(a => a.name.includes(safetyWalk.walker))?.area_id || mockAreas[0].area_id, // Simplified area linking
-      date: new Date().toISOString(),
-      status: 'Open',
+  const onSubmit = (values: WalkFormValues) => {
+    const newWalk: SafetyWalk = {
+      safety_walk_id: `SWALK${Date.now()}`,
+      status: 'Scheduled',
+      comments: [],
       ...values,
+      date: new Date(values.date).toISOString(),
+      checklist_items: values.checklist_items.map(item => ({ ...item, checked: false })),
     };
-    addObservation(newObservation);
+    addSafetyWalk(newWalk);
     toast({
-      title: 'Observation Created',
-      description: 'The new observation has been linked to this safety walk.',
+      title: 'Safety Walk Created',
+      description: `The new walk for ${values.walker} has been scheduled.`,
     });
     setOpen(false);
   };
@@ -79,48 +70,46 @@ const AddObservationForm = ({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <DialogHeader>
-          <DialogTitle>Add Observation for {safetyWalk.safety_walk_id}</DialogTitle>
-          <DialogDescription>Create a new observation linked to this safety walk.</DialogDescription>
+          <DialogTitle>Create New Safety Walk</DialogTitle>
+          <DialogDescription>Schedule a new safety walk and define its checklist.</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-4">
-          <FormField control={form.control} name="report_type" render={({ field }) => (
-            <FormItem>
-              <FormLabel>Report Type</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>
-                <SelectItem value="Safety Concern">Safety Concern</SelectItem>
-                <SelectItem value="Positive Observation">Positive Observation</SelectItem>
-                <SelectItem value="Near Miss">Near Miss</SelectItem>
-              </SelectContent></Select><FormMessage />
-            </FormItem>
+          <FormField control={form.control} name="walker" render={({ field }) => (
+            <FormItem><FormLabel>Walker / Team</FormLabel><FormControl><Input placeholder="e.g., Safety Team" {...field} /></FormControl><FormMessage /></FormItem>
           )} />
-          <FormField control={form.control} name="submitted_by" render={({ field }) => (
-            <FormItem><FormLabel>Your Name</FormLabel><FormControl><Input placeholder="John Doe" {...field} /></FormControl><FormMessage /></FormItem>
+          <FormField control={form.control} name="date" render={({ field }) => (
+            <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
           )} />
-          <FormField control={form.control} name="description" render={({ field }) => (
-            <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="Describe what you observed..." {...field} /></FormControl><FormMessage /></FormItem>
-          )} />
-           <FormField control={form.control} name="actions" render={({ field }) => (
-            <FormItem><FormLabel>Immediate Actions Taken</FormLabel><FormControl><Textarea placeholder="Describe what actions were taken..." {...field} /></FormControl><FormMessage /></FormItem>
-          )} />
-           <FormField control={form.control} name="risk_level" render={({ field }) => (
-            <FormItem><FormLabel>Risk Evaluation</FormLabel><FormControl><RadioGroup onValueChange={(v) => field.onChange(parseInt(v))} defaultValue={String(field.value)} className="flex space-x-4">
-              {[1, 2, 3, 4].map((level) => (<FormItem key={level} className="flex items-center space-x-2"><FormControl><RadioGroupItem value={String(level)} /></FormControl><FormLabel className="font-normal">{riskLabels[level]}</FormLabel></FormItem>))}
-            </RadioGroup></FormControl><FormMessage /></FormItem>
-          )} />
-           <FormField control={form.control} name="unsafe_category" render={({ field }) => (
-            <FormItem>
-              <FormLabel>Unsafe Category</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>
-                  <SelectItem value="Unsafe Behavior">Unsafe Behavior</SelectItem>
-                  <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
-                  <SelectItem value="N/A">N/A</SelectItem>
-              </SelectContent></Select><FormMessage />
-            </FormItem>
-          )} />
+          <Separator />
+          <div>
+            <FormLabel>Checklist Items</FormLabel>
+            <div className="space-y-2 mt-2">
+              {fields.map((field, index) => (
+                <div key={field.id} className="flex items-center gap-2">
+                  <FormField
+                    control={form.control}
+                    name={`checklist_items.${index}.item`}
+                    render={({ field }) => (
+                      <FormItem className="flex-grow">
+                        <FormControl><Input {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+            <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => append({ item: '' })}>
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Item
+            </Button>
+          </div>
         </div>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button type="submit">Create Observation</Button>
+          <Button type="submit">Create Walk</Button>
         </DialogFooter>
       </form>
     </Form>
@@ -129,63 +118,138 @@ const AddObservationForm = ({
 
 
 const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyWalk | null; isOpen: boolean; onOpenChange: (open: boolean) => void; }) => {
-    const { observations } = useAppData();
-    const [isAddObservationOpen, setAddObservationOpen] = useState(false);
+    const { updateSafetyWalk, addCommentToSafetyWalk } = useAppData();
+    const [newComment, setNewComment] = useState('');
+    const { toast } = useToast();
+
+    const form = useForm<{
+        status: SafetyWalk['status'];
+        checklist_items: { item: string; checked: boolean }[];
+    }>();
+    
+    useEffect(() => {
+        if (walk) {
+            form.reset({
+                status: walk.status,
+                checklist_items: [...walk.checklist_items]
+            });
+        }
+    }, [walk, form]);
 
     if (!walk) return null;
+    
+    const handleSave = () => {
+        const formValues = form.getValues();
+        const allItemsChecked = formValues.checklist_items.every(item => item.checked);
+        let finalStatus = formValues.status;
+        
+        if (formValues.status === 'In Progress' && allItemsChecked) {
+            finalStatus = 'Completed';
+        }
 
-    const linkedObservations = observations.filter(obs => obs.safety_walk_id === walk.safety_walk_id);
+        const updatedWalk: SafetyWalk = {
+            ...walk,
+            status: finalStatus,
+            checklist_items: formValues.checklist_items,
+        };
+        
+        if (newComment.trim()) {
+            addCommentToSafetyWalk(walk.safety_walk_id, {
+                user: 'Safety Manager',
+                comment: newComment.trim(),
+                date: new Date().toISOString(),
+            });
+             // We need to add the comment to the updatedWalk object as well so it appears instantly
+            updatedWalk.comments.push({user: 'Safety Manager', comment: newComment.trim(), date: new Date().toISOString()});
+            setNewComment('');
+        }
+        
+        updateSafetyWalk(updatedWalk);
+        toast({ title: 'Safety Walk Updated' });
+        onOpenChange(false);
+    };
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl">
-                <DialogHeader>
+            <DialogContent className="max-w-3xl">
+                 <DialogHeader>
                     <DialogTitle>Safety Walk Details: {walk.safety_walk_id}</DialogTitle>
                     <DialogDescription>
                         Walk conducted by {walk.walker} on {format(new Date(walk.date), 'PPP')}.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-6">
-                    <div>
-                        <h3 className="text-lg font-semibold mb-2">Checklist Items</h3>
-                        <ul className="space-y-2">
-                            {walk.checklist_items.map((item, index) => (
-                                <li key={index} className="flex items-center gap-2 text-sm">
-                                    {item.checked ? <Check className="h-4 w-4 text-green-500" /> : <X className="h-4 w-4 text-red-500" />}
-                                    <span>{item.item}</span>
-                                </li>
-                            ))}
-                        </ul>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-h-[70vh]">
+                    <div className="md:col-span-2 space-y-6 overflow-y-auto pr-4">
+                        <Form {...form}>
+                            <form>
+                                <FormField
+                                    control={form.control}
+                                    name="status"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                        <FormLabel>Status</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                            <SelectContent>
+                                                <SelectItem value="Scheduled">Scheduled</SelectItem>
+                                                <SelectItem value="In Progress">In Progress</SelectItem>
+                                                <SelectItem value="Completed">Completed</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        </FormItem>
+                                    )}
+                                />
+                                <Separator className="my-6" />
+                                <div>
+                                    <h3 className="text-lg font-semibold mb-4">Checklist Items</h3>
+                                    <div className="space-y-2">
+                                    {walk.checklist_items.map((item, index) => (
+                                        <FormField
+                                            key={index}
+                                            control={form.control}
+                                            name={`checklist_items.${index}.checked`}
+                                            render={({ field }) => (
+                                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                                                     <FormControl>
+                                                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                                     </FormControl>
+                                                     <div className="space-y-1 leading-none">
+                                                        <FormLabel>{item.item}</FormLabel>
+                                                     </div>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    ))}
+                                    </div>
+                                </div>
+                            </form>
+                        </Form>
                     </div>
-                    <Separator />
-                    <div>
-                        <div className="flex justify-between items-center mb-2">
-                           <h3 className="text-lg font-semibold">Linked Observations ({linkedObservations.length})</h3>
-                           <Dialog open={isAddObservationOpen} onOpenChange={setAddObservationOpen}>
-                                <DialogTrigger asChild>
-                                    <Button size="sm"><PlusCircle className="mr-2 h-4 w-4" /> Add Observation</Button>
-                                </DialogTrigger>
-                                <DialogContent><AddObservationForm safetyWalk={walk} setOpen={setAddObservationOpen} /></DialogContent>
-                           </Dialog>
+                    <div className="md:col-span-1 flex flex-col gap-4">
+                        <h3 className="text-lg font-semibold flex items-center gap-2"><MessageSquare className="h-5 w-5" /> Comments</h3>
+                        <div className="flex-1 space-y-4 overflow-y-auto pr-2">
+                            {walk.comments.map((comment, index) => (
+                                <div key={index} className="flex gap-3">
+                                <Avatar>
+                                    <AvatarImage src={`https://placehold.co/40x40.png?text=${comment.user.charAt(0)}`} />
+                                    <AvatarFallback>{comment.user.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1">
+                                    <div className="flex justify-between items-center">
+                                        <p className="font-semibold text-sm">{comment.user}</p>
+                                        <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(comment.date), { addSuffix: true })}</p>
+                                    </div>
+                                    <p className="text-sm text-muted-foreground bg-secondary p-3 rounded-lg mt-1">{comment.comment}</p>
+                                </div>
+                                </div>
+                            ))}
                         </div>
-                        <Card>
-                            <CardContent className="pt-4">
-                               {linkedObservations.length > 0 ? (
-                                <Table>
-                                    <TableHeader><TableRow><TableHead>ID</TableHead><TableHead>Description</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-                                    <TableBody>
-                                        {linkedObservations.map(obs => (
-                                            <TableRow key={obs.observation_id}>
-                                                <TableCell><Button variant="link" asChild><Link href={`/observations?id=${obs.observation_id}`}>{obs.observation_id}</Link></Button></TableCell>
-                                                <TableCell>{obs.description}</TableCell>
-                                                <TableCell><Badge variant={obs.status === 'Open' ? 'default' : 'outline'}>{obs.status}</Badge></TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                               ) : <p className="text-sm text-muted-foreground text-center p-4">No observations linked to this safety walk.</p>}
-                            </CardContent>
-                        </Card>
+                        <div className="flex flex-col gap-2 mt-auto">
+                            <Textarea placeholder="Add a comment..." value={newComment} onChange={(e) => setNewComment(e.target.value)} rows={2}/>
+                            <Button size="sm" onClick={handleSave} disabled={!newComment.trim() && !form.formState.isDirty}>
+                                {newComment.trim() ? 'Save and Add Comment' : 'Save Changes'}
+                            </Button>
+                        </div>
                     </div>
                 </div>
             </DialogContent>
@@ -195,6 +259,7 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
 
 export default function SafetyWalksPage() {
   const { safetyWalks } = useAppData();
+  const [isCreateOpen, setCreateOpen] = useState(false);
   const [selectedWalk, setSelectedWalk] = useState<SafetyWalk | null>(null);
   const [isDetailsOpen, setDetailsOpen] = useState(false);
 
@@ -208,13 +273,14 @@ export default function SafetyWalksPage() {
     if (walk.status === 'Completed') return 100;
     if (walk.status === 'Scheduled') return 0;
     const totalItems = walk.checklist_items.length;
-    if (totalItems === 0) return 50; // In progress but no items yet
+    if (totalItems === 0) return 50; 
     const checkedItems = walk.checklist_items.filter(item => item.checked).length;
     return (checkedItems / totalItems) * 100;
   }
   
   const handleRowClick = (walk: SafetyWalk) => {
-    setSelectedWalk(walk);
+    const currentWalkState = safetyWalks.find(w => w.safety_walk_id === walk.safety_walk_id);
+    setSelectedWalk(currentWalkState || walk);
     setDetailsOpen(true);
   };
 
@@ -223,9 +289,16 @@ export default function SafetyWalksPage() {
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center justify-between space-y-2">
           <h2 className="text-3xl font-bold tracking-tight">Safety Walk Tracker</h2>
-          <Button>
-            <FileUp className="mr-2 h-4 w-4" /> Create New Walk
-          </Button>
+          <Dialog open={isCreateOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+                <Button>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Create New Walk
+                </Button>
+            </DialogTrigger>
+            <DialogContent>
+                <CreateWalkForm setOpen={setCreateOpen} />
+            </DialogContent>
+          </Dialog>
         </div>
 
         <Card>

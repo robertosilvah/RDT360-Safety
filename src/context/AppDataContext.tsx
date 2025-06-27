@@ -21,6 +21,9 @@ interface AppDataContextType {
   updateIncident: (updatedIncident: Incident) => void;
   addCommentToIncident: (incidentId: string, comment: Comment) => void;
   safetyWalks: SafetyWalk[];
+  addSafetyWalk: (walk: SafetyWalk) => void;
+  updateSafetyWalk: (walk: SafetyWalk) => void;
+  addCommentToSafetyWalk: (walkId: string, comment: Comment) => void;
   forkliftInspections: ForkliftInspection[];
   addForkliftInspection: (inspection: ForkliftInspection) => void;
 }
@@ -61,6 +64,19 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     setIncidents(prev => prev.map(i => i.incident_id === incidentId ? {...i, comments: [...i.comments, comment]} : i));
   };
 
+  // Safety Walks
+  const addSafetyWalk = (walk: SafetyWalk) => {
+    setSafetyWalks(prev => [walk, ...prev]);
+  };
+
+  const updateSafetyWalk = (updatedWalk: SafetyWalk) => {
+    setSafetyWalks(prev => prev.map(w => w.safety_walk_id === updatedWalk.safety_walk_id ? updatedWalk : w));
+  };
+
+  const addCommentToSafetyWalk = (walkId: string, comment: Comment) => {
+    setSafetyWalks(prev => prev.map(w => w.safety_walk_id === walkId ? {...w, comments: [...w.comments, comment]} : w));
+  };
+
   // Forklift Inspections
   const addForkliftInspection = (inspection: ForkliftInspection) => {
     setForkliftInspections(prev => [inspection, ...prev]);
@@ -71,7 +87,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       observations, addObservation,
       correctiveActions, addCorrectiveAction, updateCorrectiveAction, addCommentToAction,
       incidents, updateIncident, addCommentToIncident,
-      safetyWalks,
+      safetyWalks, addSafetyWalk, updateSafetyWalk, addCommentToSafetyWalk,
       forkliftInspections, addForkliftInspection,
     }}>
       {children}
