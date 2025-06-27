@@ -1,4 +1,4 @@
-import type { Incident, Observation, SafetyWalk, CorrectiveAction, SafetyDoc, Area, ComplianceRecord, JSA, HotWorkPermit, Comment } from '@/types';
+import type { Incident, Observation, SafetyWalk, CorrectiveAction, SafetyDoc, Area, ComplianceRecord, JSA, HotWorkPermit, Comment, ForkliftInspection } from '@/types';
 import { subDays, formatISO, subHours } from 'date-fns';
 
 const mockUser = "Safety Manager";
@@ -35,6 +35,7 @@ export const mockCorrectiveActions: CorrectiveAction[] = [
   { action_id: 'ACT002', related_to_observation: 'OBS001', due_date: formatISO(subDays(new Date(), -5)), status: 'Pending', responsible_person: 'Warehouse Supervisor', description: 'Clear pallets from emergency exit path.', comments: [] },
   { action_id: 'ACT003', related_to_observation: 'OBS002', due_date: formatISO(new Date()), status: 'Completed', responsible_person: 'Maintenance Head', description: 'Inspect and certify all fire extinguishers.', comments: [{user: mockUser, comment: 'All extinguishers passed inspection.', date: formatISO(subDays(new Date(), 1))}]},
   { action_id: 'ACT004', due_date: formatISO(subDays(new Date(), 5)), status: 'Overdue', responsible_person: 'Area Supervisor', description: 'Repaint floor markings in packaging area.', comments: [{user: 'Area Supervisor', comment: 'Paint has been ordered, vendor delay.', date: formatISO(subDays(new Date(), 3))}] },
+  { action_id: 'ACT-FL-001', related_to_forklift_inspection: 'FINSP-001-tires', due_date: new Date().toISOString(), status: 'Pending', responsible_person: 'Maintenance', description: 'Replace front left tire on Forklift FL-01.', comments: [] },
 ];
 
 export const mockSafetyDocs: SafetyDoc[] = [
@@ -202,4 +203,40 @@ export const mockObservationsByMonth = [
 export const mockObservationStatus = [
     { name: 'Open', value: mockObservations.filter(obs => obs.status === 'Open').length, fill: 'var(--color-open)' },
     { name: 'Closed', value: mockObservations.filter(obs => obs.status === 'Closed').length, fill: 'var(--color-closed)' },
+];
+
+export const mockForklifts = [
+    { id: 'FL-01', name: 'Hyster 5000lb', area: 'Warehouse' },
+    { id: 'FL-02', name: 'Toyota Electric', area: 'Warehouse' },
+    { id: 'FL-03', name: 'Crown Reach Truck', area: 'Assembly Line 1' },
+];
+
+export const FORKLIFT_CHECKLIST_QUESTIONS: { id: string, question: string }[] = [
+    { id: 'horn', question: 'Horn operational?' },
+    { id: 'brakes', question: 'Brakes function correctly?' },
+    { id: 'tires', question: 'Tires in good condition (no major cuts or wear)?' },
+    { id: 'forks', question: 'Forks and mast in good condition (no cracks, bends)?' },
+    { id: 'lights', question: 'Headlights, taillights, and warning lights working?' },
+    { id: 'seatbelt', question: 'Seatbelt functional and in good condition?' },
+    { id: 'leaks', question: 'No visible hydraulic, fuel, or oil leaks?' },
+    { id: 'battery', question: 'Battery charged and connectors are clean?' },
+];
+
+export const mockForkliftInspections: ForkliftInspection[] = [
+    {
+        inspection_id: 'FINSP-001',
+        forklift_id: 'FL-01',
+        operator_name: 'John Doe',
+        date: subDays(new Date(), 1).toISOString(),
+        checklist: [
+            { id: 'horn', question: 'Horn operational?', status: 'Pass' },
+            { id: 'brakes', question: 'Brakes function correctly?', status: 'Pass' },
+            { id: 'tires', question: 'Tires in good condition (no major cuts or wear)?', status: 'Fail', comment: 'Large gash in front left tire.', actionId: 'ACT-FL-001' },
+            { id: 'forks', question: 'Forks and mast in good condition (no cracks, bends)?', status: 'Pass' },
+            { id: 'lights', question: 'Headlights, taillights, and warning lights working?', status: 'Pass' },
+            { id: 'seatbelt', question: 'Seatbelt functional and in good condition?', status: 'Pass' },
+            { id: 'leaks', question: 'No visible hydraulic, fuel, or oil leaks?', status: 'Pass' },
+            { id: 'battery', question: 'Battery charged and connectors are clean?', status: 'Pass' },
+        ]
+    }
 ];

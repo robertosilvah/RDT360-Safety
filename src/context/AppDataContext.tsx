@@ -1,12 +1,13 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk } from '@/types';
+import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection } from '@/types';
 import {
   mockObservations,
   mockCorrectiveActions,
   mockIncidents,
   mockSafetyWalks,
+  mockForkliftInspections,
 } from '@/lib/mockData';
 
 interface AppDataContextType {
@@ -20,6 +21,8 @@ interface AppDataContextType {
   updateIncident: (updatedIncident: Incident) => void;
   addCommentToIncident: (incidentId: string, comment: Comment) => void;
   safetyWalks: SafetyWalk[];
+  forkliftInspections: ForkliftInspection[];
+  addForkliftInspection: (inspection: ForkliftInspection) => void;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -29,6 +32,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [correctiveActions, setCorrectiveActions] = useState<CorrectiveAction[]>(mockCorrectiveActions);
   const [incidents, setIncidents] = useState<Incident[]>(mockIncidents);
   const [safetyWalks, setSafetyWalks] = useState<SafetyWalk[]>(mockSafetyWalks);
+  const [forkliftInspections, setForkliftInspections] = useState<ForkliftInspection[]>(mockForkliftInspections);
 
   // Observations
   const addObservation = (observation: Observation) => {
@@ -57,12 +61,18 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     setIncidents(prev => prev.map(i => i.incident_id === incidentId ? {...i, comments: [...i.comments, comment]} : i));
   };
 
+  // Forklift Inspections
+  const addForkliftInspection = (inspection: ForkliftInspection) => {
+    setForkliftInspections(prev => [inspection, ...prev]);
+  };
+
   return (
     <AppDataContext.Provider value={{
       observations, addObservation,
       correctiveActions, addCorrectiveAction, updateCorrectiveAction, addCommentToAction,
       incidents, updateIncident, addCommentToIncident,
       safetyWalks,
+      forkliftInspections, addForkliftInspection,
     }}>
       {children}
     </AppDataContext.Provider>

@@ -45,6 +45,7 @@ export type CorrectiveAction = {
   action_id: string;
   related_to_incident?: string;
   related_to_observation?: string;
+  related_to_forklift_inspection?: string; // e.g., 'FINSP-001-tires'
   due_date: string;
   status: 'Pending' | 'In Progress' | 'Completed' | 'Overdue';
   responsible_person: string;
@@ -104,4 +105,20 @@ export type HotWorkPermit = {
   created_by: string;
   created_date: string;
   signatures: { employee_name: string; sign_date: string }[];
+};
+
+export type ForkliftChecklistItem = {
+  id: string;
+  question: string;
+  status: 'Pass' | 'Fail' | 'N/A';
+  comment?: string;
+  actionId?: string;
+};
+
+export type ForkliftInspection = {
+  inspection_id: string;
+  forklift_id: string;
+  operator_name: string;
+  date: string;
+  checklist: ForkliftChecklistItem[];
 };
