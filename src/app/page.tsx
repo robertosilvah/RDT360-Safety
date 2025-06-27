@@ -38,12 +38,13 @@ export default function DashboardPage() {
 
   const daysSinceLastIncident = useMemo(() => {
     if (incidents.length === 0) {
-      return 365; // Default if no incidents
+      return { value: 'N/A', description: 'No incidents recorded yet.' };
     }
     const lastIncidentDate = incidents.reduce((max, incident) =>
       new Date(incident.date) > new Date(max.date) ? incident : max
     ).date;
-    return differenceInDays(new Date(), new Date(lastIncidentDate));
+    const days = differenceInDays(new Date(), new Date(lastIncidentDate));
+    return { value: days.toString(), description: 'All areas included' };
   }, [incidents]);
 
   const pendingActions = useMemo(() => {
@@ -111,9 +112,9 @@ export default function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <KpiCard
             title="Days Since Last Accident"
-            value={daysSinceLastIncident.toString()}
+            value={daysSinceLastIncident.value}
             icon={<Siren className="h-4 w-4 text-muted-foreground" />}
-            description="All areas included"
+            description={daysSinceLastIncident.description}
           />
           <KpiCard
             title="Pending Actions"
