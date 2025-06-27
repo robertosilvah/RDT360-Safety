@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift } from '@/types';
+import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem } from '@/types';
 import {
   mockObservations,
   mockCorrectiveActions,
@@ -10,6 +10,7 @@ import {
   mockForkliftInspections,
   mockUsers,
   mockForklifts,
+  mockPredefinedChecklistItems,
 } from '@/lib/mockData';
 
 interface AppDataContextType {
@@ -36,6 +37,10 @@ interface AppDataContextType {
   addUser: (user: User) => void;
   updateUserStatus: (userId: string, status: User['status']) => void;
   removeUser: (userId: string) => void;
+  predefinedChecklistItems: PredefinedChecklistItem[];
+  addPredefinedChecklistItem: (item: PredefinedChecklistItem) => void;
+  updatePredefinedChecklistItem: (item: PredefinedChecklistItem) => void;
+  removePredefinedChecklistItem: (itemId: string) => void;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -48,6 +53,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [forkliftInspections, setForkliftInspections] = useState<ForkliftInspection[]>(mockForkliftInspections);
   const [users, setUsers] = useState<User[]>(mockUsers);
   const [forklifts, setForklifts] = useState<Forklift[]>(mockForklifts);
+  const [predefinedChecklistItems, setPredefinedChecklistItems] = useState<PredefinedChecklistItem[]>(mockPredefinedChecklistItems);
 
   // Observations
   const addObservation = (observation: Observation) => {
@@ -118,6 +124,18 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     setUsers(prev => prev.filter(u => u.id !== userId));
   };
 
+  // Predefined Checklist Items
+  const addPredefinedChecklistItem = (item: PredefinedChecklistItem) => {
+    setPredefinedChecklistItems(prev => [item, ...prev]);
+  };
+  const updatePredefinedChecklistItem = (updatedItem: PredefinedChecklistItem) => {
+    setPredefinedChecklistItems(prev => prev.map(item => item.id === updatedItem.id ? updatedItem : item));
+  };
+  const removePredefinedChecklistItem = (itemId: string) => {
+    setPredefinedChecklistItems(prev => prev.filter(item => item.id !== itemId));
+  };
+
+
   return (
     <AppDataContext.Provider value={{
       observations, addObservation,
@@ -127,6 +145,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       forkliftInspections, addForkliftInspection,
       forklifts, addForklift, updateForklift, removeForklift,
       users, addUser, updateUserStatus, removeUser,
+      predefinedChecklistItems, addPredefinedChecklistItem, updatePredefinedChecklistItem, removePredefinedChecklistItem,
     }}>
       {children}
     </AppDataContext.Provider>

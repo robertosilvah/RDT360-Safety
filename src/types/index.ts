@@ -138,3 +138,8 @@ export type User = {
   role: 'Administrator' | 'Manager' | 'Operator' | 'Maintenance' | 'HR';
   status: 'Active' | 'Pending';
 };
+
+export type PredefinedChecklistItem = {
+  id: string;
+  text: string;
+};

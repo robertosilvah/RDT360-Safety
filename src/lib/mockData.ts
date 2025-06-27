@@ -1,4 +1,4 @@
-import type { Incident, Observation, SafetyWalk, CorrectiveAction, SafetyDoc, Area, ComplianceRecord, JSA, HotWorkPermit, Comment, ForkliftInspection, User, Forklift } from '@/types';
+import type { Incident, Observation, SafetyWalk, CorrectiveAction, SafetyDoc, Area, ComplianceRecord, JSA, HotWorkPermit, Comment, ForkliftInspection, User, Forklift, PredefinedChecklistItem } from '@/types';
 import { subDays, formatISO, subHours } from 'date-fns';
 
 const mockUser = "Safety Manager";
@@ -249,4 +249,12 @@ export const mockUsers: User[] = [
   { id: 'user-5', name: 'HR Person', email: 'hr@example.com', role: 'HR', status: 'Active' },
   { id: 'user-6', name: 'Pending Operator', email: 'pending.op@example.com', role: 'Operator', status: 'Pending' },
   { id: 'user-7', name: 'Pending Manager', email: 'pending.mgr@example.com', role: 'Manager', status: 'Pending' },
+];
+
+export const mockPredefinedChecklistItems: PredefinedChecklistItem[] = [
+  { id: 'pcl-1', text: 'PPE Compliance' },
+  { id: 'pcl-2', text: 'Machine Guarding' },
+  { id: 'pcl-3', text: 'Housekeeping & Slip/Trip Hazards' },
+  { id: 'pcl-4', text: 'Fire Extinguisher Accessibility' },
+  { id: 'pcl-5', text: 'Emergency E-Stops Clear' },
 ];

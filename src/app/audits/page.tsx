@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAppData } from '@/context/AppDataContext';
-import type { SafetyWalk, Observation, Comment } from '@/types';
+import type { SafetyWalk, PredefinedChecklistItem } from '@/types';
 import { PlusCircle, Trash2, CheckCircle2, PlayCircle, Clock, MessageSquare, User, Users, Star } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -16,7 +16,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -32,37 +32,57 @@ const walkFormSchema = z.object({
   date: z.string().refine((val) => !isNaN(Date.parse(val)), { message: 'A valid date is required.' }),
   people_involved: z.string().optional(),
   safety_feeling_scale: z.number().min(1).max(5).optional(),
-  checklist_items: z.array(z.object({ item: z.string().min(3, 'Checklist item must be at least 3 characters.') })).min(1, 'At least one checklist item is required.'),
+  predefined_checklist_ids: z.array(z.string()).optional(),
+  custom_checklist_items: z.array(z.object({ item: z.string().min(3, 'Checklist item must be at least 3 characters.') })).optional(),
+}).refine((data) => (data.predefined_checklist_ids?.length || 0) + (data.custom_checklist_items?.length || 0) > 0, {
+  message: 'At least one checklist item is required.',
+  path: ['predefined_checklist_ids'],
 });
 
 type WalkFormValues = z.infer<typeof walkFormSchema>;
 
 const CreateWalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
-  const { addSafetyWalk } = useAppData();
+  const { addSafetyWalk, predefinedChecklistItems } = useAppData();
   const { toast } = useToast();
   const [hoveredStars, setHoveredStars] = useState<number | null>(null);
+
   const form = useForm<WalkFormValues>({
     resolver: zodResolver(walkFormSchema),
     defaultValues: {
       walker: '',
       people_involved: '',
       safety_feeling_scale: 3,
-      checklist_items: [{ item: 'PPE Compliance' }, { item: 'Machine Guarding' }, { item: 'Housekeeping' }],
+      predefined_checklist_ids: [],
+      custom_checklist_items: [],
     },
   });
+
   const { fields, append, remove } = useFieldArray({
     control: form.control,
-    name: 'checklist_items',
+    name: 'custom_checklist_items',
   });
 
   const onSubmit = (values: WalkFormValues) => {
+    const selectedPredefinedItems = values.predefined_checklist_ids
+      ?.map(id => {
+          const foundItem = predefinedChecklistItems.find(item => item.id === id);
+          return foundItem ? { item: foundItem.text, checked: false } : null;
+      })
+      .filter((item): item is { item: string; checked: boolean } => item !== null) || [];
+    
+    const customItems = values.custom_checklist_items?.map(item => ({ ...item, checked: false })) || [];
+
+    const allChecklistItems = [...selectedPredefinedItems, ...customItems];
+
     const newWalk: SafetyWalk = {
       safety_walk_id: `SWALK${Date.now()}`,
       status: 'Scheduled',
       comments: [],
-      ...values,
+      walker: values.walker,
       date: new Date(values.date).toISOString(),
-      checklist_items: values.checklist_items.map(item => ({ ...item, checked: false })),
+      people_involved: values.people_involved,
+      safety_feeling_scale: values.safety_feeling_scale,
+      checklist_items: allChecklistItems,
     };
     addSafetyWalk(newWalk);
     toast({
@@ -124,16 +144,56 @@ const CreateWalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
           />
           <Separator />
           <div>
-            <FormLabel>Checklist Items</FormLabel>
-            <div className="space-y-2 mt-2">
+            <h3 className="text-lg font-semibold">Checklist Items</h3>
+            <FormField
+              control={form.control}
+              name="predefined_checklist_ids"
+              render={() => (
+                <FormItem className="mt-4">
+                  <div className="mb-4">
+                    <FormLabel className="text-base">Predefined Items</FormLabel>
+                    <FormDescription>Select from the master list of checklist items.</FormDescription>
+                  </div>
+                  {predefinedChecklistItems.map((item) => (
+                    <FormField
+                      key={item.id}
+                      control={form.control}
+                      name="predefined_checklist_ids"
+                      render={({ field }) => (
+                        <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0 mb-2">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value?.includes(item.id)}
+                              onCheckedChange={(checked) => {
+                                return checked
+                                  ? field.onChange([...(field.value || []), item.id])
+                                  : field.onChange(field.value?.filter((value) => value !== item.id));
+                              }}
+                            />
+                          </FormControl>
+                          <FormLabel className="font-normal">{item.text}</FormLabel>
+                        </FormItem>
+                      )}
+                    />
+                  ))}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </div>
+          <Separator />
+          <div>
+            <FormLabel className="text-base">Custom Items</FormLabel>
+            <FormDescription>Add any walk-specific items not on the predefined list.</FormDescription>
+            <div className="space-y-2 mt-4">
               {fields.map((field, index) => (
                 <div key={field.id} className="flex items-center gap-2">
                   <FormField
                     control={form.control}
-                    name={`checklist_items.${index}.item`}
+                    name={`custom_checklist_items.${index}.item`}
                     render={({ field }) => (
                       <FormItem className="flex-grow">
-                        <FormControl><Input {...field} /></FormControl>
+                        <FormControl><Input {...field} placeholder="Enter custom item text..."/></FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -145,7 +205,7 @@ const CreateWalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
               ))}
             </div>
             <Button type="button" variant="outline" size="sm" className="mt-2" onClick={() => append({ item: '' })}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Item
+              <PlusCircle className="mr-2 h-4 w-4" /> Add Custom Item
             </Button>
           </div>
         </div>

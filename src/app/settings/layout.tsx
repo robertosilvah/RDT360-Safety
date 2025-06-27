@@ -5,12 +5,12 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Truck } from 'lucide-react';
+import { Users, Truck, ListChecks } from 'lucide-react';
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
     const pathname = usePathname();
 
-    const activeTab = pathname.includes('/users') ? 'users' : pathname.includes('/forklifts') ? 'forklifts' : '';
+    const activeTab = pathname.includes('/users') ? 'users' : pathname.includes('/forklifts') ? 'forklifts' : pathname.includes('/checklist') ? 'checklist' : '';
 
     return (
         <AppShell>
@@ -32,6 +32,11 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
                         <TabsTrigger value="forklifts" asChild>
                            <Link href="/settings/forklifts">
                                <Truck className="mr-2 h-4 w-4" /> Forklifts
+                           </Link>
+                        </TabsTrigger>
+                        <TabsTrigger value="checklist" asChild>
+                           <Link href="/settings/checklist">
+                               <ListChecks className="mr-2 h-4 w-4" /> Checklist Items
                            </Link>
                         </TabsTrigger>
                     </TabsList>
