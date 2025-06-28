@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAppData } from '@/context/AppDataContext';
 import type { Investigation, Comment, CorrectiveAction } from '@/types';
-import { PlusCircle, Upload, FileText, MessageSquare, User, Clock, Siren } from 'lucide-react';
+import { PlusCircle, Upload, FileText, MessageSquare, User, Clock, Siren, Wand2, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -23,6 +23,7 @@ import { Separator } from '@/components/ui/separator';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useSearchParams } from 'next/navigation';
+import { getInvestigationAnalysisAction } from '@/app/actions';
 
 const investigationFormSchema = z.object({
   status: z.enum(['Open', 'In Progress', 'Closed']),
@@ -82,9 +83,10 @@ const NewActionForm = ({ investigationId, onActionAdded }: { investigationId: st
 };
 
 const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { investigation: Investigation | null; isOpen: boolean; onOpenChange: (open: boolean) => void; }) => {
-  const { updateInvestigation, addCommentToInvestigation, addDocumentToInvestigation, correctiveActions } = useAppData();
+  const { incidents, updateInvestigation, addCommentToInvestigation, addDocumentToInvestigation, correctiveActions } = useAppData();
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const form = useForm<InvestigationFormValues>({
     resolver: zodResolver(investigationFormSchema),
@@ -107,6 +109,38 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
   }, [investigation, form, isOpen]);
 
   if (!investigation) return null;
+
+  const incidentDetails = incidents.find(i => i.incident_id === investigation.incident_id);
+
+  const handleAiAnalysis = async () => {
+    if (!incidentDetails) {
+        toast({ title: "Error", description: "Incident details not found.", variant: "destructive" });
+        return;
+    }
+
+    setIsAnalyzing(true);
+    try {
+        const analysis = await getInvestigationAnalysisAction({
+            incidentDescription: incidentDetails.description,
+            incidentType: incidentDetails.type,
+            incidentSeverity: incidentDetails.severity,
+            incidentArea: incidentDetails.area,
+        });
+
+        if (analysis.rootCause && analysis.contributingFactors) {
+            form.setValue('root_cause', analysis.rootCause, { shouldDirty: true });
+            form.setValue('contributing_factors', analysis.contributingFactors, { shouldDirty: true });
+            toast({ title: "Analysis Complete", description: "Root cause and contributing factors have been populated." });
+        } else {
+            toast({ title: "Analysis Failed", description: analysis.rootCause, variant: "destructive" });
+        }
+    } catch (error) {
+        console.error(error);
+        toast({ title: "Analysis Error", description: "An unexpected error occurred.", variant: "destructive" });
+    } finally {
+        setIsAnalyzing(false);
+    }
+  };
 
   const handleSubmit = (values: InvestigationFormValues) => {
     const updatedInvestigation = { ...investigation, ...values };
@@ -155,12 +189,26 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
                     </Select>
                   </FormItem>
                 )} />
-                <FormField control={form.control} name="root_cause" render={({ field }) => (
-                  <FormItem><FormLabel>Root Cause Analysis</FormLabel><FormControl><Textarea rows={4} placeholder="Describe the root cause..." {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="contributing_factors" render={({ field }) => (
-                  <FormItem><FormLabel>Contributing Factors</FormLabel><FormControl><Textarea rows={4} placeholder="List contributing factors..." {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
+
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-semibold">Analysis</h3>
+                      <Button type="button" size="sm" onClick={handleAiAnalysis} disabled={isAnalyzing || !incidentDetails}>
+                          {isAnalyzing ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          ) : (
+                              <Wand2 className="mr-2 h-4 w-4" />
+                          )}
+                          Analyze with AI
+                      </Button>
+                  </div>
+                  <FormField control={form.control} name="root_cause" render={({ field }) => (
+                    <FormItem><FormLabel>Root Cause Analysis</FormLabel><FormControl><Textarea rows={4} placeholder="Describe the root cause..." {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="contributing_factors" render={({ field }) => (
+                    <FormItem><FormLabel>Contributing Factors</FormLabel><FormControl><Textarea rows={4} placeholder="List contributing factors..." {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                </div>
               </form>
             </Form>
 
