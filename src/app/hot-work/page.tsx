@@ -1,3 +1,4 @@
+
 'use client';
 
 import { AppShell } from '@/components/AppShell';
@@ -5,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { mockHotWorkPermits, mockAreas } from '@/lib/mockData';
+import { mockAreas } from '@/lib/mockDataLocal';
 import type { HotWorkPermit, Area } from '@/types';
 import { PlusCircle, Users, FileSignature, Edit, UserCheck, Trash2, MapPin, Flame, Clock, CheckSquare, Share2 } from 'lucide-react';
 import React, { useState } from 'react';
@@ -22,6 +23,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { format } from 'date-fns';
 import { useSearchParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useAppData } from '@/context/AppDataContext';
 
 
 const permitFormSchema = z.object({
@@ -51,7 +53,6 @@ const PREDEFINED_PRECAUTIONS = [
   { id: 'precaution_6', label: 'Sprinkler system protection in service' },
 ];
 
-// Helper component to render nested area options for the select dropdown
 const AreaSelectOptions = ({ areas, level = 0 }: { areas: Area[]; level?: number }) => {
   return (
     <>
@@ -68,7 +69,7 @@ const AreaSelectOptions = ({ areas, level = 0 }: { areas: Area[]; level?: number
 };
 
 
-const CreatePermitForm = ({ onAddPermit, setOpen }: { onAddPermit: (permit: HotWorkPermit) => void, setOpen: (open: boolean) => void }) => {
+const CreatePermitForm = ({ onAddPermit, setOpen }: { onAddPermit: (permit: Omit<HotWorkPermit, 'permit_id'>) => Promise<void>, setOpen: (open: boolean) => void }) => {
   const form = useForm<PermitFormValues>({
     resolver: zodResolver(permitFormSchema),
     defaultValues: {
@@ -82,14 +83,13 @@ const CreatePermitForm = ({ onAddPermit, setOpen }: { onAddPermit: (permit: HotW
   
   const { toast } = useToast();
 
-  const onSubmit = (data: PermitFormValues) => {
+  const onSubmit = async (data: PermitFormValues) => {
     const allPrecautions = [...data.precautions];
     if (data.other_precautions) {
         allPrecautions.push(data.other_precautions);
     }
 
-    const newPermit: HotWorkPermit = {
-        permit_id: `HWP${String(Math.floor(Math.random() * 900) + 100)}`,
+    const newPermit: Omit<HotWorkPermit, 'permit_id'> = {
         title: data.title,
         description: data.description,
         areaId: data.areaId,
@@ -100,7 +100,7 @@ const CreatePermitForm = ({ onAddPermit, setOpen }: { onAddPermit: (permit: HotW
         created_date: new Date().toISOString(),
         signatures: [],
     };
-    onAddPermit(newPermit);
+    await onAddPermit(newPermit);
     toast({
       title: 'Hot Work Permit Created',
       description: `The permit "${data.title}" has been successfully created.`,
@@ -258,8 +258,7 @@ const findAreaPathById = (areas: Area[], id: string, path: string[] = []): strin
     return '';
 };
 
-// This component now takes a permit and handles its own dialog state.
-const PermitCard = ({ permit, onSign, currentUser, areaPath, isOpen, onOpenChange, onShare }: { permit: HotWorkPermit, onSign: (permitId: string, name: string) => void, currentUser: string, areaPath: string, isOpen: boolean, onOpenChange: (open: boolean) => void, onShare: () => void }) => {
+const PermitCard = ({ permit, onSign, currentUser, areaPath, isOpen, onOpenChange, onShare }: { permit: HotWorkPermit, onSign: (updatedPermit: HotWorkPermit) => Promise<void>, currentUser: string, areaPath: string, isOpen: boolean, onOpenChange: (open: boolean) => void, onShare: () => void }) => {
     const [signatureName, setSignatureName] = useState(currentUser);
     const hasSigned = permit.signatures.some(s => s.employee_name === currentUser);
     const [isClient, setIsClient] = useState(false);
@@ -270,7 +269,11 @@ const PermitCard = ({ permit, onSign, currentUser, areaPath, isOpen, onOpenChang
 
     const handleSign = () => {
         if (signatureName.trim() && !hasSigned) {
-            onSign(permit.permit_id, signatureName.trim());
+            const updatedPermit = {
+                ...permit,
+                signatures: [...permit.signatures, { employee_name: signatureName.trim(), sign_date: new Date().toISOString() }],
+            };
+            onSign(updatedPermit);
         }
     };
 
@@ -393,7 +396,7 @@ const PermitCard = ({ permit, onSign, currentUser, areaPath, isOpen, onOpenChang
 
 export default function HotWorkPermitsPage() {
     const MOCKED_CURRENT_USER = "Sarah Miller";
-    const [permits, setPermits] = useState<HotWorkPermit[]>(mockHotWorkPermits);
+    const { hotWorkPermits, addHotWorkPermit, updateHotWorkPermit } = useAppData();
     const { toast } = useToast();
     const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
     const searchParams = useSearchParams();
@@ -401,10 +404,10 @@ export default function HotWorkPermitsPage() {
 
     React.useEffect(() => {
         const permitIdFromUrl = searchParams.get('id');
-        if (permitIdFromUrl && permits.some(p => p.permit_id === permitIdFromUrl)) {
+        if (permitIdFromUrl && hotWorkPermits.some(p => p.permit_id === permitIdFromUrl)) {
             setOpenDialogId(permitIdFromUrl);
         }
-    }, [searchParams, permits]);
+    }, [searchParams, hotWorkPermits]);
 
     const handleShare = (permitId: string) => {
         const url = `${window.location.origin}/hot-work?id=${permitId}`;
@@ -416,30 +419,14 @@ export default function HotWorkPermitsPage() {
         });
     };
 
-    const handleSignPermit = (permitId: string, employeeName: string) => {
-        setPermits(prevPermits => {
-            return prevPermits.map(permit => {
-                if (permit.permit_id === permitId) {
-                    if (permit.signatures.some(s => s.employee_name === employeeName)) {
-                        return permit;
-                    }
-                    const newSignatures = [...permit.signatures, { employee_name: employeeName, sign_date: new Date().toISOString() }];
-                    return { ...permit, signatures: newSignatures };
-                }
-                return permit;
-            });
-        });
-
+    const handleSignPermit = async (updatedPermit: HotWorkPermit) => {
+        await updateHotWorkPermit(updatedPermit);
         toast({
             title: "Permit Signed",
-            description: `Thank you for signing, ${employeeName}.`,
+            description: `Thank you for signing.`,
         });
     };
     
-    const handleAddPermit = (newPermit: HotWorkPermit) => {
-        setPermits(prevPermits => [newPermit, ...prevPermits]);
-    };
-
     return (
         <AppShell>
             <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -452,7 +439,7 @@ export default function HotWorkPermitsPage() {
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="max-w-4xl">
-                            <CreatePermitForm onAddPermit={handleAddPermit} setOpen={setCreateDialogOpen} />
+                            <CreatePermitForm onAddPermit={addHotWorkPermit} setOpen={setCreateDialogOpen} />
                         </DialogContent>
                     </Dialog>
                 </div>
@@ -461,7 +448,7 @@ export default function HotWorkPermitsPage() {
                 </p>
 
                 <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
-                    {permits.map((permit) => {
+                    {hotWorkPermits.map((permit) => {
                         const areaPath = findAreaPathById(mockAreas, permit.areaId) || 'Unknown Area';
                         return (
                           <PermitCard 

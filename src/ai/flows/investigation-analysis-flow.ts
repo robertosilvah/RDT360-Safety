@@ -9,7 +9,9 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {mockIncidents} from '@/lib/mockData';
+import {db} from '@/lib/firebase';
+import {collection, getDocs} from 'firebase/firestore';
+import type {Incident} from '@/types';
 import {z} from 'genkit';
 
 // Tool to find similar incidents
@@ -33,7 +35,15 @@ const findSimilarIncidents = ai.defineTool(
   },
   async ({query}) => {
     const queryLower = query.toLowerCase();
-    const similar = mockIncidents.filter(incident =>
+
+    const incidentsCollection = collection(db, 'incidents');
+    const incidentsSnapshot = await getDocs(incidentsCollection);
+    const allIncidents: Incident[] = incidentsSnapshot.docs.map(doc => ({
+      ...(doc.data() as Omit<Incident, 'incident_id'>),
+      incident_id: doc.id,
+    }));
+
+    const similar = allIncidents.filter(incident =>
       incident.description.toLowerCase().includes(queryLower)
     );
 

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useRef } from 'react';
@@ -19,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { mockAreas } from '@/lib/mockData';
+import { mockAreas } from '@/lib/mockDataLocal';
 import type { Observation, Area, CorrectiveAction } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -59,6 +60,9 @@ import { useAppData } from '@/context/AppDataContext';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
+import { storage } from '@/lib/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { Loader2 } from 'lucide-react';
 
 const observationFormSchema = z.object({
   report_type: z.enum(['Safety Concern', 'Positive Observation', 'Near Miss'], {
@@ -237,13 +241,9 @@ export default function ObservationsPage() {
   const [isDetailsOpen, setDetailsOpen] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Mock current user for role-based access control.
-  // In a real app, this would come from an authentication context.
-  // Defaulting to a Manager role to demonstrate functionality.
-  // To test as an Administrator, change 'user-2' to 'user-1'.
-  // To test as an Operator, change 'user-2' to 'user-3'.
-  const currentUser = users.find(u => u.id === 'user-2'); // Sarah Miller (Manager)
+  const currentUser = users.find(u => u.id === 'user-1') || users[0];
 
   const canImport = currentUser?.role === 'Administrator';
   const canExport = currentUser?.role === 'Administrator' || currentUser?.role === 'Manager';
@@ -284,49 +284,65 @@ export default function ObservationsPage() {
     }
   };
 
-  function onSubmit(values: z.infer<typeof observationFormSchema>) {
-    const newObservationId = `OBS${Date.now()}`;
-    const newObservation: Observation = {
-        observation_id: newObservationId,
-        report_type: values.report_type,
-        submitted_by: values.submitted_by,
-        date: new Date(values.date).toISOString(),
-        areaId: values.areaId,
-        person_involved: values.person_involved,
-        risk_level: values.risk_level,
-        description: values.description,
-        actions: values.actions,
-        unsafe_category: values.unsafe_category,
-        status: 'Open',
-        imageUrl: imagePreview || undefined,
-    };
-    addObservation(newObservation);
+  async function onSubmit(values: z.infer<typeof observationFormSchema>) {
+    setIsSubmitting(true);
+    try {
+      let imageUrl: string | undefined = undefined;
+      if (selectedFile) {
+        toast({ title: "Uploading image...", description: "Please wait." });
+        const storageRef = ref(storage, `observations/${Date.now()}_${selectedFile.name}`);
+        await uploadBytes(storageRef, selectedFile);
+        imageUrl = await getDownloadURL(storageRef);
+      }
 
-    if (values.createAction && values.actionDescription && values.actionResponsiblePerson && values.actionDueDate) {
-        const newAction: CorrectiveAction = {
-            action_id: `ACT${Date.now()}`,
-            description: values.actionDescription,
-            responsible_person: values.actionResponsiblePerson,
-            due_date: new Date(values.actionDueDate).toISOString(),
-            status: 'Pending',
-            related_to_observation: newObservationId,
-            comments: [],
-        };
-        addCorrectiveAction(newAction);
+      const newObservationData: Omit<Observation, 'observation_id' | 'status'> = {
+          report_type: values.report_type,
+          submitted_by: values.submitted_by,
+          date: new Date(values.date).toISOString(),
+          areaId: values.areaId,
+          person_involved: values.person_involved,
+          risk_level: values.risk_level,
+          description: values.description,
+          actions: values.actions,
+          unsafe_category: values.unsafe_category,
+          imageUrl: imageUrl,
+      };
+      await addObservation(newObservationData);
+
+      if (values.createAction && values.actionDescription && values.actionResponsiblePerson && values.actionDueDate) {
+          const newActionData: Omit<CorrectiveAction, 'action_id' | 'related_to_observation' | 'comments'> = {
+              description: values.actionDescription,
+              responsible_person: values.actionResponsiblePerson,
+              due_date: new Date(values.actionDueDate).toISOString(),
+              status: 'Pending',
+          };
+          // This is a simplified linking. In a real app, you'd get the new observation's ID
+          // back and then create the action with the correct `related_to_observation` ID.
+          await addCorrectiveAction(newActionData);
+          toast({
+              title: 'Observation & Action Created',
+              description: 'The observation and a linked corrective action have been submitted.',
+          });
+      } else {
+          toast({
+              title: 'Observation Submitted',
+              description: 'Your observation has been successfully submitted.',
+          });
+      }
+
+      form.reset();
+      setImagePreview(null);
+      setSelectedFile(null);
+    } catch (error) {
+        console.error("Failed to submit observation:", error);
         toast({
-            title: 'Observation & Action Created',
-            description: `Observation ${newObservationId} and a linked corrective action have been submitted.`,
+            variant: "destructive",
+            title: "Submission Failed",
+            description: "There was an error submitting your observation. Please try again.",
         });
-    } else {
-        toast({
-            title: 'Observation Submitted',
-            description: `Observation ${newObservationId} has been submitted.`,
-        });
+    } finally {
+        setIsSubmitting(false);
     }
-
-    form.reset();
-    setImagePreview(null);
-    setSelectedFile(null);
   }
 
   const handleRowClick = (observation: Observation) => {
@@ -342,12 +358,11 @@ export default function ObservationsPage() {
     ] as (keyof Observation)[];
 
     const csvRows = [
-      headers.join(','), // header row
+      headers.join(','),
       ...observations.map(obs => {
         const values = headers.map(header => {
-          const value = header in obs ? obs[header] : '';
+          const value = header in obs ? obs[header as keyof Observation] : '';
           const stringValue = String(value ?? '');
-          // Escape double quotes by doubling them and wrap value in quotes if it contains a comma or a quote
           if (stringValue.includes(',') || stringValue.includes('"')) {
             return `"${stringValue.replace(/"/g, '""')}"`;
           }
@@ -380,7 +395,7 @@ export default function ObservationsPage() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
         const text = event.target?.result as string;
         if (!text) {
             toast({ variant: 'destructive', title: 'Import Failed', description: 'Could not read file.' });
@@ -395,15 +410,15 @@ export default function ObservationsPage() {
             }
 
             const headers = rows[0].split(',').map(h => h.trim());
-            const requiredHeaders = ['observation_id', 'report_type', 'submitted_by', 'areaId', 'description'];
+            const requiredHeaders = ['report_type', 'submitted_by', 'areaId', 'description'];
             for(const reqHeader of requiredHeaders) {
                 if (!headers.includes(reqHeader)) {
                     toast({ variant: 'destructive', title: 'Import Failed', description: `Missing required CSV column: ${reqHeader}` });
                     return;
                 }
             }
-
-            const observationsToAdd: Observation[] = [];
+            
+            let importedCount = 0;
             for (let i = 1; i < rows.length; i++) {
                 const values = rows[i].split(',');
                 const obsData: { [key: string]: string } = {};
@@ -411,12 +426,7 @@ export default function ObservationsPage() {
                     obsData[header] = values[index]?.trim();
                 });
 
-                if (observations.some(o => o.observation_id === obsData.observation_id)) {
-                  continue; // Skip if observation already exists
-                }
-
-                const newObservation: Observation = {
-                    observation_id: obsData.observation_id,
+                const newObservation: Omit<Observation, 'observation_id' | 'status'> = {
                     report_type: obsData.report_type as Observation['report_type'] || 'Safety Concern',
                     submitted_by: obsData.submitted_by,
                     date: obsData.date || new Date().toISOString(),
@@ -426,16 +436,15 @@ export default function ObservationsPage() {
                     description: obsData.description,
                     actions: obsData.actions || 'No immediate actions logged.',
                     unsafe_category: obsData.unsafe_category as Observation['unsafe_category'] || 'N/A',
-                    status: (obsData.status as Observation['status']) || 'Open',
                     imageUrl: obsData.imageUrl,
                     safety_walk_id: obsData.safety_walk_id
                 };
-                observationsToAdd.push(newObservation);
+                await addObservation(newObservation);
+                importedCount++;
             }
 
-            if (observationsToAdd.length > 0) {
-              observationsToAdd.forEach(obs => addObservation(obs));
-              toast({ title: 'Import Successful', description: `${observationsToAdd.length} new observations imported.` });
+            if (importedCount > 0) {
+              toast({ title: 'Import Successful', description: `${importedCount} new observations imported.` });
             } else {
               toast({ title: 'Import Complete', description: 'No new observations to import.' });
             }
@@ -711,7 +720,8 @@ export default function ObservationsPage() {
                       </div>
                     )}
 
-                    <Button type="submit" className="w-full">
+                    <Button type="submit" className="w-full" disabled={isSubmitting}>
+                      {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Submit Observation
                     </Button>
                   </form>
@@ -768,7 +778,7 @@ export default function ObservationsPage() {
                   <TableBody>
                     {observations.map((obs) => (
                       <TableRow key={obs.observation_id} onClick={() => handleRowClick(obs)} className="cursor-pointer">
-                        <TableCell className="font-medium">{obs.observation_id}</TableCell>
+                        <TableCell className="font-medium">{obs.observation_id.substring(0, 8)}...</TableCell>
                         <TableCell>{new Date(obs.date).toLocaleDateString()}</TableCell>
                         <TableCell>{obs.report_type}</TableCell>
                         <TableCell>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { AppShell } from '@/components/AppShell';
@@ -5,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { mockJSAs, mockAreas } from '@/lib/mockData';
+import { mockAreas } from '@/lib/mockDataLocal';
 import type { JSA, Area } from '@/types';
 import { PlusCircle, Users, Shield, FileSignature, Edit, UserCheck, Trash2, MapPin, Share2 } from 'lucide-react';
 import React, { useState } from 'react';
@@ -19,6 +20,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSearchParams } from 'next/navigation';
+import { useAppData } from '@/context/AppDataContext';
 
 const jsaStepSchema = z.object({
   step_description: z.string().min(1, { message: 'Step description cannot be empty.' }),
@@ -36,7 +38,6 @@ const jsaFormSchema = z.object({
 
 type JsaFormValues = z.infer<typeof jsaFormSchema>;
 
-// Helper component to render nested area options for the select dropdown
 const AreaSelectOptions = ({ areas, level = 0 }: { areas: Area[]; level?: number }) => {
   return (
     <>
@@ -53,7 +54,7 @@ const AreaSelectOptions = ({ areas, level = 0 }: { areas: Area[]; level?: number
 };
 
 
-const CreateJsaForm = ({ onAddJsa, setOpen }: { onAddJsa: (jsa: JSA) => void, setOpen: (open: boolean) => void }) => {
+const CreateJsaForm = ({ onAddJsa, setOpen }: { onAddJsa: (jsa: Omit<JSA, 'jsa_id'>) => Promise<void>, setOpen: (open: boolean) => void }) => {
   const form = useForm<JsaFormValues>({
     resolver: zodResolver(jsaFormSchema),
     defaultValues: {
@@ -72,9 +73,8 @@ const CreateJsaForm = ({ onAddJsa, setOpen }: { onAddJsa: (jsa: JSA) => void, se
   
   const { toast } = useToast();
 
-  const onSubmit = (data: JsaFormValues) => {
-    const newJsa: JSA = {
-        jsa_id: `JSA${String(Math.floor(Math.random() * 900) + 100)}`,
+  const onSubmit = async (data: JsaFormValues) => {
+    const newJsa: Omit<JSA, 'jsa_id'> = {
         title: data.title,
         job_description: data.job_description,
         areaId: data.areaId,
@@ -88,7 +88,7 @@ const CreateJsaForm = ({ onAddJsa, setOpen }: { onAddJsa: (jsa: JSA) => void, se
         created_date: new Date().toISOString(),
         signatures: [],
     };
-    onAddJsa(newJsa);
+    await onAddJsa(newJsa);
     toast({
       title: 'JSA Created',
       description: `The JSA "${data.title}" has been successfully created.`,
@@ -240,14 +240,17 @@ const findAreaPathById = (areas: Area[], id: string, path: string[] = []): strin
     return '';
 };
 
-// This component now takes a jsa and handles its own dialog state.
-const JsaCard = ({ jsa, onSign, currentUser, areaPath, isOpen, onOpenChange, onShare }: { jsa: JSA, onSign: (jsaId: string, name: string) => void, currentUser: string, areaPath: string, isOpen: boolean, onOpenChange: (open: boolean) => void, onShare: () => void }) => {
+const JsaCard = ({ jsa, onSign, currentUser, areaPath, isOpen, onOpenChange, onShare }: { jsa: JSA, onSign: (updatedJsa: JSA) => Promise<void>, currentUser: string, areaPath: string, isOpen: boolean, onOpenChange: (open: boolean) => void, onShare: () => void }) => {
     const [signatureName, setSignatureName] = useState(currentUser);
     const hasSigned = jsa.signatures.some(s => s.employee_name === currentUser);
 
     const handleSign = () => {
         if (signatureName.trim() && !hasSigned) {
-            onSign(jsa.jsa_id, signatureName.trim());
+            const updatedJsa = {
+                ...jsa,
+                signatures: [...jsa.signatures, { employee_name: signatureName.trim(), sign_date: new Date().toISOString() }],
+            };
+            onSign(updatedJsa);
         }
     };
 
@@ -353,7 +356,7 @@ const JsaCard = ({ jsa, onSign, currentUser, areaPath, isOpen, onOpenChange, onS
 
 export default function JsaPage() {
     const MOCKED_CURRENT_USER = "Sarah Miller";
-    const [jsas, setJsas] = useState<JSA[]>(mockJSAs);
+    const { jsas, addJsa, updateJsa } = useAppData();
     const { toast } = useToast();
     const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
     const searchParams = useSearchParams();
@@ -376,30 +379,14 @@ export default function JsaPage() {
         });
     };
 
-    const handleSignJsa = (jsaId: string, employeeName: string) => {
-        setJsas(prevJsas => {
-            return prevJsas.map(jsa => {
-                if (jsa.jsa_id === jsaId) {
-                    if (jsa.signatures.some(s => s.employee_name === employeeName)) {
-                        return jsa;
-                    }
-                    const newSignatures = [...jsa.signatures, { employee_name: employeeName, sign_date: new Date().toISOString() }];
-                    return { ...jsa, signatures: newSignatures };
-                }
-                return jsa;
-            });
-        });
-
+    const handleSignJsa = async (updatedJsa: JSA) => {
+        await updateJsa(updatedJsa);
         toast({
             title: "JSA Signed",
-            description: `Thank you for signing, ${employeeName}.`,
+            description: `Thank you for signing.`,
         });
     };
     
-    const handleAddJsa = (newJsa: JSA) => {
-        setJsas(prevJsas => [newJsa, ...prevJsas]);
-    };
-
     return (
         <AppShell>
             <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -412,7 +399,7 @@ export default function JsaPage() {
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="max-w-4xl">
-                            <CreateJsaForm onAddJsa={handleAddJsa} setOpen={setCreateDialogOpen} />
+                            <CreateJsaForm onAddJsa={addJsa} setOpen={setCreateDialogOpen} />
                         </DialogContent>
                     </Dialog>
                 </div>
