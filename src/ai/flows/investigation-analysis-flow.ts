@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview An AI agent for analyzing incident investigations.
@@ -98,9 +99,9 @@ const prompt = ai.definePrompt({
   tools: [findSimilarIncidents],
   system: `You are an expert safety investigator. Your task is to determine the root cause and contributing factors for a given incident. 
   
-You MUST use the 'findSimilarIncidents' tool to check for historical patterns or similar events that could provide context for your analysis. To do this, pass a concise summary of the incident description into the tool's 'query' parameter.
+You MUST use the 'findSimilarIncidents' tool to check for historical patterns. For the 'query' parameter of the tool, use the provided incident description.
   
-Based on ALL the information, provide a concise root cause and a list of contributing factors.`,
+Based on the incident details and any similar incidents found, provide a concise root cause and a list of contributing factors.`,
   prompt: `Analyze the following incident:
 
 - Description: {{{incidentDescription}}}
