@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, ServiceRequest, Investigation } from '@/types';
+import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation } from '@/types';
 import {
   mockObservations,
   mockCorrectiveActions,
@@ -14,7 +14,6 @@ import {
   mockAreas,
   mockSafetyDocs,
   mockComplianceRecords,
-  mockServiceRequests,
   mockInvestigations,
 } from '@/lib/mockData';
 
@@ -56,10 +55,6 @@ interface AppDataContextType {
   addComplianceRecord: (record: ComplianceRecord) => void;
   updateComplianceRecord: (record: ComplianceRecord) => void;
   removeComplianceRecord: (employeeId: string) => void;
-  serviceRequests: ServiceRequest[];
-  addServiceRequest: (request: ServiceRequest) => void;
-  updateServiceRequest: (request: ServiceRequest) => void;
-  addCommentToServiceRequest: (requestId: string, comment: Comment) => void;
   investigations: Investigation[];
   addInvestigation: (investigation: Investigation) => void;
   updateInvestigation: (investigation: Investigation) => void;
@@ -81,7 +76,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [areas, setAreas] = useState<Area[]>(mockAreas);
   const [safetyDocs, setSafetyDocs] = useState<SafetyDoc[]>(mockSafetyDocs);
   const [complianceRecords, setComplianceRecords] = useState<ComplianceRecord[]>(mockComplianceRecords);
-  const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>(mockServiceRequests);
   const [investigations, setInvestigations] = useState<Investigation[]>(mockInvestigations);
 
   // Observations
@@ -228,17 +222,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       setComplianceRecords(prev => prev.filter(r => r.employee_id !== employeeId));
     };
 
-    // Service Requests
-    const addServiceRequest = (request: ServiceRequest) => {
-      setServiceRequests(prev => [request, ...prev]);
-    };
-    const updateServiceRequest = (updatedRequest: ServiceRequest) => {
-      setServiceRequests(prev => prev.map(r => r.request_id === updatedRequest.request_id ? updatedRequest : r));
-    };
-    const addCommentToServiceRequest = (requestId: string, comment: Comment) => {
-      setServiceRequests(prev => prev.map(r => r.request_id === requestId ? { ...r, comments: [...r.comments, comment] } : r));
-    };
-
     // Investigations
     const addInvestigation = (investigation: Investigation) => {
       setInvestigations(prev => [investigation, ...prev]);
@@ -268,7 +251,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       areas, addArea, updateArea, deleteArea,
       safetyDocs, addSafetyDoc,
       complianceRecords, addComplianceRecord, updateComplianceRecord, removeComplianceRecord,
-      serviceRequests, addServiceRequest, updateServiceRequest, addCommentToServiceRequest,
       investigations, addInvestigation, updateInvestigation, addCommentToInvestigation, addDocumentToInvestigation,
     }}>
       {children}
