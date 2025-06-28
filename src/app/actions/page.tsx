@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -7,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { mockIncidents, mockObservations } from '@/lib/mockData';
 import type { CorrectiveAction, Incident, Observation, Comment } from '@/types';
-import { PlusCircle, Siren, Eye, MessageSquare, User, Clock, CheckCircle, AlertTriangle, List, Truck, ClipboardSearch } from 'lucide-react';
+import { PlusCircle, Siren, Eye, MessageSquare, User, Clock, CheckCircle, AlertTriangle, List, Truck, FileSearch } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
@@ -452,7 +453,7 @@ export default function CorrectiveActionsPage() {
                              {action.related_to_investigation && (
                                 <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
                                 <Link href={`/investigations?id=${action.related_to_investigation}`}>
-                                    <ClipboardSearch className="mr-2 h-4 w-4 text-purple-500" />
+                                    <FileSearch className="mr-2 h-4 w-4 text-purple-500" />
                                     {action.related_to_investigation}
                                 </Link>
                                 </Button>
