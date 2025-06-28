@@ -10,10 +10,10 @@ const mockComments: Comment[] = [
 
 export const mockIncidents: Incident[] = [
   { incident_id: 'INC001', date: formatISO(subDays(new Date(), 5)), area: 'Assembly Line 1', type: 'Accident', description: 'Minor slip on wet floor, no injury.', severity: 'Low', linked_docs: ['doc001.pdf'], status: 'Under Investigation', assigned_to: 'John Doe', comments: [{user: 'Safety Team', comment: 'Area cleaned and "Wet Floor" sign placed. Resolved.', date: formatISO(subDays(new Date(), 4))}], investigation_id: 'INV001' },
-  { incident_id: 'INC002', date: formatISO(subDays(new Date(), 25)), area: 'Warehouse', type: 'Accident', description: 'Forklift collision with racking. Minor damage to rack, no product loss.', severity: 'Medium', linked_docs: ['doc002.pdf'], status: 'Under Investigation', assigned_to: 'Sarah Miller', comments: [{user: 'Sarah Miller', comment: 'Assessing rack stability. Forklift driver has been interviewed.', date: formatISO(subDays(new Date(), 24))}] },
-  { incident_id: 'INC003', date: formatISO(subDays(new Date(), 60)), area: 'Welding Station', type: 'Accident', description: 'Improper PPE usage (no face shield) by a contractor, resulted in minor flash burn.', severity: 'High', linked_docs: [], status: 'Closed', assigned_to: 'Safety Manager', comments: [{user: 'Safety Manager', comment: 'Contractor removed from site. Re-briefing on PPE for all contractors scheduled.', date: formatISO(subDays(new Date(), 59))}, {user: 'Safety Manager', comment: 'Corrective action ACT001 created.', date: formatISO(subDays(new Date(), 59))}], investigation_id: 'INV002' },
-  { incident_id: 'INC004', date: formatISO(subDays(new Date(), 90)), area: 'Packaging', type: 'Accident', description: 'Repetitive strain injury reported by an employee working on the palletizer.', severity: 'Medium', linked_docs: [], status: 'Open', comments: [] },
-  { incident_id: 'INC005', date: formatISO(subDays(new Date(), 120)), area: 'Assembly Line 2', type: 'Incident', description: 'Faulty guard on machine X, discovered during routine check. No incident occurred.', severity: 'Low', linked_docs: ['doc005.pdf'], status: 'Closed', assigned_to: 'Maintenance Team', comments: [{user: 'Maintenance Team', comment: 'Guard has been repaired and tested.', date: formatISO(subDays(new Date(), 119))}]},
+  { incident_id: 'INC002', date: formatISO(subDays(new Date(), 25)), area: 'Warehouse', type: 'Accident', description: 'Forklift collision with racking. Minor damage to rack, no product loss.', severity: 'Medium', linked_docs: ['doc002.pdf'], status: 'Under Investigation', assigned_to: 'Sarah Miller', comments: [{user: 'Sarah Miller', comment: 'Assessing rack stability. Forklift driver has been interviewed.', date: formatISO(subDays(new Date(), 24))}], investigation_id: 'INV002' },
+  { incident_id: 'INC003', date: formatISO(subDays(new Date(), 60)), area: 'Welding Station', type: 'Accident', description: 'Improper PPE usage (no face shield) by a contractor, resulted in minor flash burn.', severity: 'High', linked_docs: [], status: 'Closed', assigned_to: 'Safety Manager', comments: [{user: 'Safety Manager', comment: 'Contractor removed from site. Re-briefing on PPE for all contractors scheduled.', date: formatISO(subDays(new Date(), 59))}, {user: 'Safety Manager', comment: 'Corrective action ACT001 created.', date: formatISO(subDays(new Date(), 59))}], investigation_id: 'INV003' },
+  { incident_id: 'INC004', date: formatISO(subDays(new Date(), 90)), area: 'Packaging', type: 'Accident', description: 'Repetitive strain injury reported by an employee working on the palletizer.', severity: 'Medium', linked_docs: [], status: 'Open', comments: [], investigation_id: 'INV004' },
+  { incident_id: 'INC005', date: formatISO(subDays(new Date(), 120)), area: 'Assembly Line 2', type: 'Incident', description: 'Faulty guard on machine X, discovered during routine check. No incident occurred.', severity: 'Low', linked_docs: ['doc005.pdf'], status: 'Closed', assigned_to: 'Maintenance Team', comments: [{user: 'Maintenance Team', comment: 'Guard has been repaired and tested.', date: formatISO(subDays(new Date(), 119))}], investigation_id: 'INV005' },
 ];
 
 export const mockInvestigations: Investigation[] = [
@@ -31,6 +31,18 @@ export const mockInvestigations: Investigation[] = [
   },
   {
     investigation_id: 'INV002',
+    incident_id: 'INC002',
+    status: 'In Progress',
+    root_cause: '',
+    contributing_factors: '',
+    events_history: '',
+    lessons_learned: '',
+    action_plan: '',
+    documents: [],
+    comments: [],
+  },
+  {
+    investigation_id: 'INV003',
     incident_id: 'INC003',
     status: 'Closed',
     root_cause: 'Contractor failed to adhere to site-specific PPE requirements.',
@@ -39,6 +51,30 @@ export const mockInvestigations: Investigation[] = [
     lessons_learned: 'All contractors must undergo a safety briefing and PPE check before commencing any work.',
     action_plan: '1. Implement mandatory pre-work safety checklist for all contractors. 2. Assign a site supervisor to monitor all contractor hot work.',
     documents: [{ name: 'contractor_onboarding_docs.pdf', url: '#' }],
+    comments: [],
+  },
+  {
+    investigation_id: 'INV004',
+    incident_id: 'INC004',
+    status: 'Open',
+    root_cause: '',
+    contributing_factors: '',
+    events_history: '',
+    lessons_learned: '',
+    action_plan: '',
+    documents: [],
+    comments: [],
+  },
+  {
+    investigation_id: 'INV005',
+    incident_id: 'INC005',
+    status: 'Closed',
+    root_cause: 'Faulty component from manufacturer.',
+    contributing_factors: 'Component failed before its expected end-of-life.',
+    events_history: 'Guard was found loose during a routine check. No one was using the machine.',
+    lessons_learned: 'Increase inspection frequency for critical safety components.',
+    action_plan: 'Replace guard and add to a more frequent preventive maintenance schedule.',
+    documents: [],
     comments: [],
   }
 ];

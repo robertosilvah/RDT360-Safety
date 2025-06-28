@@ -24,7 +24,7 @@ import {
 } from '@/components/ui/table';
 import { useAppData } from '@/context/AppDataContext';
 import type { Incident } from '@/types';
-import { ArrowUpRight, Ban, Clock, ShieldAlert, Siren, Calendar as CalendarIcon } from 'lucide-react';
+import { ArrowUpRight, Clock, ShieldAlert, Siren, Calendar as CalendarIcon, FileSearch } from 'lucide-react';
 import Link from 'next/link';
 import { differenceInDays, format, isWithinInterval } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -34,7 +34,7 @@ import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
-  const { incidents, correctiveActions, observations } = useAppData();
+  const { incidents, correctiveActions, observations, investigations } = useAppData();
   const [date, setDate] = useState<DateRange | undefined>();
   const [isClient, setIsClient] = useState(false);
 
@@ -46,7 +46,7 @@ export default function DashboardPage() {
     if (!isClient) {
       return {
         value: <Skeleton className="h-8 w-16" />,
-        description: <Skeleton className="h-4 w-32" />,
+        description: <div className="h-4 w-32"><Skeleton className="h-full w-full" /></div>,
       };
     }
     const accidents = incidents.filter(i => i.type === 'Accident');
@@ -64,7 +64,7 @@ export default function DashboardPage() {
     if (!isClient) {
       return {
         value: <Skeleton className="h-8 w-16" />,
-        description: <Skeleton className="h-4 w-32" />,
+        description: <div className="h-4 w-32"><Skeleton className="h-full w-full" /></div>,
       };
     }
     const allIncidents = incidents.filter(i => i.type === 'Incident');
@@ -83,10 +83,12 @@ export default function DashboardPage() {
       (action) => action.status !== 'Completed'
     ).length;
   }, [correctiveActions]);
-
-  const nearMissesCount = useMemo(() => {
-    return observations.filter(obs => obs.report_type === 'Near Miss').length;
-  }, [observations]);
+  
+  const pendingInvestigations = useMemo(() => {
+    return investigations.filter(
+      (investigation) => investigation.status !== 'Closed'
+    ).length;
+  }, [investigations]);
 
   const recentIncidents = useMemo(() => {
     return [...incidents]
@@ -160,10 +162,10 @@ export default function DashboardPage() {
             description="Corrective actions open"
           />
           <KpiCard
-            title="Near Misses Reported"
-            value={nearMissesCount.toString()}
-            icon={<Ban className="h-4 w-4 text-muted-foreground" />}
-            description="Total reports classified as 'Near Miss'"
+            title="Pending Investigations"
+            value={pendingInvestigations.toString()}
+            icon={<FileSearch className="h-4 w-4 text-muted-foreground" />}
+            description="Investigations currently open"
           />
         </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">

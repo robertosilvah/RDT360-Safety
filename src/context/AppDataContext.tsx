@@ -17,6 +17,8 @@ import {
   mockInvestigations,
 } from '@/lib/mockData';
 
+type IncidentData = Omit<Incident, 'incident_id' | 'date' | 'linked_docs' | 'comments' | 'investigation_id' | 'status'>;
+
 interface AppDataContextType {
   observations: Observation[];
   addObservation: (observation: Observation) => void;
@@ -25,6 +27,7 @@ interface AppDataContextType {
   updateCorrectiveAction: (updatedAction: CorrectiveAction) => void;
   addCommentToAction: (actionId: string, comment: Comment) => void;
   incidents: Incident[];
+  addIncident: (incidentData: IncidentData) => void;
   updateIncident: (updatedIncident: Incident) => void;
   addCommentToIncident: (incidentId: string, comment: Comment) => void;
   safetyWalks: SafetyWalk[];
@@ -56,7 +59,6 @@ interface AppDataContextType {
   updateComplianceRecord: (record: ComplianceRecord) => void;
   removeComplianceRecord: (employeeId: string) => void;
   investigations: Investigation[];
-  addInvestigation: (investigation: Investigation) => void;
   updateInvestigation: (investigation: Investigation) => void;
   addCommentToInvestigation: (investigationId: string, comment: Comment) => void;
   addDocumentToInvestigation: (investigationId: string, document: { name: string; url: string }) => void;
@@ -97,6 +99,38 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   };
 
   // Incidents
+  const addIncident = (incidentData: IncidentData) => {
+    const timestamp = Date.now();
+    const newIncidentId = `INC${timestamp}`;
+    const newInvestigationId = `INV${timestamp}`;
+
+    const newIncident: Incident = {
+        ...incidentData,
+        incident_id: newIncidentId,
+        date: new Date().toISOString(),
+        status: 'Under Investigation',
+        linked_docs: [],
+        comments: [],
+        investigation_id: newInvestigationId,
+    };
+
+    const newInvestigation: Investigation = {
+        investigation_id: newInvestigationId,
+        incident_id: newIncidentId,
+        status: 'Open',
+        root_cause: '',
+        contributing_factors: '',
+        events_history: '',
+        lessons_learned: '',
+        action_plan: '',
+        documents: [],
+        comments: [],
+    };
+    
+    setIncidents(prev => [newIncident, ...prev]);
+    setInvestigations(prev => [newInvestigation, ...prev]);
+  };
+
   const updateIncident = (updatedIncident: Incident) => {
     setIncidents(prev => prev.map(i => i.incident_id === updatedIncident.incident_id ? updatedIncident : i));
   };
@@ -223,16 +257,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     };
 
     // Investigations
-    const addInvestigation = (investigation: Investigation) => {
-      const newInvestigation = {
-          ...investigation,
-          events_history: investigation.events_history || '',
-          lessons_learned: investigation.lessons_learned || '',
-          action_plan: investigation.action_plan || '',
-      };
-      setInvestigations(prev => [newInvestigation, ...prev]);
-      setIncidents(prev => prev.map(i => i.incident_id === investigation.incident_id ? {...i, investigation_id: investigation.investigation_id, status: 'Under Investigation' as const} : i));
-    };
     const updateInvestigation = (updatedInvestigation: Investigation) => {
         setInvestigations(prev => prev.map(i => i.investigation_id === updatedInvestigation.investigation_id ? updatedInvestigation : i));
     };
@@ -248,7 +272,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     <AppDataContext.Provider value={{
       observations, addObservation,
       correctiveActions, addCorrectiveAction, updateCorrectiveAction, addCommentToAction,
-      incidents, updateIncident, addCommentToIncident,
+      incidents, updateIncident, addCommentToIncident, addIncident,
       safetyWalks, addSafetyWalk, updateSafetyWalk, addCommentToSafetyWalk,
       forkliftInspections, addForkliftInspection,
       forklifts, addForklift, updateForklift, removeForklift,
@@ -257,7 +281,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       areas, addArea, updateArea, deleteArea,
       safetyDocs, addSafetyDoc,
       complianceRecords, addComplianceRecord, updateComplianceRecord, removeComplianceRecord,
-      investigations, addInvestigation, updateInvestigation, addCommentToInvestigation, addDocumentToInvestigation,
+      investigations, updateInvestigation, addCommentToInvestigation, addDocumentToInvestigation,
     }}>
       {children}
     </AppDataContext.Provider>

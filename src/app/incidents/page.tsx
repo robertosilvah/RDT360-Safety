@@ -15,7 +15,7 @@ import {
 import type { Incident, Comment, Investigation } from '@/types';
 import { FilePlus2, Download, MessageSquare, User, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -40,6 +40,93 @@ const incidentFormSchema = z.object({
 
 type IncidentFormValues = z.infer<typeof incidentFormSchema>;
 
+const newIncidentFormSchema = incidentFormSchema.omit({ status: true }).extend({
+    area: z.string().min(3, "Area is required."),
+});
+type NewIncidentFormValues = z.infer<typeof newIncidentFormSchema>;
+
+
+const IncidentReportForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
+    const { addIncident } = useAppData();
+    const { toast } = useToast();
+    const form = useForm<NewIncidentFormValues>({
+        resolver: zodResolver(newIncidentFormSchema),
+        defaultValues: {
+            description: '',
+            type: 'Incident',
+            severity: 'Low',
+            area: '',
+            assigned_to: '',
+        },
+    });
+
+    const onSubmit = (values: NewIncidentFormValues) => {
+        addIncident(values);
+        toast({
+            title: 'Incident Reported',
+            description: 'A new incident and corresponding investigation have been created.',
+        });
+        setOpen(false);
+    };
+
+    return (
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                 <DialogHeader>
+                    <DialogTitle>Report a New Incident</DialogTitle>
+                    <DialogDescription>
+                        Fill out the details below. An investigation will be automatically created.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                    <FormField
+                        control={form.control}
+                        name="description"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Description</FormLabel>
+                                <FormControl><Textarea placeholder="Describe the incident in detail..." {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField control={form.control} name="type" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Type</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                    <SelectContent><SelectItem value="Incident">Incident</SelectItem><SelectItem value="Accident">Accident</SelectItem></SelectContent>
+                                </Select><FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="severity" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Severity</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                    <SelectContent><SelectItem value="Low">Low</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="High">High</SelectItem></SelectContent>
+                                </Select><FormMessage />
+                            </FormItem>
+                        )} />
+                    </div>
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField control={form.control} name="area" render={({ field }) => (
+                            <FormItem><FormLabel>Area</FormLabel><FormControl><Input placeholder="e.g., Warehouse Section B" {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={form.control} name="assigned_to" render={({ field }) => (
+                            <FormItem><FormLabel>Assigned To (Optional)</FormLabel><FormControl><Input placeholder="e.g., John Doe" {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                    </div>
+                </div>
+                <DialogFooter>
+                    <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+                    <Button type="submit">Report Incident</Button>
+                </DialogFooter>
+            </form>
+        </Form>
+    );
+};
+
+
 const IncidentDetailsDialog = ({
   incident,
   isOpen,
@@ -49,7 +136,7 @@ const IncidentDetailsDialog = ({
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }) => {
-  const { updateIncident, addCommentToIncident, addInvestigation } = useAppData();
+  const { updateIncident, addCommentToIncident } = useAppData();
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
 
@@ -88,26 +175,6 @@ const IncidentDetailsDialog = ({
     }
     
     toast({ title: 'Incident Updated', description: `Incident ${incident.incident_id} has been updated.` });
-    onOpenChange(false);
-  };
-  
-  const handleStartInvestigation = () => {
-    if (!incident) return;
-    
-    const newInvestigation: Investigation = {
-      investigation_id: `INV${incident.incident_id.replace('INC', '')}`,
-      incident_id: incident.incident_id,
-      status: 'Open',
-      root_cause: '',
-      contributing_factors: '',
-      documents: [],
-      comments: [],
-    };
-    addInvestigation(newInvestigation);
-    toast({
-      title: "Investigation Started",
-      description: `Investigation ${newInvestigation.investigation_id} has been created for incident ${incident.incident_id}.`
-    });
     onOpenChange(false);
   };
 
@@ -203,13 +270,9 @@ const IncidentDetailsDialog = ({
               />
               <DialogFooter className="!justify-between">
                 <div>
-                  {incident.investigation_id ? (
-                     <Button type="button" variant="outline" asChild>
-                        <Link href={`/investigations?id=${incident.investigation_id}`}>View Investigation</Link>
-                      </Button>
-                  ) : (
-                    <Button type="button" variant="secondary" onClick={handleStartInvestigation}>Start Investigation</Button>
-                  )}
+                  <Button type="button" variant="outline" asChild>
+                    <Link href={`/investigations?id=${incident.investigation_id}`}>View Investigation</Link>
+                  </Button>
                 </div>
                 <Button type="submit">Save Changes</Button>
               </DialogFooter>
@@ -265,7 +328,8 @@ const IncidentDetailsDialog = ({
 export default function IncidentsPage() {
   const { incidents } = useAppData();
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
-  const [isDialogOpen, setDialogOpen] = useState(false);
+  const [isDetailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [isNewIncidentOpen, setNewIncidentOpen] = useState(false);
     
   const typeVariant: { [key in Incident['type']]: 'destructive' | 'secondary' } = {
     'Accident': 'destructive',
@@ -287,7 +351,7 @@ export default function IncidentsPage() {
   const handleRowClick = (incident: Incident) => {
     const currentIncidentState = incidents.find(i => i.incident_id === incident.incident_id);
     setSelectedIncident(currentIncidentState || incident);
-    setDialogOpen(true);
+    setDetailsDialogOpen(true);
   }
 
   return (
@@ -295,9 +359,16 @@ export default function IncidentsPage() {
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center justify-between space-y-2">
           <h2 className="text-3xl font-bold tracking-tight">Incident Log</h2>
-          <Button>
-            <FilePlus2 className="mr-2 h-4 w-4" /> Add New Incident
-          </Button>
+           <Dialog open={isNewIncidentOpen} onOpenChange={setNewIncidentOpen}>
+                <DialogTrigger asChild>
+                    <Button>
+                        <FilePlus2 className="mr-2 h-4 w-4" /> Add New Incident
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                    <IncidentReportForm setOpen={setNewIncidentOpen} />
+                </DialogContent>
+            </Dialog>
         </div>
 
         <Card>
@@ -354,8 +425,8 @@ export default function IncidentsPage() {
       </div>
       <IncidentDetailsDialog 
         incident={selectedIncident}
-        isOpen={isDialogOpen}
-        onOpenChange={setDialogOpen}
+        isOpen={isDetailsDialogOpen}
+        onOpenChange={setDetailsDialogOpen}
       />
     </AppShell>
   );
