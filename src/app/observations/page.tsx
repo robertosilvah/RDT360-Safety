@@ -232,11 +232,21 @@ const ObservationDetailsDialog = ({
 };
 
 export default function ObservationsPage() {
-  const { observations, addObservation, addCorrectiveAction } = useAppData();
+  const { observations, addObservation, addCorrectiveAction, users } = useAppData();
   const [selectedObservation, setSelectedObservation] = useState<Observation | null>(null);
   const [isDetailsOpen, setDetailsOpen] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Mock current user for role-based access control.
+  // In a real app, this would come from an authentication context.
+  // Defaulting to a Manager role to demonstrate functionality.
+  // To test as an Administrator, change 'user-2' to 'user-1'.
+  // To test as an Operator, change 'user-2' to 'user-3'.
+  const currentUser = users.find(u => u.id === 'user-2'); // Sarah Miller (Manager)
+
+  const canImport = currentUser?.role === 'Administrator';
+  const canExport = currentUser?.role === 'Administrator' || currentUser?.role === 'Manager';
 
   const statusVariant: { [key in Observation['status']]: 'outline' | 'default' } = {
     Open: 'default',
@@ -720,19 +730,25 @@ export default function ObservationsPage() {
                         </CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            className="hidden"
-                            accept=".csv"
-                            onChange={handleFileImport}
-                        />
-                        <Button variant="outline" size="sm" onClick={handleImportClick}>
-                            <Upload className="mr-2 h-4 w-4" /> Import
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={handleExport}>
-                            <Download className="mr-2 h-4 w-4" /> Export
-                        </Button>
+                        {canImport && (
+                            <>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    className="hidden"
+                                    accept=".csv"
+                                    onChange={handleFileImport}
+                                />
+                                <Button variant="outline" size="sm" onClick={handleImportClick}>
+                                    <Upload className="mr-2 h-4 w-4" /> Import
+                                </Button>
+                            </>
+                        )}
+                        {canExport && (
+                           <Button variant="outline" size="sm" onClick={handleExport}>
+                                <Download className="mr-2 h-4 w-4" /> Export
+                            </Button>
+                        )}
                     </div>
                 </div>
               </CardHeader>
@@ -798,3 +814,5 @@ export default function ObservationsPage() {
     </AppShell>
   );
 }
+
+    
