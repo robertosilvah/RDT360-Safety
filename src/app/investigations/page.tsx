@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAppData } from '@/context/AppDataContext';
 import type { Investigation, Comment, CorrectiveAction } from '@/types';
-import { PlusCircle, Upload, FileText, MessageSquare, User, Clock, Siren, Wand2, Loader2 } from 'lucide-react';
+import { PlusCircle, Upload, FileText, MessageSquare, User, Clock, Siren, Wand2, Loader2, Edit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -87,6 +87,7 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const form = useForm<InvestigationFormValues>({
     resolver: zodResolver(investigationFormSchema),
@@ -105,11 +106,13 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
         contributing_factors: investigation.contributing_factors,
       });
       setNewComment('');
+      setIsEditing(false);
     }
   }, [investigation, form, isOpen]);
 
   if (!investigation) return null;
 
+  const isLocked = investigation.status === 'Closed' && !isEditing;
   const incidentDetails = incidents.find(i => i.incident_id === investigation.incident_id);
 
   const handleAiAnalysis = async () => {
@@ -162,6 +165,11 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
     }
   }
 
+  const handleEdit = () => {
+    form.setValue('status', 'In Progress', { shouldDirty: true });
+    setIsEditing(true);
+  };
+
   const linkedActions = correctiveActions.filter(a => a.related_to_investigation === investigation.investigation_id);
 
   return (
@@ -179,7 +187,7 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
               <form id="investigation-form" onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
                 <FormField control={form.control} name="status" render={({ field }) => (
                   <FormItem><FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLocked}>
                       <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                       <SelectContent>
                         <SelectItem value="Open">Open</SelectItem>
@@ -193,7 +201,7 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
                       <h3 className="text-lg font-semibold">Analysis</h3>
-                      <Button type="button" size="sm" onClick={handleAiAnalysis} disabled={isAnalyzing || !incidentDetails}>
+                      <Button type="button" size="sm" onClick={handleAiAnalysis} disabled={isAnalyzing || !incidentDetails || isLocked}>
                           {isAnalyzing ? (
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           ) : (
@@ -203,10 +211,10 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
                       </Button>
                   </div>
                   <FormField control={form.control} name="root_cause" render={({ field }) => (
-                    <FormItem><FormLabel>Root Cause Analysis</FormLabel><FormControl><Textarea rows={4} placeholder="Describe the root cause..." {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Root Cause Analysis</FormLabel><FormControl><Textarea rows={4} placeholder="Describe the root cause..." {...field} disabled={isLocked} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="contributing_factors" render={({ field }) => (
-                    <FormItem><FormLabel>Contributing Factors</FormLabel><FormControl><Textarea rows={4} placeholder="List contributing factors..." {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Contributing Factors</FormLabel><FormControl><Textarea rows={4} placeholder="List contributing factors..." {...field} disabled={isLocked} /></FormControl><FormMessage /></FormItem>
                   )} />
                 </div>
               </form>
@@ -228,8 +236,8 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
                 {investigation.documents.length === 0 && <p className="text-sm text-muted-foreground">No documents uploaded.</p>}
               </div>
               <div className="mt-4">
-                <Input id="file-upload" type="file" className="hidden" onChange={handleFileUpload} />
-                <Button asChild variant="outline">
+                <Input id="file-upload" type="file" className="hidden" onChange={handleFileUpload} disabled={isLocked} />
+                <Button asChild variant="outline" disabled={isLocked}>
                     <label htmlFor="file-upload"><Upload className="mr-2 h-4 w-4" /> Upload Document</label>
                 </Button>
               </div>
@@ -249,7 +257,11 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
                     ))}
                     {linkedActions.length === 0 && <p className="text-sm text-muted-foreground">No corrective actions created yet.</p>}
                  </div>
-                 <NewActionForm investigationId={investigation.investigation_id} onActionAdded={() => {}} />
+                 {isLocked ? (
+                    <p className="text-sm text-muted-foreground italic mt-4">Investigation is closed. Re-open to add new actions.</p>
+                 ) : (
+                    <NewActionForm investigationId={investigation.investigation_id} onActionAdded={() => {}} />
+                 )}
             </div>
 
           </div>
@@ -267,14 +279,18 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
               ))}
             </div>
             <div className="flex flex-col gap-2 mt-auto">
-              <Textarea placeholder="Add a comment..." value={newComment} onChange={(e) => setNewComment(e.target.value)} rows={2} />
-              <Button size="sm" onClick={() => handleSubmit(form.getValues())} disabled={!newComment.trim()}>Add Comment & Save</Button>
+              <Textarea placeholder={isLocked ? "Comments are locked." : "Add a comment..."} value={newComment} onChange={(e) => setNewComment(e.target.value)} rows={2} disabled={isLocked} />
+              <Button size="sm" onClick={() => handleSubmit(form.getValues())} disabled={isLocked || !newComment.trim()}>Add Comment & Save</Button>
             </div>
           </div>
         </div>
         <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" form="investigation-form">Save Investigation</Button>
+            {isLocked ? (
+                <Button onClick={handleEdit}><Edit className="mr-2 h-4 w-4" /> Re-open and Edit</Button>
+            ) : (
+                <Button type="submit" form="investigation-form">Save Investigation</Button>
+            )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
