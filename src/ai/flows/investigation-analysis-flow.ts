@@ -96,17 +96,17 @@ const prompt = ai.definePrompt({
   input: {schema: InvestigationAnalysisInputSchema},
   output: {schema: InvestigationAnalysisOutputSchema},
   tools: [findSimilarIncidents],
-  prompt: `You are an expert safety investigator. Your task is to determine the root cause and contributing factors for a given incident.
+  system: `You are an expert safety investigator. Your task is to determine the root cause and contributing factors for a given incident. 
+  
+You MUST use the 'findSimilarIncidents' tool to check for historical patterns or similar events that could provide context for your analysis. To do this, pass a concise summary of the incident description into the tool's 'query' parameter.
+  
+Based on ALL the information, provide a concise root cause and a list of contributing factors.`,
+  prompt: `Analyze the following incident:
 
-Incident Details:
 - Description: {{{incidentDescription}}}
 - Type: {{{incidentType}}}
 - Severity: {{{incidentSeverity}}}
-- Area: {{{incidentArea}}}
-
-Use the provided incident details to perform your analysis. You may use the 'findSimilarIncidents' tool to check for historical patterns or similar events that could provide context for your analysis.
-
-Based on your analysis, provide a concise root cause and a list of contributing factors.`,
+- Area: {{{incidentArea}}}`,
 });
 
 const investigationAnalysisFlow = ai.defineFlow(
