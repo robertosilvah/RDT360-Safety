@@ -21,6 +21,12 @@ export async function getInvestigationAnalysisAction(input: InvestigationAnalysi
   } catch (error) {
     console.error('Error in getInvestigationAnalysisAction:', error);
     // In a real app, you'd want more robust error handling and logging.
-    return { rootCause: 'An error occurred during analysis.', contributingFactors: 'Could not generate contributing factors.' };
+    return { 
+        rootCause: 'An error occurred during analysis.', 
+        contributingFactors: 'Could not generate contributing factors.',
+        eventsHistory: 'Could not generate events history.',
+        lessonsLearned: 'Could not generate lessons learned.',
+        actionPlan: 'Could not generate action plan.'
+    };
   }
 }

@@ -224,7 +224,13 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
     // Investigations
     const addInvestigation = (investigation: Investigation) => {
-      setInvestigations(prev => [investigation, ...prev]);
+      const newInvestigation = {
+          ...investigation,
+          events_history: investigation.events_history || '',
+          lessons_learned: investigation.lessons_learned || '',
+          action_plan: investigation.action_plan || '',
+      };
+      setInvestigations(prev => [newInvestigation, ...prev]);
       setIncidents(prev => prev.map(i => i.incident_id === investigation.incident_id ? {...i, investigation_id: investigation.investigation_id, status: 'Under Investigation' as const} : i));
     };
     const updateInvestigation = (updatedInvestigation: Investigation) => {

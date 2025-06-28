@@ -10,6 +10,9 @@ export type Investigation = {
   status: 'Open' | 'In Progress' | 'Closed';
   root_cause: string;
   contributing_factors: string;
+  events_history: string;
+  lessons_learned: string;
+  action_plan: string;
   documents: { name: string; url: string }[];
   comments: Comment[];
 };

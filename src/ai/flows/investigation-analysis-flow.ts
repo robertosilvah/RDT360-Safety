@@ -81,6 +81,15 @@ const InvestigationAnalysisOutputSchema = z.object({
     .describe(
       'A list of factors that contributed to the incident.'
     ),
+  eventsHistory: z
+    .string()
+    .describe('A chronological history of events leading to the incident.'),
+  lessonsLearned: z
+    .string()
+    .describe('Key lessons learned from this incident.'),
+  actionPlan: z
+    .string()
+    .describe('A recommended action plan to prevent recurrence.'),
 });
 export type InvestigationAnalysisOutput = z.infer<
   typeof InvestigationAnalysisOutputSchema
@@ -97,11 +106,16 @@ const prompt = ai.definePrompt({
   input: {schema: InvestigationAnalysisInputSchema},
   output: {schema: InvestigationAnalysisOutputSchema},
   tools: [findSimilarIncidents],
-  system: `You are an expert safety investigator. Your task is to determine the root cause and contributing factors for a given incident. 
-  
+  system: `You are an expert safety investigator. Your task is to analyze an incident report and provide a comprehensive analysis.
+
 You MUST use the 'findSimilarIncidents' tool to check for historical patterns. For the 'query' parameter of the tool, use the provided incident description.
   
-Based on the incident details and any similar incidents found, provide a concise root cause and a list of contributing factors.`,
+Based on the incident details and any similar incidents found, provide the following:
+1. A concise root cause.
+2. A list of contributing factors.
+3. A chronological history of events that led to the incident.
+4. Key lessons that can be learned from this event.
+5. A recommended action plan to prevent this from happening again.`,
   prompt: `Analyze the following incident:
 
 - Description: {{{incidentDescription}}}

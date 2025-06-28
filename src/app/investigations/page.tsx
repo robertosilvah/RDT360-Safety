@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAppData } from '@/context/AppDataContext';
 import type { Investigation, Comment, CorrectiveAction } from '@/types';
-import { PlusCircle, Upload, FileText, MessageSquare, User, Clock, Siren, Wand2, Loader2, Edit } from 'lucide-react';
+import { PlusCircle, Upload, FileText, MessageSquare, User, Clock, Siren, Wand2, Loader2, Edit, AlertCircle, Calendar, BookOpen, ListChecks } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -29,6 +29,9 @@ const investigationFormSchema = z.object({
   status: z.enum(['Open', 'In Progress', 'Closed']),
   root_cause: z.string().min(1, 'Root cause analysis is required.'),
   contributing_factors: z.string().min(1, 'Contributing factors are required.'),
+  events_history: z.string().min(1, 'Events history is required.'),
+  lessons_learned: z.string().min(1, 'Lessons learned are required.'),
+  action_plan: z.string().min(1, 'Action plan is required.'),
 });
 
 type InvestigationFormValues = z.infer<typeof investigationFormSchema>;
@@ -95,6 +98,9 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
       status: 'Open',
       root_cause: '',
       contributing_factors: '',
+      events_history: '',
+      lessons_learned: '',
+      action_plan: '',
     },
   });
 
@@ -104,6 +110,9 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
         status: investigation.status,
         root_cause: investigation.root_cause,
         contributing_factors: investigation.contributing_factors,
+        events_history: investigation.events_history,
+        lessons_learned: investigation.lessons_learned,
+        action_plan: investigation.action_plan,
       });
       setNewComment('');
       setIsEditing(false);
@@ -133,7 +142,10 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
         if (analysis.rootCause && analysis.contributingFactors) {
             form.setValue('root_cause', analysis.rootCause, { shouldDirty: true });
             form.setValue('contributing_factors', analysis.contributingFactors, { shouldDirty: true });
-            toast({ title: "Analysis Complete", description: "Root cause and contributing factors have been populated." });
+            form.setValue('events_history', analysis.eventsHistory, { shouldDirty: true });
+            form.setValue('lessons_learned', analysis.lessonsLearned, { shouldDirty: true });
+            form.setValue('action_plan', analysis.actionPlan, { shouldDirty: true });
+            toast({ title: "Analysis Complete", description: "Investigation fields have been populated." });
         } else {
             toast({ title: "Analysis Failed", description: analysis.rootCause, variant: "destructive" });
         }
@@ -171,6 +183,11 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
   };
 
   const linkedActions = correctiveActions.filter(a => a.related_to_investigation === investigation.investigation_id);
+  const severityVariant: { [key in 'Low' | 'Medium' | 'High']: 'default' | 'secondary' | 'destructive' } = {
+    'Low': 'default',
+    'Medium': 'secondary',
+    'High': 'destructive',
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -183,6 +200,22 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-h-[70vh]">
           <div className="md:col-span-2 overflow-y-auto pr-4 space-y-6">
+             {incidentDetails && (
+                <Card className="bg-muted/30">
+                    <CardHeader>
+                        <CardTitle className="text-lg">Incident Details</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4 text-sm">
+                        <p>{incidentDetails.description}</p>
+                        <div className="flex justify-between items-center text-muted-foreground">
+                            <span className="flex items-center gap-1"><Siren className="h-4 w-4" /> {incidentDetails.type}</span>
+                            <span className="flex items-center gap-1"><AlertCircle className="h-4 w-4" /> Severity: <Badge variant={severityVariant[incidentDetails.severity]}>{incidentDetails.severity}</Badge></span>
+                            <span className="flex items-center gap-1"><Calendar className="h-4 w-4" /> {format(new Date(incidentDetails.date), 'PPP')}</span>
+                        </div>
+                    </CardContent>
+                </Card>
+             )}
+
             <Form {...form}>
               <form id="investigation-form" onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
                 <FormField control={form.control} name="status" render={({ field }) => (
@@ -210,11 +243,20 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
                           Analyze with AI
                       </Button>
                   </div>
+                  <FormField control={form.control} name="events_history" render={({ field }) => (
+                    <FormItem><FormLabel>Events History</FormLabel><FormControl><Textarea rows={4} placeholder="Chronological sequence of events..." {...field} disabled={isLocked} /></FormControl><FormMessage /></FormItem>
+                  )} />
                   <FormField control={form.control} name="root_cause" render={({ field }) => (
                     <FormItem><FormLabel>Root Cause Analysis</FormLabel><FormControl><Textarea rows={4} placeholder="Describe the root cause..." {...field} disabled={isLocked} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="contributing_factors" render={({ field }) => (
                     <FormItem><FormLabel>Contributing Factors</FormLabel><FormControl><Textarea rows={4} placeholder="List contributing factors..." {...field} disabled={isLocked} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="lessons_learned" render={({ field }) => (
+                    <FormItem><FormLabel>Lessons Learned</FormLabel><FormControl><Textarea rows={4} placeholder="What can be learned..." {...field} disabled={isLocked} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={form.control} name="action_plan" render={({ field }) => (
+                    <FormItem><FormLabel>Action Plan</FormLabel><FormControl><Textarea rows={4} placeholder="Recommended corrective actions..." {...field} disabled={isLocked} /></FormControl><FormMessage /></FormItem>
                   )} />
                 </div>
               </form>
