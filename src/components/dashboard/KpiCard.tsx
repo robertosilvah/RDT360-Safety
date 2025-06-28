@@ -3,7 +3,6 @@ import {
     CardContent,
     CardHeader,
     CardTitle,
-    CardDescription,
   } from '@/components/ui/card';
   import type { ReactNode } from 'react';
   
@@ -24,7 +23,7 @@ import {
         <CardContent>
           <div className="text-2xl font-bold">{value}</div>
           {description && (
-            <p className="text-xs text-muted-foreground">{description}</p>
+            <div className="text-xs text-muted-foreground">{description}</div>
           )}
         </CardContent>
       </Card>
