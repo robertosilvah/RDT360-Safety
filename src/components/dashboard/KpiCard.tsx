@@ -9,9 +9,9 @@ import {
   
   type KpiCardProps = {
     title: string;
-    value: string;
+    value: ReactNode;
     icon: ReactNode;
-    description?: string;
+    description?: ReactNode;
   };
   
   export function KpiCard({ title, value, icon, description }: KpiCardProps) {

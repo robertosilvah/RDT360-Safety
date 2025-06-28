@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { SafetyQuoteCard } from '@/components/dashboard/SafetyQuoteCard';
@@ -31,12 +31,24 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import type { DateRange } from 'react-day-picker';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DashboardPage() {
   const { incidents, correctiveActions, observations } = useAppData();
   const [date, setDate] = useState<DateRange | undefined>();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const daysSinceLastAccident = useMemo(() => {
+    if (!isClient) {
+      return {
+        value: <Skeleton className="h-8 w-16" />,
+        description: <Skeleton className="h-4 w-32" />,
+      };
+    }
     const accidents = incidents.filter(i => i.type === 'Accident');
     if (accidents.length === 0) {
       return { value: 'N/A', description: 'No accidents recorded yet.' };
@@ -46,9 +58,15 @@ export default function DashboardPage() {
     ).date;
     const days = differenceInDays(new Date(), new Date(lastAccidentDate));
     return { value: days.toString(), description: 'All areas included' };
-  }, [incidents]);
+  }, [incidents, isClient]);
   
   const daysSinceLastIncident = useMemo(() => {
+    if (!isClient) {
+      return {
+        value: <Skeleton className="h-8 w-16" />,
+        description: <Skeleton className="h-4 w-32" />,
+      };
+    }
     const allIncidents = incidents.filter(i => i.type === 'Incident');
     if (allIncidents.length === 0) {
         return { value: 'N/A', description: 'No incidents recorded yet.' };
@@ -58,7 +76,7 @@ export default function DashboardPage() {
     ).date;
     const days = differenceInDays(new Date(), new Date(lastIncidentDate));
     return { value: days.toString(), description: 'All areas included' };
-  }, [incidents]);
+  }, [incidents, isClient]);
 
   const pendingActions = useMemo(() => {
     return correctiveActions.filter(
@@ -204,7 +222,7 @@ export default function DashboardPage() {
                         {incident.severity}
                       </TableCell>
                       <TableCell>
-                        {new Date(incident.date).toLocaleDateString()}
+                        {isClient ? format(new Date(incident.date), 'P') : <Skeleton className="h-4 w-20" />}
                       </TableCell>
                     </TableRow>
                   ))}
