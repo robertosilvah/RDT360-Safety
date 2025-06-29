@@ -3,12 +3,10 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings } from '@/types';
+import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, IncidentData } from '@/types';
 import { db, storage } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, writeBatch, DocumentReference } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-
-type IncidentData = Omit<Incident, 'incident_id' | 'date' | 'linked_docs' | 'comments' | 'investigation_id' | 'status'>;
 
 interface AppDataContextType {
   observations: Observation[];
@@ -151,7 +149,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const addIncident = async (incidentData: IncidentData) => {
     const newIncidentForDb = {
         ...incidentData,
-        date: new Date().toISOString(),
         status: 'Under Investigation' as const,
         linked_docs: [],
         comments: [],

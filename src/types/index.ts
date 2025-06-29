@@ -1,3 +1,4 @@
+
 export type Comment = {
   user: string;
   comment: string;
@@ -16,6 +17,8 @@ export type Investigation = {
   documents: { name: string; url: string }[];
   comments: Comment[];
 };
+
+export type IncidentData = Omit<Incident, 'incident_id' | 'linked_docs' | 'comments' | 'investigation_id' | 'status'>;
 
 export type Incident = {
   incident_id: string;

@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -43,6 +44,9 @@ type IncidentFormValues = z.infer<typeof incidentFormSchema>;
 
 const newIncidentFormSchema = incidentFormSchema.omit({ status: true }).extend({
     area: z.string().min(3, "Area is required."),
+    date: z.string().refine((val) => val && !isNaN(Date.parse(val)), {
+        message: 'Please enter a valid date and time.',
+    }),
 });
 type NewIncidentFormValues = z.infer<typeof newIncidentFormSchema>;
 
@@ -59,12 +63,14 @@ const IncidentReportForm = ({ setOpen }: { setOpen: (open: boolean) => void }) =
             severity: 'Low',
             area: '',
             assigned_to: '',
+            date: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
         },
     });
 
     const onSubmit = (values: NewIncidentFormValues) => {
         const incidentData = {
           ...values,
+          date: new Date(values.date).toISOString(),
           reported_by: user?.displayName || 'System',
         }
         addIncident(incidentData);
@@ -114,6 +120,17 @@ const IncidentReportForm = ({ setOpen }: { setOpen: (open: boolean) => void }) =
                             </FormItem>
                         )} />
                     </div>
+                     <FormField
+                        control={form.control}
+                        name="date"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Date and Time of Incident</FormLabel>
+                                <FormControl><Input type="datetime-local" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField control={form.control} name="area" render={({ field }) => (
                             <FormItem><FormLabel>Area</FormLabel><FormControl><Input placeholder="e.g., Warehouse Section B" {...field} /></FormControl><FormMessage /></FormItem>
