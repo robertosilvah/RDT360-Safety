@@ -1,13 +1,13 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { CorrectiveAction, Incident, Observation, Comment } from '@/types';
-import { PlusCircle, Siren, Eye, MessageSquare, User, Clock, CheckCircle, AlertTriangle, List, Truck, FileSearch } from 'lucide-react';
+import { PlusCircle, Siren, Eye, MessageSquare, User, Clock, CheckCircle, AlertTriangle, List, Truck, FileSearch, UserSquare, KanbanSquare as KanbanSquareIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
@@ -20,11 +20,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { KanbanSquare } from 'lucide-react';
 import { useAppData } from '@/context/AppDataContext';
+import { useAuth } from '@/context/AuthContext';
 
 const actionFormSchema = z.object({
   description: z.string().min(10, 'Description must be at least 10 characters.'),
@@ -334,18 +334,143 @@ const KanbanCard = ({ action, onClick }: { action: CorrectiveAction; onClick: ()
     );
 };
 
+const kanbanStatuses: CorrectiveAction['status'][] = ['Pending', 'In Progress', 'Overdue', 'Completed'];
+
+const CorrectiveActionsView = ({
+    actions,
+    openDetailsDialog,
+    incidents,
+    observations,
+    investigations,
+}: {
+    actions: CorrectiveAction[];
+    openDetailsDialog: (action: CorrectiveAction) => void;
+    incidents: Incident[];
+    observations: Observation[];
+    investigations: any[];
+}) => (
+    <Tabs defaultValue="kanban" className="pt-4">
+        <TabsList>
+            <TabsTrigger value="kanban"><KanbanSquareIcon className="mr-2 h-4 w-4"/>Kanban View</TabsTrigger>
+            <TabsTrigger value="table"><List className="mr-2 h-4 w-4"/>Table View</TabsTrigger>
+        </TabsList>
+        <TabsContent value="kanban" className="pt-4">
+            <div className="flex gap-4 overflow-x-auto pb-4">
+                {kanbanStatuses.map(status => (
+                    <div key={status} className="flex-shrink-0 w-80">
+                        <Card className="bg-muted/40 h-full">
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    {React.createElement(statusIcons[status], { className: "h-5 w-5" })}
+                                    <span>{status}</span>
+                                    <Badge variant="secondary" className="ml-auto">{actions.filter(a => a.status === status).length}</Badge>
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-2 h-[60vh] overflow-y-auto">
+                                {actions.filter(a => a.status === status).map(action => (
+                                    <KanbanCard key={action.action_id} action={action} onClick={() => openDetailsDialog(action)} />
+                                ))}
+                            </CardContent>
+                        </Card>
+                    </div>
+                ))}
+            </div>
+        </TabsContent>
+        <TabsContent value="table" className="pt-4">
+            <Card>
+            <CardHeader>
+                <CardTitle>All Action Items</CardTitle>
+                <CardDescription>Track all corrective actions from incidents and observations. Click a row to see details.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                <TableHeader>
+                    <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead className="w-[40%]">Description</TableHead>
+                    <TableHead>Related To</TableHead>
+                    <TableHead>Responsible</TableHead>
+                    <TableHead>Due Date</TableHead>
+                    <TableHead>Status</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {actions.map((action) => {
+                      const incident = action.related_to_incident ? incidents.find(i => i.incident_id === action.related_to_incident) : null;
+                      const observation = action.related_to_observation ? observations.find(o => o.observation_id === action.related_to_observation) : null;
+                      const investigation = action.related_to_investigation ? investigations.find(i => i.investigation_id === action.related_to_investigation) : null;
+                      
+                      return (
+                        <TableRow key={action.action_id} onClick={() => openDetailsDialog(action)} className="cursor-pointer">
+                            <TableCell className="font-medium">{action.display_id}</TableCell>
+                            <TableCell className="max-w-sm truncate">{action.description}</TableCell>
+                            <TableCell>
+                            {incident && (
+                                <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
+                                <Link href="/incidents">
+                                    <Siren className="mr-2 h-4 w-4 text-red-500" />
+                                    {incident.display_id}
+                                </Link>
+                                </Button>
+                            )}
+                            {observation && (
+                                <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
+                                <Link href="/observations">
+                                    <Eye className="mr-2 h-4 w-4 text-blue-500" />
+                                    {observation.display_id}
+                                </Link>
+                                </Button>
+                            )}
+                            {action.related_to_forklift_inspection && (
+                                <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
+                                <Link href="/forklift-inspections">
+                                    <Truck className="mr-2 h-4 w-4 text-green-500" />
+                                    {action.related_to_forklift_inspection}
+                                </Link>
+                                </Button>
+                            )}
+                            {investigation && (
+                                <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
+                                <Link href={`/investigations?id=${investigation.investigation_id}`}>
+                                    <FileSearch className="mr-2 h-4 w-4 text-purple-500" />
+                                    {investigation.display_id}
+                                </Link>
+                                </Button>
+                            )}
+                            </TableCell>
+                            <TableCell>{action.responsible_person}</TableCell>
+                            <TableCell>{new Date(action.due_date).toLocaleDateString()}</TableCell>
+                            <TableCell>
+                            <Badge variant={statusVariant[action.status]}>{action.status}</Badge>
+                            </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                </TableBody>
+                </Table>
+            </CardContent>
+            </Card>
+        </TabsContent>
+    </Tabs>
+);
 
 export default function CorrectiveActionsPage() {
-  const { correctiveActions: actions, addCorrectiveAction, incidents, observations, investigations } = useAppData();
+  const { correctiveActions: allActions, addCorrectiveAction, incidents, observations, investigations } = useAppData();
+  const { user } = useAuth();
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<CorrectiveAction | null>(null);
   const [isDetailsOpen, setDetailsOpen] = useState(false);
+
+  const myActions = useMemo(() => {
+    if (!user?.displayName) return [];
+    return allActions.filter(action => action.responsible_person === user.displayName);
+  }, [allActions, user]);
 
   const handleSaveAction = (values: ActionFormValues) => {
       const newAction: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'> = {
         description: values.description,
         responsible_person: values.responsible_person,
-        due_date: new Date(values.due_date).toISOString(),
+        due_date: new Date(values.date).toISOString(),
         status: 'Pending',
         related_to_incident: values.linkType === 'incident' ? values.linked_id : undefined,
         related_to_observation: values.linkType === 'observation' ? values.linked_id : undefined,
@@ -354,13 +479,11 @@ export default function CorrectiveActionsPage() {
   };
   
   const openDetailsDialog = (action: CorrectiveAction) => {
-    const currentActionState = actions.find(a => a.action_id === action.action_id);
+    const currentActionState = allActions.find(a => a.action_id === action.action_id);
     setSelectedAction(currentActionState || action);
     setDetailsOpen(true);
   }
   
-  const kanbanStatuses: CorrectiveAction['status'][] = ['Pending', 'In Progress', 'Overdue', 'Completed'];
-
   return (
     <AppShell>
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -378,107 +501,28 @@ export default function CorrectiveActionsPage() {
           </Dialog>
         </div>
 
-        <Tabs defaultValue="kanban">
+        <Tabs defaultValue="all">
             <TabsList>
-                <TabsTrigger value="kanban"><KanbanSquare className="mr-2 h-4 w-4"/>Kanban View</TabsTrigger>
-                <TabsTrigger value="table"><List className="mr-2 h-4 w-4"/>Table View</TabsTrigger>
+                <TabsTrigger value="all"><KanbanSquare className="mr-2 h-4 w-4"/>All Actions</TabsTrigger>
+                <TabsTrigger value="my"><UserSquare className="mr-2 h-4 w-4"/>My Actions</TabsTrigger>
             </TabsList>
-            <TabsContent value="kanban" className="pt-4">
-                <div className="flex gap-4 overflow-x-auto pb-4">
-                    {kanbanStatuses.map(status => (
-                        <div key={status} className="flex-shrink-0 w-80">
-                            <Card className="bg-muted/40 h-full">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        {React.createElement(statusIcons[status], { className: "h-5 w-5" })}
-                                        <span>{status}</span>
-                                        <Badge variant="secondary" className="ml-auto">{actions.filter(a => a.status === status).length}</Badge>
-                                    </CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-2 h-[60vh] overflow-y-auto">
-                                    {actions.filter(a => a.status === status).map(action => (
-                                        <KanbanCard key={action.action_id} action={action} onClick={() => openDetailsDialog(action)} />
-                                    ))}
-                                </CardContent>
-                            </Card>
-                        </div>
-                    ))}
-                </div>
+            <TabsContent value="all">
+                <CorrectiveActionsView
+                    actions={allActions}
+                    openDetailsDialog={openDetailsDialog}
+                    incidents={incidents}
+                    observations={observations}
+                    investigations={investigations}
+                />
             </TabsContent>
-            <TabsContent value="table" className="pt-4">
-                <Card>
-                <CardHeader>
-                    <CardTitle>All Action Items</CardTitle>
-                    <CardDescription>Track all corrective actions from incidents and observations. Click a row to see details.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                    <TableHeader>
-                        <TableRow>
-                        <TableHead>ID</TableHead>
-                        <TableHead className="w-[40%]">Description</TableHead>
-                        <TableHead>Related To</TableHead>
-                        <TableHead>Responsible</TableHead>
-                        <TableHead>Due Date</TableHead>
-                        <TableHead>Status</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {actions.map((action) => {
-                          const incident = action.related_to_incident ? incidents.find(i => i.incident_id === action.related_to_incident) : null;
-                          const observation = action.related_to_observation ? observations.find(o => o.observation_id === action.related_to_observation) : null;
-                          const investigation = action.related_to_investigation ? investigations.find(i => i.investigation_id === action.related_to_investigation) : null;
-                          
-                          return (
-                            <TableRow key={action.action_id} onClick={() => openDetailsDialog(action)} className="cursor-pointer">
-                                <TableCell className="font-medium">{action.display_id}</TableCell>
-                                <TableCell className="max-w-sm truncate">{action.description}</TableCell>
-                                <TableCell>
-                                {incident && (
-                                    <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
-                                    <Link href="/incidents">
-                                        <Siren className="mr-2 h-4 w-4 text-red-500" />
-                                        {incident.display_id}
-                                    </Link>
-                                    </Button>
-                                )}
-                                {observation && (
-                                    <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
-                                    <Link href="/observations">
-                                        <Eye className="mr-2 h-4 w-4 text-blue-500" />
-                                        {observation.display_id}
-                                    </Link>
-                                    </Button>
-                                )}
-                                {action.related_to_forklift_inspection && (
-                                    <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
-                                    <Link href="/forklift-inspections">
-                                        <Truck className="mr-2 h-4 w-4 text-green-500" />
-                                        {action.related_to_forklift_inspection}
-                                    </Link>
-                                    </Button>
-                                )}
-                                {investigation && (
-                                    <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
-                                    <Link href={`/investigations?id=${investigation.investigation_id}`}>
-                                        <FileSearch className="mr-2 h-4 w-4 text-purple-500" />
-                                        {investigation.display_id}
-                                    </Link>
-                                    </Button>
-                                )}
-                                </TableCell>
-                                <TableCell>{action.responsible_person}</TableCell>
-                                <TableCell>{new Date(action.due_date).toLocaleDateString()}</TableCell>
-                                <TableCell>
-                                <Badge variant={statusVariant[action.status]}>{action.status}</Badge>
-                                </TableCell>
-                            </TableRow>
-                          )
-                        })}
-                    </TableBody>
-                    </Table>
-                </CardContent>
-                </Card>
+            <TabsContent value="my">
+                 <CorrectiveActionsView
+                    actions={myActions}
+                    openDetailsDialog={openDetailsDialog}
+                    incidents={incidents}
+                    observations={observations}
+                    investigations={investigations}
+                />
             </TabsContent>
         </Tabs>
 
@@ -491,3 +535,5 @@ export default function CorrectiveActionsPage() {
     </AppShell>
   );
 }
+
+  
