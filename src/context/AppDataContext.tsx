@@ -19,7 +19,7 @@ interface AppDataContextType {
   addCommentToAction: (actionId: string, comment: Comment) => Promise<void>;
   incidents: Incident[];
   addIncident: (incidentData: IncidentData) => Promise<void>;
-  createInvestigationForIncident: (incident: Incident) => Promise<void>;
+  createInvestigationForIncident: (incident: Incident) => Promise<string | undefined>;
   updateIncident: (updatedIncident: Incident) => Promise<void>;
   addCommentToIncident: (incidentId: string, comment: Comment) => Promise<void>;
   safetyWalks: SafetyWalk[];
@@ -162,7 +162,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const createInvestigationForIncident = async (incident: Incident) => {
-    if (incident.investigation_id) return;
+    if (incident.investigation_id) return incident.investigation_id;
 
     const batch = writeBatch(db);
     const displayId = `INV${String(investigations.length + 1).padStart(3, '0')}`;
@@ -189,6 +189,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     });
 
     await batch.commit();
+    return investigationRef.id;
   }
 
   const updateIncident = async (updatedIncident: Incident) => {

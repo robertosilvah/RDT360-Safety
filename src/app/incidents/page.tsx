@@ -31,6 +31,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 const incidentFormSchema = z.object({
   description: z.string().min(10, "Description must be at least 10 characters."),
@@ -161,6 +162,7 @@ const IncidentDetailsDialog = ({
 }) => {
   const { updateIncident, addCommentToIncident, createInvestigationForIncident } = useAppData();
   const { toast } = useToast();
+  const router = useRouter();
   const [newComment, setNewComment] = useState('');
   const [isCreatingInvestigation, setIsCreatingInvestigation] = useState(false);
 
@@ -194,11 +196,21 @@ const IncidentDetailsDialog = ({
     if (!incident) return;
     setIsCreatingInvestigation(true);
     try {
-      await createInvestigationForIncident(incident);
-      toast({
-        title: 'Investigation Started',
-        description: `An investigation has been created for incident ${incident.display_id}.`,
-      });
+      const newInvestigationId = await createInvestigationForIncident(incident);
+      if (newInvestigationId) {
+        toast({
+          title: 'Investigation Started',
+          description: `An investigation has been created for incident ${incident.display_id}.`,
+        });
+        onOpenChange(false);
+        router.push(`/investigations?id=${newInvestigationId}`);
+      } else {
+        toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Failed to create investigation or get its ID.'
+          });
+      }
     } catch (error) {
       console.error(error);
       toast({
