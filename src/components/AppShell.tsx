@@ -34,6 +34,8 @@ import {
 import { Header } from './Header';
 import { Button } from './ui/button';
 import { Card, CardDescription } from './ui/card';
+import { useAppData } from '@/context/AppDataContext';
+import Image from 'next/image';
 
 const menuItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -52,14 +54,19 @@ const menuItems = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { brandingSettings } = useAppData();
 
   return (
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
           <div className="flex items-center gap-2">
-            <div className="p-2 rounded-lg bg-primary">
-              <Siren className="w-6 h-6 text-primary-foreground" />
+            <div className="p-1 rounded-lg bg-primary h-10 w-10 flex items-center justify-center">
+              {brandingSettings?.logoUrl ? (
+                <Image src={brandingSettings.logoUrl} alt="Company Logo" width={32} height={32} className="object-contain" />
+              ) : (
+                <Siren className="w-6 h-6 text-primary-foreground" />
+              )}
             </div>
             <div className="flex flex-col">
               <span className="font-semibold text-lg">RDT360-Safety</span>

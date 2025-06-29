@@ -165,3 +165,7 @@ export type PredefinedChecklistItem = {
   id: string;
   text: string;
 };
+
+export type BrandingSettings = {
+  logoUrl: string;
+};

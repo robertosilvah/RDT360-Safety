@@ -2,9 +2,10 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit } from '@/types';
-import { db } from '@/lib/firebase';
+import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings } from '@/types';
+import { db, storage } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, writeBatch } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 type IncidentData = Omit<Incident, 'incident_id' | 'date' | 'linked_docs' | 'comments' | 'investigation_id' | 'status'>;
 
@@ -57,6 +58,8 @@ interface AppDataContextType {
   hotWorkPermits: HotWorkPermit[];
   addHotWorkPermit: (permit: Omit<HotWorkPermit, 'permit_id'>) => Promise<void>;
   updateHotWorkPermit: (updatedPermit: HotWorkPermit) => Promise<void>;
+  brandingSettings: BrandingSettings | null;
+  updateBrandingSettings: (logoFile: File) => Promise<void>;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -83,6 +86,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [investigations, setInvestigations] = useState<Investigation[]>([]);
   const [jsas, setJsas] = useState<JSA[]>([]);
   const [hotWorkPermits, setHotWorkPermits] = useState<HotWorkPermit[]>([]);
+  const [brandingSettings, setBrandingSettings] = useState<BrandingSettings | null>(null);
 
   useEffect(() => {
     const unsubscribers = [
@@ -100,6 +104,13 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       onSnapshot(collection(db, 'investigations'), (snapshot) => setInvestigations(mapFromSnapshot(snapshot, 'investigation_id'))),
       onSnapshot(collection(db, 'jsas'), (snapshot) => setJsas(mapFromSnapshot(snapshot, 'jsa_id'))),
       onSnapshot(collection(db, 'hotWorkPermits'), (snapshot) => setHotWorkPermits(mapFromSnapshot(snapshot, 'permit_id'))),
+      onSnapshot(doc(db, 'settings', 'branding'), (doc) => {
+        if (doc.exists()) {
+          setBrandingSettings(doc.data() as BrandingSettings);
+        } else {
+          setBrandingSettings(null); // No branding settings yet
+        }
+      }),
     ];
     return () => unsubscribers.forEach(unsub => unsub());
   }, []);
@@ -277,6 +288,14 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     const { permit_id, ...data } = updatedPermit;
     await updateDoc(doc(db, 'hotWorkPermits', permit_id), data);
   };
+  
+  const updateBrandingSettings = async (logoFile: File) => {
+    if (!logoFile) return;
+    const storageRef = ref(storage, `branding/logo`);
+    await uploadBytes(storageRef, logoFile);
+    const logoUrl = await getDownloadURL(storageRef);
+    await setDoc(doc(db, 'settings', 'branding'), { logoUrl });
+  };
 
   return (
     <AppDataContext.Provider value={{
@@ -294,6 +313,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       investigations, updateInvestigation, addCommentToInvestigation, addDocumentToInvestigation,
       jsas, addJsa, updateJsa,
       hotWorkPermits, addHotWorkPermit, updateHotWorkPermit,
+      brandingSettings, updateBrandingSettings,
     }}>
       {children}
     </AppDataContext.Provider>
