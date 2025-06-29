@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -196,7 +197,7 @@ const IncidentDetailsDialog = ({
       await createInvestigationForIncident(incident);
       toast({
         title: 'Investigation Started',
-        description: `An investigation has been created for incident ${incident.incident_id}.`,
+        description: `An investigation has been created for incident ${incident.display_id}.`,
       });
     } catch (error) {
       console.error(error);
@@ -218,7 +219,7 @@ const IncidentDetailsDialog = ({
       addCommentToIncident(incident.incident_id, { user: 'Safety Manager', comment: newComment.trim(), date: new Date().toISOString() });
     }
     
-    toast({ title: 'Incident Updated', description: `Incident ${incident.incident_id} has been updated.` });
+    toast({ title: 'Incident Updated', description: `Incident ${incident.display_id} has been updated.` });
     onOpenChange(false);
   };
 
@@ -227,7 +228,7 @@ const IncidentDetailsDialog = ({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Incident Details: {incident.incident_id}</DialogTitle>
+          <DialogTitle>Incident Details: {incident.display_id}</DialogTitle>
            <DialogDescription>
             Reported on {format(new Date(incident.date), 'PPP')} in {incident.area}
           </DialogDescription>
@@ -449,7 +450,7 @@ export default function IncidentsPage() {
               <TableBody>
                 {incidents.map((incident) => (
                   <TableRow key={incident.incident_id} onClick={() => handleRowClick(incident)} className="cursor-pointer">
-                    <TableCell className="font-medium">{incident.incident_id}</TableCell>
+                    <TableCell className="font-medium">{incident.display_id}</TableCell>
                     <TableCell>{new Date(incident.date).toLocaleDateString()}</TableCell>
                     <TableCell>{incident.area}</TableCell>
                     <TableCell>

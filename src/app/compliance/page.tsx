@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -79,7 +80,7 @@ const ComplianceForm = ({
       return;
     }
 
-    const newRecord: ComplianceRecord = {
+    const newRecord: Omit<ComplianceRecord, 'display_id'> = {
       employee_id: data.employee_id,
       name: employee.name,
       cert_renewals_due: data.cert_renewals_due ? new Date(data.cert_renewals_due).toISOString() : 'N/A',
@@ -87,9 +88,10 @@ const ComplianceForm = ({
       training_completed: data.training_completed.map(t => ({...t, date: new Date(t.date).toISOString() })),
     };
 
-    if (isEdit) {
-      updateComplianceRecord(newRecord);
-      toast({ title: 'Record Updated' });
+    if (isEdit && record) {
+        const fullRecord: ComplianceRecord = { ...record, ...newRecord };
+        updateComplianceRecord(fullRecord);
+        toast({ title: 'Record Updated' });
     } else {
       addComplianceRecord(newRecord);
       toast({ title: 'Record Added' });
@@ -266,6 +268,7 @@ export default function CompliancePage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Record ID</TableHead>
                   <TableHead>Employee</TableHead>
                   <TableHead>Last Training Completed</TableHead>
                   <TableHead>Certification Renewal</TableHead>
@@ -280,7 +283,8 @@ export default function CompliancePage() {
                   
                   return (
                     <TableRow key={record.employee_id}>
-                      <TableCell className="font-medium">{record.name}</TableCell>
+                      <TableCell className="font-medium">{record.display_id}</TableCell>
+                      <TableCell>{record.name}</TableCell>
                       <TableCell>{lastTraining ? `${lastTraining.course} on ${new Date(lastTraining.date).toLocaleDateString()}` : 'N/A'}</TableCell>
                       <TableCell>
                         {record.cert_renewals_due === 'N/A' ? (

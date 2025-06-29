@@ -7,6 +7,7 @@ export type Comment = {
 
 export type Investigation = {
   investigation_id: string;
+  display_id: string;
   incident_id: string;
   status: 'Open' | 'In Progress' | 'Closed';
   root_cause: string;
@@ -18,10 +19,11 @@ export type Investigation = {
   comments: Comment[];
 };
 
-export type IncidentData = Omit<Incident, 'incident_id' | 'linked_docs' | 'comments' | 'investigation_id' | 'status'>;
+export type IncidentData = Omit<Incident, 'incident_id' | 'display_id' | 'linked_docs' | 'comments' | 'investigation_id' | 'status'>;
 
 export type Incident = {
   incident_id: string;
+  display_id: string;
   date: string;
   area: string;
   type: 'Incident' | 'Accident';
@@ -37,6 +39,7 @@ export type Incident = {
 
 export type Observation = {
   observation_id: string;
+  display_id: string;
   report_type: 'Safety Concern' | 'Positive Observation' | 'Near Miss';
   submitted_by: string;
   date: string;
@@ -59,6 +62,7 @@ export type SafetyWalkChecklistItem = {
 
 export type SafetyWalk = {
   safety_walk_id: string;
+  display_id: string;
   walker: string;
   date: string;
   checklist_items: SafetyWalkChecklistItem[];
@@ -70,6 +74,7 @@ export type SafetyWalk = {
 
 export type CorrectiveAction = {
   action_id: string;
+  display_id: string;
   related_to_incident?: string;
   related_to_observation?: string;
   related_to_forklift_inspection?: string;
@@ -83,6 +88,7 @@ export type CorrectiveAction = {
 
 export type SafetyDoc = {
   doc_id: string;
+  display_id: string;
   title: string;
   category: 'Policy' | 'Procedure' | 'Form' | 'Training Material';
   file_url: string;
@@ -98,6 +104,7 @@ export type Area = {
 
 export type ComplianceRecord = {
   employee_id: string;
+  display_id: string;
   name: string;
   training_completed: { course: string; date: string }[];
   cert_renewals_due: string;
@@ -151,6 +158,7 @@ export type ForkliftChecklistItem = {
 
 export type ForkliftInspection = {
   inspection_id: string;
+  display_id: string;
   forklift_id: string;
   operator_name: string;
   date: string;

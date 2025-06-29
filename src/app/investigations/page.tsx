@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -6,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAppData } from '@/context/AppDataContext';
-import type { Investigation, Comment, CorrectiveAction } from '@/types';
+import type { Investigation, Comment, CorrectiveAction, Incident } from '@/types';
 import { PlusCircle, Upload, FileText, MessageSquare, User, Clock, Siren, Wand2, Loader2, Edit, AlertCircle, Calendar, BookOpen, ListChecks } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -49,14 +50,12 @@ const NewActionForm = ({ investigationId, onActionAdded }: { investigationId: st
   });
 
   const onSubmit = (values: any) => {
-    const newAction: CorrectiveAction = {
-      action_id: `ACT${Date.now()}`,
+    const newAction: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'> = {
       description: values.description,
       responsible_person: values.responsible_person,
       due_date: new Date(values.due_date).toISOString(),
       status: 'Pending',
       related_to_investigation: investigationId,
-      comments: [],
     };
     addCorrectiveAction(newAction);
     toast({ title: 'Corrective Action Created', description: 'The new action has been linked to this investigation.' });
@@ -183,7 +182,7 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
   };
 
   const linkedActions = correctiveActions.filter(a => a.related_to_investigation === investigation.investigation_id);
-  const severityVariant: { [key in 'Low' | 'Medium' | 'High']: 'default' | 'secondary' | 'destructive' } = {
+  const severityVariant: { [key in Incident['severity']]: 'default' | 'secondary' | 'destructive' } = {
     'Low': 'default',
     'Medium': 'secondary',
     'High': 'destructive',
@@ -193,9 +192,9 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Investigation Details: {investigation.investigation_id}</DialogTitle>
+          <DialogTitle>Investigation Details: {investigation.display_id}</DialogTitle>
           <DialogDescription>
-            For Incident <Button variant="link" asChild className="p-0 h-auto"><Link href={`/incidents`}>{investigation.incident_id}</Link></Button>
+            For Incident <Button variant="link" asChild className="p-0 h-auto"><Link href={`/incidents`}>{incidentDetails?.display_id}</Link></Button>
           </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-h-[70vh]">
@@ -340,7 +339,7 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
 };
 
 export default function InvestigationsPage() {
-  const { investigations } = useAppData();
+  const { investigations, incidents } = useAppData();
   const searchParams = useSearchParams();
   const [selectedInvestigation, setSelectedInvestigation] = useState<Investigation | null>(null);
   const [isDetailsOpen, setDetailsOpen] = useState(false);
@@ -390,22 +389,25 @@ export default function InvestigationsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {investigations.map((investigation) => (
-                  <TableRow key={investigation.investigation_id} onClick={() => handleRowClick(investigation)} className="cursor-pointer">
-                    <TableCell className="font-medium">{investigation.investigation_id}</TableCell>
-                    <TableCell>
-                      <Button variant="link" asChild className="p-0 h-auto">
-                        <Link href={`/incidents`}>{investigation.incident_id}</Link>
-                      </Button>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={statusVariant[investigation.status]}>{investigation.status}</Badge>
-                    </TableCell>
-                    <TableCell className="max-w-md truncate">
-                      {investigation.root_cause || 'Not yet determined'}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {investigations.map((investigation) => {
+                  const incident = incidents.find(i => i.incident_id === investigation.incident_id);
+                  return (
+                    <TableRow key={investigation.investigation_id} onClick={() => handleRowClick(investigation)} className="cursor-pointer">
+                      <TableCell className="font-medium">{investigation.display_id}</TableCell>
+                      <TableCell>
+                        <Button variant="link" asChild className="p-0 h-auto">
+                          <Link href={`/incidents`}>{incident?.display_id || investigation.incident_id}</Link>
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={statusVariant[investigation.status]}>{investigation.status}</Badge>
+                      </TableCell>
+                      <TableCell className="max-w-md truncate">
+                        {investigation.root_cause || 'Not yet determined'}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
           </CardContent>

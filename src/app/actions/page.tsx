@@ -203,7 +203,7 @@ const ActionForm = ({
                             key={'incident_id' in item ? item.incident_id : item.observation_id}
                             value={'incident_id' in item ? item.incident_id : item.observation_id}
                           >
-                            {'incident_id' in item ? item.incident_id : item.observation_id}: {item.description.substring(0, 50)}...
+                            {item.display_id}: {item.description.substring(0, 50)}...
                           </SelectItem>
                         )
                       )}
@@ -334,13 +334,13 @@ const KanbanCard = ({ action, onClick }: { action: CorrectiveAction; onClick: ()
 
 
 export default function CorrectiveActionsPage() {
-  const { correctiveActions: actions, addCorrectiveAction, incidents, observations } = useAppData();
+  const { correctiveActions: actions, addCorrectiveAction, incidents, observations, investigations } = useAppData();
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<CorrectiveAction | null>(null);
   const [isDetailsOpen, setDetailsOpen] = useState(false);
 
   const handleSaveAction = (values: ActionFormValues) => {
-      const newAction: Omit<CorrectiveAction, 'action_id'|'comments'> = {
+      const newAction: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'> = {
         description: values.description,
         responsible_person: values.responsible_person,
         due_date: new Date(values.due_date).toISOString(),
@@ -422,51 +422,57 @@ export default function CorrectiveActionsPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {actions.map((action) => (
-                        <TableRow key={action.action_id} onClick={() => openDetailsDialog(action)} className="cursor-pointer">
-                            <TableCell className="font-medium">{action.action_id}</TableCell>
-                            <TableCell className="max-w-sm truncate">{action.description}</TableCell>
-                            <TableCell>
-                            {action.related_to_incident && (
-                                <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
-                                <Link href="/incidents">
-                                    <Siren className="mr-2 h-4 w-4 text-red-500" />
-                                    {action.related_to_incident}
-                                </Link>
-                                </Button>
-                            )}
-                            {action.related_to_observation && (
-                                <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
-                                <Link href="/observations">
-                                    <Eye className="mr-2 h-4 w-4 text-blue-500" />
-                                    {action.related_to_observation}
-                                </Link>
-                                </Button>
-                            )}
-                            {action.related_to_forklift_inspection && (
-                                <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
-                                <Link href="/forklift-inspections">
-                                    <Truck className="mr-2 h-4 w-4 text-green-500" />
-                                    {action.related_to_forklift_inspection}
-                                </Link>
-                                </Button>
-                            )}
-                             {action.related_to_investigation && (
-                                <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
-                                <Link href={`/investigations?id=${action.related_to_investigation}`}>
-                                    <FileSearch className="mr-2 h-4 w-4 text-purple-500" />
-                                    {action.related_to_investigation}
-                                </Link>
-                                </Button>
-                            )}
-                            </TableCell>
-                            <TableCell>{action.responsible_person}</TableCell>
-                            <TableCell>{new Date(action.due_date).toLocaleDateString()}</TableCell>
-                            <TableCell>
-                            <Badge variant={statusVariant[action.status]}>{action.status}</Badge>
-                            </TableCell>
-                        </TableRow>
-                        ))}
+                        {actions.map((action) => {
+                          const incident = action.related_to_incident ? incidents.find(i => i.incident_id === action.related_to_incident) : null;
+                          const observation = action.related_to_observation ? observations.find(o => o.observation_id === action.related_to_observation) : null;
+                          const investigation = action.related_to_investigation ? investigations.find(i => i.investigation_id === action.related_to_investigation) : null;
+                          
+                          return (
+                            <TableRow key={action.action_id} onClick={() => openDetailsDialog(action)} className="cursor-pointer">
+                                <TableCell className="font-medium">{action.display_id}</TableCell>
+                                <TableCell className="max-w-sm truncate">{action.description}</TableCell>
+                                <TableCell>
+                                {incident && (
+                                    <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
+                                    <Link href="/incidents">
+                                        <Siren className="mr-2 h-4 w-4 text-red-500" />
+                                        {incident.display_id}
+                                    </Link>
+                                    </Button>
+                                )}
+                                {observation && (
+                                    <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
+                                    <Link href="/observations">
+                                        <Eye className="mr-2 h-4 w-4 text-blue-500" />
+                                        {observation.display_id}
+                                    </Link>
+                                    </Button>
+                                )}
+                                {action.related_to_forklift_inspection && (
+                                    <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
+                                    <Link href="/forklift-inspections">
+                                        <Truck className="mr-2 h-4 w-4 text-green-500" />
+                                        {action.related_to_forklift_inspection}
+                                    </Link>
+                                    </Button>
+                                )}
+                                {investigation && (
+                                    <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
+                                    <Link href={`/investigations?id=${investigation.investigation_id}`}>
+                                        <FileSearch className="mr-2 h-4 w-4 text-purple-500" />
+                                        {investigation.display_id}
+                                    </Link>
+                                    </Button>
+                                )}
+                                </TableCell>
+                                <TableCell>{action.responsible_person}</TableCell>
+                                <TableCell>{new Date(action.due_date).toLocaleDateString()}</TableCell>
+                                <TableCell>
+                                <Badge variant={statusVariant[action.status]}>{action.status}</Badge>
+                                </TableCell>
+                            </TableRow>
+                          )
+                        })}
                     </TableBody>
                     </Table>
                 </CardContent>

@@ -10,11 +10,11 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 interface AppDataContextType {
   observations: Observation[];
-  addObservation: (observation: Omit<Observation, 'observation_id' | 'status'>) => Promise<DocumentReference>;
+  addObservation: (observation: Omit<Observation, 'observation_id' | 'display_id' | 'status'>) => Promise<DocumentReference>;
   updateObservation: (observation: Observation) => Promise<void>;
   deleteObservation: (observationId: string) => Promise<void>;
   correctiveActions: CorrectiveAction[];
-  addCorrectiveAction: (action: Omit<CorrectiveAction, 'action_id' | 'comments'>) => Promise<void>;
+  addCorrectiveAction: (action: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'>) => Promise<void>;
   updateCorrectiveAction: (updatedAction: CorrectiveAction) => Promise<void>;
   addCommentToAction: (actionId: string, comment: Comment) => Promise<void>;
   incidents: Incident[];
@@ -23,11 +23,11 @@ interface AppDataContextType {
   updateIncident: (updatedIncident: Incident) => Promise<void>;
   addCommentToIncident: (incidentId: string, comment: Comment) => Promise<void>;
   safetyWalks: SafetyWalk[];
-  addSafetyWalk: (walk: Omit<SafetyWalk, 'safety_walk_id'>) => Promise<void>;
+  addSafetyWalk: (walk: Omit<SafetyWalk, 'safety_walk_id' | 'display_id'>) => Promise<void>;
   updateSafetyWalk: (walk: SafetyWalk) => Promise<void>;
   addCommentToSafetyWalk: (walkId: string, comment: Comment) => Promise<void>;
   forkliftInspections: ForkliftInspection[];
-  addForkliftInspection: (inspection: Omit<ForkliftInspection, 'inspection_id'>) => Promise<void>;
+  addForkliftInspection: (inspection: Omit<ForkliftInspection, 'inspection_id' | 'display_id'>) => Promise<void>;
   forklifts: Forklift[];
   addForklift: (forklift: Forklift) => Promise<void>;
   updateForklift: (forklift: Forklift) => Promise<void>;
@@ -45,9 +45,9 @@ interface AppDataContextType {
   updateArea: (updatedArea: Area) => Promise<void>;
   deleteArea: (areaId: string) => Promise<void>;
   safetyDocs: SafetyDoc[];
-  addSafetyDoc: (doc: Omit<SafetyDoc, 'doc_id'>) => Promise<void>;
+  addSafetyDoc: (doc: Omit<SafetyDoc, 'doc_id' | 'display_id'>) => Promise<void>;
   complianceRecords: ComplianceRecord[];
-  addComplianceRecord: (record: ComplianceRecord) => Promise<void>;
+  addComplianceRecord: (record: Omit<ComplianceRecord, 'display_id'>) => Promise<void>;
   updateComplianceRecord: (record: ComplianceRecord) => Promise<void>;
   removeComplianceRecord: (employeeId: string) => Promise<void>;
   investigations: Investigation[];
@@ -117,8 +117,9 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribers.forEach(unsub => unsub());
   }, []);
 
-  const addObservation = async (observation: Omit<Observation, 'observation_id' | 'status'>) => {
-    return await addDoc(collection(db, 'observations'), { ...observation, status: 'Open' });
+  const addObservation = async (observation: Omit<Observation, 'observation_id' | 'display_id' | 'status'>) => {
+    const displayId = `OBS${String(observations.length + 1).padStart(3, '0')}`;
+    return await addDoc(collection(db, 'observations'), { ...observation, display_id: displayId, status: 'Open' });
   };
 
   const updateObservation = async (observation: Observation) => {
@@ -130,8 +131,9 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     await deleteDoc(doc(db, 'observations', observationId));
   };
 
-  const addCorrectiveAction = async (action: Omit<CorrectiveAction, 'action_id' | 'comments'>) => {
-    await addDoc(collection(db, 'correctiveActions'), { ...action, comments: [] });
+  const addCorrectiveAction = async (action: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'>) => {
+    const displayId = `ACT${String(correctiveActions.length + 1).padStart(3, '0')}`;
+    await addDoc(collection(db, 'correctiveActions'), { ...action, display_id: displayId, comments: [] });
   };
   
   const updateCorrectiveAction = async (updatedAction: CorrectiveAction) => {
@@ -148,8 +150,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const addIncident = async (incidentData: IncidentData) => {
+    const displayId = `INC${String(incidents.length + 1).padStart(3, '0')}`;
     const newIncidentForDb = {
         ...incidentData,
+        display_id: displayId,
         status: 'Open' as const,
         linked_docs: [],
         comments: [],
@@ -161,8 +165,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     if (incident.investigation_id) return;
 
     const batch = writeBatch(db);
+    const displayId = `INV${String(investigations.length + 1).padStart(3, '0')}`;
 
     const newInvestigation: Omit<Investigation, 'investigation_id'> = {
+        display_id: displayId,
         incident_id: incident.incident_id,
         status: 'Open',
         root_cause: '',
@@ -197,8 +203,9 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const addSafetyWalk = async (walk: Omit<SafetyWalk, 'safety_walk_id'>) => {
-    await addDoc(collection(db, 'safetyWalks'), walk);
+  const addSafetyWalk = async (walk: Omit<SafetyWalk, 'safety_walk_id' | 'display_id'>) => {
+    const displayId = `SWALK${String(safetyWalks.length + 1).padStart(3, '0')}`;
+    await addDoc(collection(db, 'safetyWalks'), {...walk, display_id: displayId});
   };
 
   const updateSafetyWalk = async (updatedWalk: SafetyWalk) => {
@@ -213,8 +220,9 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const addForkliftInspection = async (inspection: Omit<ForkliftInspection, 'inspection_id'>) => {
-    await addDoc(collection(db, 'forkliftInspections'), inspection);
+  const addForkliftInspection = async (inspection: Omit<ForkliftInspection, 'inspection_id' | 'display_id'>) => {
+    const displayId = `FINSP${String(forkliftInspections.length + 1).padStart(3, '0')}`;
+    await addDoc(collection(db, 'forkliftInspections'), {...inspection, display_id: displayId});
   };
 
   const addForklift = async (forklift: Forklift) => {
@@ -262,12 +270,14 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     await deleteDoc(doc(db, 'areas', areaId));
   };
 
-  const addSafetyDoc = async (docData: Omit<SafetyDoc, 'doc_id'>) => {
-    await addDoc(collection(db, 'safetyDocs'), docData);
+  const addSafetyDoc = async (docData: Omit<SafetyDoc, 'doc_id' | 'display_id'>) => {
+    const displayId = `DOC${String(safetyDocs.length + 1).padStart(3, '0')}`;
+    await addDoc(collection(db, 'safetyDocs'), {...docData, display_id: displayId});
   };
 
-  const addComplianceRecord = async (record: ComplianceRecord) => {
-    await setDoc(doc(db, 'complianceRecords', record.employee_id), record);
+  const addComplianceRecord = async (record: Omit<ComplianceRecord, 'display_id'>) => {
+    const displayId = `CR${String(complianceRecords.length + 1).padStart(3, '0')}`;
+    await setDoc(doc(db, 'complianceRecords', record.employee_id), {...record, display_id: displayId});
   };
   const updateComplianceRecord = async (record: ComplianceRecord) => {
     await updateDoc(doc(db, 'complianceRecords', record.employee_id), record);

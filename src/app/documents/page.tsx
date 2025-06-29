@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -16,6 +17,7 @@ import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 
 const categoryIcons = {
   'Policy': <FileBadge className="h-8 w-8 text-primary" />,
@@ -57,8 +59,7 @@ const DocumentUploadForm = ({ setOpen }: { setOpen: (open: boolean) => void }) =
       return;
     }
 
-    const newDoc: SafetyDoc = {
-      doc_id: `DOC${Date.now()}`,
+    const newDoc: Omit<SafetyDoc, 'doc_id' | 'display_id'> = {
       title: data.title,
       category: data.category,
       // In a real app, you'd upload the file and get a URL.
@@ -171,9 +172,12 @@ export default function DocumentsPage() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {safetyDocs.map((doc) => (
                 <Card key={doc.doc_id} className="hover:shadow-md transition-shadow">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                         <CardTitle className="text-base font-medium">{doc.title}</CardTitle>
-                        {categoryIcons[doc.category]}
+                         <div className="flex flex-col items-end gap-2">
+                            {categoryIcons[doc.category]}
+                            <Badge variant="outline">{doc.display_id}</Badge>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <p className="text-xs text-muted-foreground">{doc.category}</p>

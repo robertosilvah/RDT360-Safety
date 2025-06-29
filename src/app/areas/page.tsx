@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -93,7 +94,7 @@ const AreaDashboard = ({ area }: { area: Area }) => {
                                     <TableRow key={incident.incident_id}>
                                         <TableCell>
                                             <Button variant="link" asChild className="p-0 h-auto">
-                                                <Link href="/incidents">{incident.incident_id}</Link>
+                                                <Link href="/incidents">{incident.display_id}</Link>
                                             </Button>
                                         </TableCell>
                                         <TableCell className="truncate">{incident.description}</TableCell>
