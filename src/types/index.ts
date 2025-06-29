@@ -24,6 +24,7 @@ export type Incident = {
   type: 'Incident' | 'Accident';
   description: string;
   severity: 'Low' | 'Medium' | 'High';
+  reported_by: string;
   linked_docs: string[];
   status: 'Open' | 'Under Investigation' | 'Closed';
   assigned_to?: string;

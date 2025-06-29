@@ -102,25 +102,39 @@ export default function DashboardPage() {
     Low: 'text-green-500',
   };
 
-  const observationsByPersonData = useMemo(() => {
-    const filteredObservations = observations.filter(obs => {
-      if (!date?.from) return true;
-      const toDate = date.to ?? date.from;
-      return isWithinInterval(new Date(obs.date), { start: date.from, end: toDate });
-    });
-    
-    const observationsByPerson = filteredObservations.reduce(
-      (acc: Record<string, number>, obs) => {
-        acc[obs.submitted_by] = (acc[obs.submitted_by] || 0) + 1;
-        return acc;
-      },
-      {}
-    );
+  const submissionsByPersonData = useMemo(() => {
+    const contributions: { person: string; date: string }[] = [];
 
-    return Object.entries(observationsByPerson)
-      .map(([person, count]) => ({ person, count }))
-      .sort((a, b) => b.count - a.count);
-  }, [observations, date]);
+    observations.forEach(obs => {
+        contributions.push({ person: obs.submitted_by, date: obs.date });
+    });
+
+    incidents.forEach(inc => {
+        if (inc.reported_by) {
+            contributions.push({ person: inc.reported_by, date: inc.date });
+        }
+    });
+
+    const filteredContributions = contributions.filter(item => {
+        if (!date?.from) return true;
+        const toDate = date.to ?? date.from;
+        try {
+            return isWithinInterval(new Date(item.date), { start: date.from, end: toDate });
+        } catch (e) {
+            return false;
+        }
+    });
+
+    const contributionsByPerson = filteredContributions.reduce((acc: Record<string, number>, item) => {
+        acc[item.person] = (acc[item.person] || 0) + 1;
+        return acc;
+    }, {});
+
+    return Object.entries(contributionsByPerson)
+        .map(([person, count]) => ({ person, count }))
+        .sort((a, b) => b.count - a.count);
+  }, [observations, incidents, date]);
+
 
   const pendingActionsByPersonData = useMemo(() => {
     const pendingActionsByPerson = correctiveActions
@@ -272,9 +286,9 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="flex-row items-center justify-between space-y-0">
               <div>
-                <CardTitle>Observations by Person</CardTitle>
+                <CardTitle>Submissions by Person</CardTitle>
                 <CardDescription>
-                  Top contributors for safety observations.
+                  Top contributors for safety observations and incidents.
                 </CardDescription>
               </div>
               <Popover>
@@ -319,11 +333,11 @@ export default function DashboardPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Person</TableHead>
-                    <TableHead className="text-right">Observations</TableHead>
+                    <TableHead className="text-right">Submissions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {observationsByPersonData.map((item) => (
+                  {submissionsByPersonData.map((item) => (
                     <TableRow key={item.person}>
                       <TableCell className="font-medium">
                         {item.person}

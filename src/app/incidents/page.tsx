@@ -28,6 +28,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAppData } from '@/context/AppDataContext';
+import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 
 const incidentFormSchema = z.object({
@@ -48,6 +49,7 @@ type NewIncidentFormValues = z.infer<typeof newIncidentFormSchema>;
 
 const IncidentReportForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
     const { addIncident } = useAppData();
+    const { user } = useAuth();
     const { toast } = useToast();
     const form = useForm<NewIncidentFormValues>({
         resolver: zodResolver(newIncidentFormSchema),
@@ -61,7 +63,11 @@ const IncidentReportForm = ({ setOpen }: { setOpen: (open: boolean) => void }) =
     });
 
     const onSubmit = (values: NewIncidentFormValues) => {
-        addIncident(values);
+        const incidentData = {
+          ...values,
+          reported_by: user?.displayName || 'System',
+        }
+        addIncident(incidentData);
         toast({
             title: 'Incident Reported',
             description: 'A new incident and corresponding investigation have been created.',
