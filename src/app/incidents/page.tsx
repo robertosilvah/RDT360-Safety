@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -14,7 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { Incident, Comment, Investigation } from '@/types';
-import { FilePlus2, Download, MessageSquare, User, Clock } from 'lucide-react';
+import { FilePlus2, Download, MessageSquare, User, Clock, FileSearch, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { useForm } from 'react-hook-form';
@@ -76,7 +75,7 @@ const IncidentReportForm = ({ setOpen }: { setOpen: (open: boolean) => void }) =
         addIncident(incidentData);
         toast({
             title: 'Incident Reported',
-            description: 'A new incident and corresponding investigation have been created.',
+            description: 'The new incident has been logged.',
         });
         setOpen(false);
     };
@@ -87,7 +86,7 @@ const IncidentReportForm = ({ setOpen }: { setOpen: (open: boolean) => void }) =
                  <DialogHeader>
                     <DialogTitle>Report a New Incident</DialogTitle>
                     <DialogDescription>
-                        Fill out the details below. An investigation will be automatically created.
+                        Fill out the details below. You can start an investigation after reporting.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
@@ -159,9 +158,10 @@ const IncidentDetailsDialog = ({
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }) => {
-  const { updateIncident, addCommentToIncident } = useAppData();
+  const { updateIncident, addCommentToIncident, createInvestigationForIncident } = useAppData();
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
+  const [isCreatingInvestigation, setIsCreatingInvestigation] = useState(false);
 
   const form = useForm<IncidentFormValues>({
     resolver: zodResolver(incidentFormSchema),
@@ -188,6 +188,27 @@ const IncidentDetailsDialog = ({
   }, [incident, form, isOpen]);
 
   if (!incident) return null;
+
+  const handleStartInvestigation = async () => {
+    if (!incident) return;
+    setIsCreatingInvestigation(true);
+    try {
+      await createInvestigationForIncident(incident);
+      toast({
+        title: 'Investigation Started',
+        description: `An investigation has been created for incident ${incident.incident_id}.`,
+      });
+    } catch (error) {
+      console.error(error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not start investigation.'
+      });
+    } finally {
+      setIsCreatingInvestigation(false);
+    }
+  };
 
   const handleSubmit = (values: IncidentFormValues) => {
     const updatedIncident = { ...incident, ...values, assigned_to: values.assigned_to || undefined };
@@ -293,9 +314,20 @@ const IncidentDetailsDialog = ({
               />
               <DialogFooter className="!justify-between">
                 <div>
-                  <Button type="button" variant="outline" asChild>
-                    <Link href={`/investigations?id=${incident.investigation_id}`}>View Investigation</Link>
-                  </Button>
+                  {incident.investigation_id ? (
+                    <Button type="button" variant="outline" asChild>
+                      <Link href={`/investigations?id=${incident.investigation_id}`}>View Investigation</Link>
+                    </Button>
+                  ) : (
+                    <Button type="button" variant="outline" onClick={handleStartInvestigation} disabled={isCreatingInvestigation}>
+                      {isCreatingInvestigation ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <FileSearch className="mr-2 h-4 w-4" />
+                      )}
+                      Start Investigation
+                    </Button>
+                  )}
                 </div>
                 <Button type="submit">Save Changes</Button>
               </DialogFooter>

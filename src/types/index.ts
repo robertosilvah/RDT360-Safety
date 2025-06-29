@@ -32,7 +32,7 @@ export type Incident = {
   status: 'Open' | 'Under Investigation' | 'Closed';
   assigned_to?: string;
   comments: Comment[];
-  investigation_id: string;
+  investigation_id?: string;
 };
 
 export type Observation = {

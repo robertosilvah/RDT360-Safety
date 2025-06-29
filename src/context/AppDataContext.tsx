@@ -19,6 +19,7 @@ interface AppDataContextType {
   addCommentToAction: (actionId: string, comment: Comment) => Promise<void>;
   incidents: Incident[];
   addIncident: (incidentData: IncidentData) => Promise<void>;
+  createInvestigationForIncident: (incident: Incident) => Promise<void>;
   updateIncident: (updatedIncident: Incident) => Promise<void>;
   addCommentToIncident: (incidentId: string, comment: Comment) => Promise<void>;
   safetyWalks: SafetyWalk[];
@@ -149,15 +150,20 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const addIncident = async (incidentData: IncidentData) => {
     const newIncidentForDb = {
         ...incidentData,
-        status: 'Under Investigation' as const,
+        status: 'Open' as const,
         linked_docs: [],
         comments: [],
-        investigation_id: '',
     };
-    const incidentRef = await addDoc(collection(db, 'incidents'), newIncidentForDb);
-    
+    await addDoc(collection(db, 'incidents'), newIncidentForDb);
+  };
+
+  const createInvestigationForIncident = async (incident: Incident) => {
+    if (incident.investigation_id) return;
+
+    const batch = writeBatch(db);
+
     const newInvestigation: Omit<Investigation, 'investigation_id'> = {
-        incident_id: incidentRef.id,
+        incident_id: incident.incident_id,
         status: 'Open',
         root_cause: '',
         contributing_factors: '',
@@ -167,12 +173,17 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         documents: [],
         comments: [],
     };
-    const investigationRef = await addDoc(collection(db, 'investigations'), newInvestigation);
+    const investigationRef = doc(collection(db, 'investigations'));
+    batch.set(investigationRef, newInvestigation);
 
-    await updateDoc(incidentRef, {
-        investigation_id: investigationRef.id
+    const incidentRef = doc(db, 'incidents', incident.incident_id);
+    batch.update(incidentRef, {
+        investigation_id: investigationRef.id,
+        status: 'Under Investigation'
     });
-  };
+
+    await batch.commit();
+  }
 
   const updateIncident = async (updatedIncident: Incident) => {
     const { incident_id, ...data } = updatedIncident;
@@ -310,7 +321,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     <AppDataContext.Provider value={{
       observations, addObservation, updateObservation, deleteObservation,
       correctiveActions, addCorrectiveAction, updateCorrectiveAction, addCommentToAction,
-      incidents, updateIncident, addCommentToIncident, addIncident,
+      incidents, updateIncident, addCommentToIncident, addIncident, createInvestigationForIncident,
       safetyWalks, addSafetyWalk, updateSafetyWalk, addCommentToSafetyWalk,
       forkliftInspections, addForkliftInspection,
       forklifts, addForklift, updateForklift, removeForklift,
@@ -336,5 +347,3 @@ export const useAppData = () => {
   }
   return context;
 };
-
-    
