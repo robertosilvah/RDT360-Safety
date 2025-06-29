@@ -16,11 +16,12 @@ import { Badge } from '@/components/ui/badge';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSearchParams } from 'next/navigation';
 import { useAppData } from '@/context/AppDataContext';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const jsaStepSchema = z.object({
   step_description: z.string().min(1, { message: 'Step description cannot be empty.' }),
@@ -32,11 +33,25 @@ const jsaFormSchema = z.object({
   title: z.string().min(3, { message: 'Title must be at least 3 characters long.' }),
   areaId: z.string({ required_error: 'Please select an area.' }).min(1, { message: 'Please select an area.' }),
   job_description: z.string().min(10, { message: 'Description must be at least 10 characters long.' }),
-  required_ppe: z.string().min(1, { message: 'Please list required PPE.' }),
+  required_ppe: z.array(z.string()).optional(),
+  other_ppe: z.string().optional(),
   steps: z.array(jsaStepSchema).min(1, 'At least one job step is required.'),
+}).refine(data => (data.required_ppe && data.required_ppe.length > 0) || (data.other_ppe && data.other_ppe.trim() !== ''), {
+    message: 'Please select at least one PPE or specify in the "Other" field.',
+    path: ['required_ppe'],
 });
 
+
 type JsaFormValues = z.infer<typeof jsaFormSchema>;
+
+const PREDEFINED_PPE = [
+  { id: 'ppe_1', label: 'Safety Glasses' },
+  { id: 'ppe_2', label: 'Hard Hat' },
+  { id: 'ppe_3', label: 'Steel-toed Boots' },
+  { id: 'ppe_4', label: 'High-visibility Vest' },
+  { id: 'ppe_5', label: 'Gloves' },
+  { id: 'ppe_6', label: 'Hearing Protection' },
+];
 
 const AreaSelectOptions = ({ areas, level = 0 }: { areas: Area[]; level?: number }) => {
   return (
@@ -60,7 +75,8 @@ const CreateJsaForm = ({ onAddJsa, setOpen }: { onAddJsa: (jsa: Omit<JSA, 'jsa_i
     defaultValues: {
       title: '',
       job_description: '',
-      required_ppe: '',
+      required_ppe: [],
+      other_ppe: '',
       areaId: '',
       steps: [{ step_description: '', hazards: '', controls: '' }],
     },
@@ -74,11 +90,14 @@ const CreateJsaForm = ({ onAddJsa, setOpen }: { onAddJsa: (jsa: Omit<JSA, 'jsa_i
   const { toast } = useToast();
 
   const onSubmit = async (data: JsaFormValues) => {
+    const otherPpeItems = data.other_ppe ? data.other_ppe.split(',').map(s => s.trim()).filter(Boolean) : [];
+    const allPpe = [...(data.required_ppe || []), ...otherPpeItems];
+
     const newJsa: Omit<JSA, 'jsa_id'> = {
         title: data.title,
         job_description: data.job_description,
         areaId: data.areaId,
-        required_ppe: data.required_ppe.split(',').map(s => s.trim()).filter(Boolean),
+        required_ppe: allPpe,
         steps: data.steps.map(step => ({
             step_description: step.step_description,
             hazards: step.hazards.split(',').map(s => s.trim()).filter(Boolean),
@@ -149,18 +168,66 @@ const CreateJsaForm = ({ onAddJsa, setOpen }: { onAddJsa: (jsa: Omit<JSA, 'jsa_i
                 </FormItem>
               )}
             />
-            <FormField
+             <FormField
               control={form.control}
               name="required_ppe"
-              render={({ field }) => (
+              render={() => (
                 <FormItem>
-                  <FormLabel>Required PPE (comma-separated)</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Safety glasses, Steel-toed boots" {...field} />
-                  </FormControl>
+                  <div className="mb-4">
+                    <FormLabel className="text-base">Required PPE</FormLabel>
+                    <FormDescription>Select all common PPE that apply.</FormDescription>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {PREDEFINED_PPE.map((item) => (
+                      <FormField
+                        key={item.id}
+                        control={form.control}
+                        name="required_ppe"
+                        render={({ field }) => {
+                          return (
+                            <FormItem
+                              key={item.id}
+                              className="flex flex-row items-start space-x-3 space-y-0"
+                            >
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value?.includes(item.label)}
+                                  onCheckedChange={(checked) => {
+                                    return checked
+                                      ? field.onChange([...(field.value || []), item.label])
+                                      : field.onChange(
+                                          field.value?.filter(
+                                            (value) => value !== item.label
+                                          )
+                                        );
+                                  }}
+                                />
+                              </FormControl>
+                              <FormLabel className="font-normal">
+                                {item.label}
+                              </FormLabel>
+                            </FormItem>
+                          );
+                        }}
+                      />
+                    ))}
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
+            />
+            <FormField
+                control={form.control}
+                name="other_ppe"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Other PPE (comma-separated)</FormLabel>
+                    <FormControl>
+                        <Input placeholder="e.g., Face shield, Respirator" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
             />
             <Separator />
 
@@ -428,3 +495,5 @@ export default function JsaPage() {
         </AppShell>
     );
 }
+
+    
