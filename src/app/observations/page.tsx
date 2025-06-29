@@ -245,11 +245,13 @@ export default function ObservationsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const currentUser = users.find(u => u.id === authUser?.uid);
+  // Determine user role, special handling for mock admin user
+  const userRole = authUser?.uid === 'admin-user-id-001' 
+    ? 'Administrator' 
+    : users.find(u => u.id === authUser?.uid)?.role;
 
-  // In a real app, these permissions would be more robust.
-  const canImport = currentUser?.role === 'Administrator';
-  const canExport = currentUser?.role === 'Administrator' || currentUser?.role === 'Manager';
+  const canImport = userRole === 'Administrator';
+  const canExport = userRole === 'Administrator' || userRole === 'Manager';
 
   const statusVariant: { [key in Observation['status']]: 'outline' | 'default' } = {
     Open: 'default',
