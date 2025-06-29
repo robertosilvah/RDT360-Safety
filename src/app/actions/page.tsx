@@ -6,7 +6,6 @@ import { AppShell } from '@/components/AppShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { mockIncidents, mockObservations } from '@/lib/mockData';
 import type { CorrectiveAction, Incident, Observation, Comment } from '@/types';
 import { PlusCircle, Siren, Eye, MessageSquare, User, Clock, CheckCircle, AlertTriangle, List, Truck, FileSearch } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -45,11 +44,15 @@ const ActionForm = ({
   setOpen,
   initialValues,
   isEdit = false,
+  incidents,
+  observations,
 }: {
   onSave: (data: ActionFormValues, actionId?: string) => void;
   setOpen: (open: boolean) => void;
   initialValues?: CorrectiveAction;
   isEdit?: boolean;
+  incidents: Incident[];
+  observations: Observation[];
 }) => {
   const { toast } = useToast();
   const form = useForm<ActionFormValues>({
@@ -194,7 +197,7 @@ const ActionForm = ({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {(linkType === 'incident' ? mockIncidents : mockObservations).map(
+                      {(linkType === 'incident' ? incidents : observations).map(
                         (item) => (
                           <SelectItem
                             key={'incident_id' in item ? item.incident_id : item.observation_id}
@@ -228,7 +231,7 @@ const ActionDetailsDialog = ({
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
 }) => {
-    const { correctiveActions, updateCorrectiveAction, addCommentToAction } = useAppData();
+    const { correctiveActions, updateCorrectiveAction, addCommentToAction, incidents, observations } = useAppData();
     const [newComment, setNewComment] = useState('');
     
     if (!action) return null;
@@ -262,7 +265,7 @@ const ActionDetailsDialog = ({
             <DialogContent className="max-w-3xl">
                 <div className="max-h-[80vh] grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="md:col-span-2 space-y-6">
-                        <ActionForm onSave={handleSave} setOpen={onOpenChange} initialValues={action} isEdit />
+                        <ActionForm onSave={handleSave} setOpen={onOpenChange} initialValues={action} isEdit incidents={incidents} observations={observations} />
                     </div>
                     <div className="md:col-span-1 space-y-4 pt-2">
                         <h3 className="text-lg font-semibold flex items-center gap-2"><MessageSquare className="h-5 w-5" /> Comments</h3>
@@ -331,19 +334,17 @@ const KanbanCard = ({ action, onClick }: { action: CorrectiveAction; onClick: ()
 
 
 export default function CorrectiveActionsPage() {
-  const { correctiveActions: actions, addCorrectiveAction } = useAppData();
+  const { correctiveActions: actions, addCorrectiveAction, incidents, observations } = useAppData();
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<CorrectiveAction | null>(null);
   const [isDetailsOpen, setDetailsOpen] = useState(false);
 
   const handleSaveAction = (values: ActionFormValues) => {
-      const newAction: CorrectiveAction = {
-        action_id: `ACT${String(Math.floor(Math.random() * 900) + 100)}`,
+      const newAction: Omit<CorrectiveAction, 'action_id'|'comments'> = {
         description: values.description,
         responsible_person: values.responsible_person,
         due_date: new Date(values.due_date).toISOString(),
         status: 'Pending',
-        comments: [],
         related_to_incident: values.linkType === 'incident' ? values.linked_id : undefined,
         related_to_observation: values.linkType === 'observation' ? values.linked_id : undefined,
       };
@@ -370,7 +371,7 @@ export default function CorrectiveActionsPage() {
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl">
-              <ActionForm onSave={handleSaveAction} setOpen={setCreateDialogOpen} />
+              <ActionForm onSave={handleSaveAction} setOpen={setCreateDialogOpen} incidents={incidents} observations={observations}/>
             </DialogContent>
           </Dialog>
         </div>
