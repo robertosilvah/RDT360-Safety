@@ -1,4 +1,3 @@
-
 'use client';
 
 import {
@@ -15,13 +14,26 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
 import { Bell, Search } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
+import { auth } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
 
 export function Header() {
-  const handleLogout = () => {
-    // In a real app with authentication, you would handle logout logic here.
-    // For this prototype, we'll just log to the console and redirect to the homepage.
-    console.log("User logged out");
-    window.location.href = '/';
+  const { user } = useAuth();
+  const router = useRouter();
+  
+  const handleLogout = async () => {
+    try {
+      await auth.signOut();
+      router.push('/login');
+    } catch (error) {
+      console.error("Error signing out: ", error);
+    }
+  }
+
+  const getInitials = (name: string | null | undefined) => {
+    if (!name) return 'U';
+    return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
   }
 
   return (
@@ -47,14 +59,18 @@ export function Header() {
         <DropdownMenuTrigger asChild>
           <Button variant="secondary" size="icon" className="rounded-full">
             <Avatar>
-              <AvatarImage src="https://placehold.co/40x40" alt="User Avatar" data-ai-hint="user avatar" />
-              <AvatarFallback>SM</AvatarFallback>
+              {user?.photoURL ? (
+                <AvatarImage src={user.photoURL} alt={user.displayName || 'User Avatar'} data-ai-hint="user avatar" />
+              ): (
+                <AvatarImage src="https://placehold.co/40x40" alt="User Avatar" data-ai-hint="user avatar" />
+              )}
+              <AvatarFallback>{getInitials(user?.displayName)}</AvatarFallback>
             </Avatar>
             <span className="sr-only">Toggle user menu</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel>My Account</DropdownMenuLabel>
+          <DropdownMenuLabel>{user?.displayName || "My Account"}</DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <Link href="/profile">Profile</Link>
