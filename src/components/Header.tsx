@@ -1,3 +1,4 @@
+
 'use client';
 
 import {
@@ -13,8 +14,16 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Button } from './ui/button';
 import { Bell, Search } from 'lucide-react';
+import Link from 'next/link';
 
 export function Header() {
+  const handleLogout = () => {
+    // In a real app with authentication, you would handle logout logic here.
+    // For this prototype, we'll just log to the console and redirect to the homepage.
+    console.log("User logged out");
+    window.location.href = '/';
+  }
+
   return (
     <header className="flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:h-[60px] lg:px-6 sticky top-0 z-40">
       <SidebarTrigger className="md:hidden" />
@@ -47,11 +56,19 @@ export function Header() {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>My Account</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Profile</DropdownMenuItem>
-          <DropdownMenuItem>Settings</DropdownMenuItem>
-          <DropdownMenuItem>Support</DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/profile">Profile</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/settings/users">Settings</Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <a href="mailto:support@example.com">Support</a>
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>Logout</DropdownMenuItem>
+          <DropdownMenuItem onSelect={(e) => { e.preventDefault(); handleLogout(); }}>
+            Logout
+          </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
     </header>
