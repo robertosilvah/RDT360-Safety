@@ -199,7 +199,7 @@ const EditObservationDialog = ({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Edit Observation: {observation.observation_id}</DialogTitle>
+          <DialogTitle>Edit Observation: {observation.display_id}</DialogTitle>
           <DialogDescription>
             Modify the details of the observation below.
           </DialogDescription>
@@ -277,7 +277,7 @@ const EditObservationDialog = ({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Person Involved (optional)</FormLabel>
-                    <FormControl><Input placeholder="Name of person involved" {...field} /></FormControl>
+                    <FormControl><Input placeholder="Name of person involved" {...field} value={field.value ?? ''} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -379,7 +379,7 @@ const ObservationDetailsDialog = ({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
-          <DialogTitle>Observation Details: {observation.observation_id}</DialogTitle>
+          <DialogTitle>Observation Details: {observation.display_id}</DialogTitle>
           <DialogDescription>
             {observation.report_type} reported on {format(new Date(observation.date), 'PPP p')}
           </DialogDescription>
@@ -528,7 +528,7 @@ export default function ObservationsPage() {
         imageUrl = await getDownloadURL(storageRef);
       }
 
-      const newObservationData: Omit<Observation, 'observation_id' | 'status'> = {
+      const newObservationData: Omit<Observation, 'observation_id' | 'display_id' | 'status'> = {
           report_type: values.report_type,
           submitted_by: values.submitted_by,
           date: new Date(values.date).toISOString(),
@@ -546,7 +546,7 @@ export default function ObservationsPage() {
       const newObservationRef = await addObservation(newObservationData);
 
       if (values.createAction && values.actionDescription && values.actionResponsiblePerson && values.actionDueDate) {
-          const newActionData: Omit<CorrectiveAction, 'action_id' | 'comments'> = {
+          const newActionData: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'> = {
               description: values.actionDescription,
               responsible_person: values.actionResponsiblePerson,
               due_date: new Date(values.actionDueDate).toISOString(),
@@ -676,7 +676,7 @@ export default function ObservationsPage() {
                     obsData[header] = values[index]?.trim();
                 });
 
-                const newObservation: Omit<Observation, 'observation_id' | 'status'> = {
+                const newObservation: Omit<Observation, 'observation_id' | 'display_id' | 'status'> = {
                     report_type: obsData.report_type as Observation['report_type'] || 'Safety Concern',
                     submitted_by: obsData.submitted_by,
                     date: obsData.date || new Date().toISOString(),
@@ -803,7 +803,7 @@ export default function ObservationsPage() {
                         <FormItem>
                           <FormLabel>Person Involved (optional)</FormLabel>
                           <FormControl>
-                            <Input placeholder="Name of person involved" {...field} />
+                            <Input placeholder="Name of person involved" {...field} value={field.value ?? ''} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -938,7 +938,7 @@ export default function ObservationsPage() {
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Action Description</FormLabel>
-                              <FormControl><Textarea placeholder="Describe the required follow-up action..." {...field} /></FormControl>
+                              <FormControl><Textarea placeholder="Describe the required follow-up action..." {...field} value={field.value ?? ''} /></FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
@@ -950,7 +950,7 @@ export default function ObservationsPage() {
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Responsible Person</FormLabel>
-                                <FormControl><Input placeholder="e.g., Facility Manager" {...field} /></FormControl>
+                                <FormControl><Input placeholder="e.g., Facility Manager" {...field} value={field.value ?? ''} /></FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -961,7 +961,7 @@ export default function ObservationsPage() {
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Due Date</FormLabel>
-                                <FormControl><Input type="date" {...field} /></FormControl>
+                                <FormControl><Input type="date" {...field} value={field.value ?? ''} /></FormControl>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -1037,7 +1037,7 @@ export default function ObservationsPage() {
                           const canEdit = isAdmin || (authUser && authUser.displayName === obs.submitted_by);
                           return (
                             <TableRow key={obs.observation_id} onClick={() => handleRowClick(obs)} className="cursor-pointer">
-                              <TableCell className="font-medium">{obs.observation_id.substring(0, 8)}...</TableCell>
+                              <TableCell className="font-medium">{obs.display_id}</TableCell>
                               <TableCell>{new Date(obs.date).toLocaleDateString()}</TableCell>
                               <TableCell>{obs.report_type}</TableCell>
                               <TableCell>
@@ -1083,7 +1083,7 @@ export default function ObservationsPage() {
                                               <AlertDialogHeader>
                                                   <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                                   <AlertDialogDescription>
-                                                      This will permanently delete observation <span className="font-mono">{obs.observation_id}</span>. This action cannot be undone.
+                                                      This will permanently delete observation <span className="font-mono">{obs.display_id}</span>. This action cannot be undone.
                                                   </AlertDialogDescription>
                                               </AlertDialogHeader>
                                               <AlertDialogFooter>
@@ -1130,7 +1130,7 @@ export default function ObservationsPage() {
                             const canEdit = isAdmin || (authUser && authUser.displayName === obs.submitted_by);
                             return (
                                 <TableRow key={obs.observation_id} onClick={() => handleRowClick(obs)} className="cursor-pointer">
-                                <TableCell className="font-medium">{obs.observation_id.substring(0, 8)}...</TableCell>
+                                <TableCell className="font-medium">{obs.display_id}</TableCell>
                                 <TableCell>{new Date(obs.date).toLocaleDateString()}</TableCell>
                                 <TableCell>{obs.report_type}</TableCell>
                                 <TableCell>
@@ -1176,7 +1176,7 @@ export default function ObservationsPage() {
                                                 <AlertDialogHeader>
                                                     <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                                                     <AlertDialogDescription>
-                                                        This will permanently delete observation <span className="font-mono">{obs.observation_id}</span>. This action cannot be undone.
+                                                        This will permanently delete observation <span className="font-mono">{obs.display_id}</span>. This action cannot be undone.
                                                     </AlertDialogDescription>
                                                 </AlertDialogHeader>
                                                 <AlertDialogFooter>
