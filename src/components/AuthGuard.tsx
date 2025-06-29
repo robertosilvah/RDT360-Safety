@@ -11,10 +11,20 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   React.useEffect(() => {
-    if (!loading && !user && pathname !== '/login') {
+    if (loading) {
+      return; // Wait until loading is complete
+    }
+
+    // If not logged in and trying to access a protected page
+    if (!user && pathname !== '/login') {
       router.push('/login');
     }
-  }, [user, loading, router, pathname]);
+    
+    // If logged in and on the login page
+    if (user && pathname === '/login') {
+      router.push('/');
+    }
+  }, [user, loading, pathname, router]);
 
   if (loading) {
     return (
@@ -45,13 +55,9 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     );
   }
   
-  if (!user && pathname !== '/login') {
-    return null; // or a loading spinner
-  }
-
-  if (user && pathname === '/login') {
-      router.push('/');
-      return null;
+  // If we are redirecting, we can return null or a loader
+  if ((!user && pathname !== '/login') || (user && pathname === '/login')) {
+    return null; 
   }
 
   return <>{children}</>;
