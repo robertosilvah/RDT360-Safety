@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
@@ -12,6 +13,7 @@ type IncidentData = Omit<Incident, 'incident_id' | 'date' | 'linked_docs' | 'com
 interface AppDataContextType {
   observations: Observation[];
   addObservation: (observation: Omit<Observation, 'observation_id' | 'status'>) => Promise<DocumentReference>;
+  deleteObservation: (observationId: string) => Promise<void>;
   correctiveActions: CorrectiveAction[];
   addCorrectiveAction: (action: Omit<CorrectiveAction, 'action_id' | 'comments'>) => Promise<void>;
   updateCorrectiveAction: (updatedAction: CorrectiveAction) => Promise<void>;
@@ -117,6 +119,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
   const addObservation = async (observation: Omit<Observation, 'observation_id' | 'status'>) => {
     return await addDoc(collection(db, 'observations'), { ...observation, status: 'Open' });
+  };
+  
+  const deleteObservation = async (observationId: string) => {
+    await deleteDoc(doc(db, 'observations', observationId));
   };
 
   const addCorrectiveAction = async (action: Omit<CorrectiveAction, 'action_id' | 'comments'>) => {
@@ -299,7 +305,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AppDataContext.Provider value={{
-      observations, addObservation,
+      observations, addObservation, deleteObservation,
       correctiveActions, addCorrectiveAction, updateCorrectiveAction, addCommentToAction,
       incidents, updateIncident, addCommentToIncident, addIncident,
       safetyWalks, addSafetyWalk, updateSafetyWalk, addCommentToSafetyWalk,

@@ -26,7 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
-import { Camera, Eye, Siren, User, Users, FileText, ClipboardCheck, Upload, Download } from 'lucide-react';
+import { Camera, Eye, Siren, User, Users, FileText, ClipboardCheck, Upload, Download, Trash2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -54,6 +54,17 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Separator } from '@/components/ui/separator';
 import { format } from 'date-fns';
 import { useAppData } from '@/context/AppDataContext';
@@ -237,7 +248,7 @@ const ObservationDetailsDialog = ({
 };
 
 export default function ObservationsPage() {
-  const { observations, addObservation, addCorrectiveAction, users } = useAppData();
+  const { observations, addObservation, deleteObservation, addCorrectiveAction, users } = useAppData();
   const { user: authUser } = useAuth();
   const [selectedObservation, setSelectedObservation] = useState<Observation | null>(null);
   const [isDetailsOpen, setDetailsOpen] = useState(false);
@@ -250,8 +261,8 @@ export default function ObservationsPage() {
     ? 'Administrator' 
     : users.find(u => u.id === authUser?.uid)?.role;
 
-  const canImport = userRole === 'Administrator';
-  const canExport = userRole === 'Administrator' || userRole === 'Manager';
+  const isAdmin = userRole === 'Administrator';
+  const canExport = isAdmin || userRole === 'Manager';
 
   const statusVariant: { [key in Observation['status']]: 'outline' | 'default' } = {
     Open: 'default',
@@ -355,6 +366,16 @@ export default function ObservationsPage() {
   const handleRowClick = (observation: Observation) => {
     setSelectedObservation(observation);
     setDetailsOpen(true);
+  };
+  
+  const handleDelete = (e: React.MouseEvent, observationId: string) => {
+    e.stopPropagation();
+    deleteObservation(observationId);
+    toast({
+        title: 'Observation Deleted',
+        description: 'The observation has been permanently removed.',
+        variant: 'destructive',
+    });
   };
 
   const handleExport = () => {
@@ -747,7 +768,7 @@ export default function ObservationsPage() {
                         </CardDescription>
                     </div>
                     <div className="flex items-center gap-2">
-                        {canImport && (
+                        {isAdmin && (
                             <>
                                 <input
                                     type="file"
@@ -780,6 +801,7 @@ export default function ObservationsPage() {
                       <TableHead>Description</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Photo</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -813,6 +835,29 @@ export default function ObservationsPage() {
                               <Camera className="h-6 w-6 text-muted-foreground" />
                             </div>
                           )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                            {isAdmin && (
+                                <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                        <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                        </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                        <AlertDialogHeader>
+                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                            <AlertDialogDescription>
+                                                This will permanently delete observation <span className="font-mono">{obs.observation_id}</span>. This action cannot be undone.
+                                            </AlertDialogDescription>
+                                        </AlertDialogHeader>
+                                        <AlertDialogFooter>
+                                            <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={(e) => handleDelete(e, obs.observation_id)}>Delete</AlertDialogAction>
+                                        </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                </AlertDialog>
+                            )}
                         </TableCell>
                       </TableRow>
                     ))}
