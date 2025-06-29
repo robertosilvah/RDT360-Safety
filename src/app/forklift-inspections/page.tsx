@@ -382,7 +382,7 @@ export default function ForkliftInspectionPage() {
                                                 render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>Comments</FormLabel>
-                                                    <FormControl><Textarea placeholder="Describe the issue..." {...field} /></FormControl>
+                                                    <FormControl><Textarea placeholder="Describe the issue..." {...field} value={field.value ?? ''} /></FormControl>
                                                 </FormItem>
                                                 )}
                                             />
