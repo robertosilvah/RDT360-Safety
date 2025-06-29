@@ -242,8 +242,10 @@ const ActionDetailsDialog = ({
         
         const updatedAction = { 
             ...actionToUpdate, 
-            ...values,
+            description: values.description,
+            responsible_person: values.responsible_person,
             due_date: values.due_date ? new Date(values.due_date).toISOString() : actionToUpdate.due_date,
+            status: values.status || actionToUpdate.status,
         };
         updateCorrectiveAction(updatedAction);
 
