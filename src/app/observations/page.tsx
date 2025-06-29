@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,7 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
-import { Camera, Eye, Siren, User, Users, FileText, ClipboardCheck, Upload, Download, Trash2 } from 'lucide-react';
+import { Camera, Eye, Siren, User, Users, FileText, ClipboardCheck, Upload, Download, Trash2, Edit } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -53,6 +53,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -106,6 +107,8 @@ const observationFormSchema = z.object({
     path: ['actionDescription'],
 });
 
+const editObservationFormSchema = observationFormSchema.omit({ createAction: true, actionDescription: true, actionResponsiblePerson: true, actionDueDate: true });
+type EditObservationFormValues = z.infer<typeof editObservationFormSchema>;
 
 const AreaSelectOptions = ({ areas, level = 0 }: { areas: Area[]; level?: number }) => {
   return (
@@ -148,6 +151,210 @@ const riskVariant: { [key: number]: 'outline' | 'secondary' | 'default' | 'destr
   2: 'secondary',
   3: 'default',
   4: 'destructive',
+};
+
+const EditObservationDialog = ({
+  observation,
+  isOpen,
+  onOpenChange,
+}: {
+  observation: Observation | null;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+}) => {
+  const { updateObservation } = useAppData();
+  const { toast } = useToast();
+  const form = useForm<EditObservationFormValues>({
+    resolver: zodResolver(editObservationFormSchema),
+  });
+
+  useEffect(() => {
+    if (observation) {
+      form.reset({
+        ...observation,
+        date: format(new Date(observation.date), "yyyy-MM-dd'T'HH:mm"),
+      });
+    }
+  }, [observation, form]);
+
+  if (!observation) return null;
+
+  const handleUpdate = async (values: EditObservationFormValues) => {
+    const updatedObservationData: Observation = {
+      ...observation,
+      ...values,
+      date: new Date(values.date).toISOString(),
+    };
+    await updateObservation(updatedObservationData);
+    toast({ title: "Observation Updated", description: "The observation has been successfully updated." });
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Edit Observation: {observation.observation_id}</DialogTitle>
+          <DialogDescription>
+            Modify the details of the observation below.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[70vh] overflow-y-auto pr-4">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleUpdate)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="report_type"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Type of Safety Report</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a report type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Safety Concern">Safety Concern</SelectItem>
+                        <SelectItem value="Positive Observation">Positive Observation</SelectItem>
+                        <SelectItem value="Near Miss">Near Miss</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="submitted_by"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Person Documenting</FormLabel>
+                    <FormControl><Input {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="date"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Date and Time</FormLabel>
+                    <FormControl><Input type="datetime-local" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="areaId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Area where it happened</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select an area or operation" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <AreaSelectOptions areas={mockAreas} />
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="person_involved"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Person Involved (optional)</FormLabel>
+                    <FormControl><Input placeholder="Name of person involved" {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="risk_level"
+                render={({ field }) => (
+                  <FormItem className="space-y-3">
+                    <FormLabel>Risk Evaluation (1-4)</FormLabel>
+                    <FormControl>
+                      <RadioGroup
+                        onValueChange={(value) => field.onChange(parseInt(value))}
+                        defaultValue={String(field.value)}
+                        className="flex space-x-4"
+                      >
+                        {[1, 2, 3, 4].map((level) => (
+                          <FormItem key={level} className="flex items-center space-x-2 space-y-0">
+                            <FormControl><RadioGroupItem value={String(level)} /></FormControl>
+                            <FormLabel className="font-normal">{riskLabels[level]}</FormLabel>
+                          </FormItem>
+                        ))}
+                      </RadioGroup>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Brief Description</FormLabel>
+                    <FormControl><Textarea placeholder="Describe what you observed..." {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="actions"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Immediate Actions Taken</FormLabel>
+                    <FormControl><Textarea placeholder="Describe immediate actions taken..." {...field} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="unsafe_category"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Unsafe Behavior or Condition</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a category" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="Unsafe Behavior">Unsafe Behavior</SelectItem>
+                        <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
+                        <SelectItem value="N/A">N/A</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+                <Button type="submit">Save Changes</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
 };
 
 const ObservationDetailsDialog = ({
@@ -248,9 +455,10 @@ const ObservationDetailsDialog = ({
 };
 
 export default function ObservationsPage() {
-  const { observations, addObservation, deleteObservation, addCorrectiveAction, users } = useAppData();
+  const { observations, addObservation, deleteObservation, addCorrectiveAction, users, updateObservation } = useAppData();
   const { user: authUser } = useAuth();
   const [selectedObservation, setSelectedObservation] = useState<Observation | null>(null);
+  const [editingObservation, setEditingObservation] = useState<Observation | null>(null);
   const [isDetailsOpen, setDetailsOpen] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -368,6 +576,11 @@ export default function ObservationsPage() {
     setDetailsOpen(true);
   };
   
+  const handleEditClick = (e: React.MouseEvent, observation: Observation) => {
+    e.stopPropagation();
+    setEditingObservation(observation);
+  };
+
   const handleDelete = (e: React.MouseEvent, observationId: string) => {
     e.stopPropagation();
     deleteObservation(observationId);
@@ -805,62 +1018,70 @@ export default function ObservationsPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {observations.map((obs) => (
-                      <TableRow key={obs.observation_id} onClick={() => handleRowClick(obs)} className="cursor-pointer">
-                        <TableCell className="font-medium">{obs.observation_id.substring(0, 8)}...</TableCell>
-                        <TableCell>{new Date(obs.date).toLocaleDateString()}</TableCell>
-                        <TableCell>{obs.report_type}</TableCell>
-                        <TableCell>
-                          <Badge variant={riskVariant[obs.risk_level]}>
-                            {riskLabels[obs.risk_level]}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate">{obs.description}</TableCell>
-                        <TableCell>
-                          <Badge variant={statusVariant[obs.status]}>{obs.status}</Badge>
-                        </TableCell>
-                        <TableCell>
-                          {obs.imageUrl ? (
-                            <div className="w-16 h-12 relative">
-                              <Image
-                                src={obs.imageUrl}
-                                alt={`Observation ${obs.observation_id}`}
-                                fill
-                                className="rounded-md object-cover"
-                                data-ai-hint="safety observation"
-                              />
-                            </div>
-                          ) : (
-                            <div className="w-16 h-12 flex items-center justify-center bg-muted rounded-md">
-                              <Camera className="h-6 w-6 text-muted-foreground" />
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                            {isAdmin && (
-                                <AlertDialog>
-                                    <AlertDialogTrigger asChild>
-                                        <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
-                                            <Trash2 className="h-4 w-4 text-destructive" />
-                                        </Button>
-                                    </AlertDialogTrigger>
-                                    <AlertDialogContent>
-                                        <AlertDialogHeader>
-                                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                            <AlertDialogDescription>
-                                                This will permanently delete observation <span className="font-mono">{obs.observation_id}</span>. This action cannot be undone.
-                                            </AlertDialogDescription>
-                                        </AlertDialogHeader>
-                                        <AlertDialogFooter>
-                                            <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
-                                            <AlertDialogAction onClick={(e) => handleDelete(e, obs.observation_id)}>Delete</AlertDialogAction>
-                                        </AlertDialogFooter>
-                                    </AlertDialogContent>
-                                </AlertDialog>
+                    {observations.map((obs) => {
+                      const canEdit = isAdmin || (authUser && authUser.displayName === obs.submitted_by);
+                      return (
+                        <TableRow key={obs.observation_id} onClick={() => handleRowClick(obs)} className="cursor-pointer">
+                          <TableCell className="font-medium">{obs.observation_id.substring(0, 8)}...</TableCell>
+                          <TableCell>{new Date(obs.date).toLocaleDateString()}</TableCell>
+                          <TableCell>{obs.report_type}</TableCell>
+                          <TableCell>
+                            <Badge variant={riskVariant[obs.risk_level]}>
+                              {riskLabels[obs.risk_level]}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="max-w-xs truncate">{obs.description}</TableCell>
+                          <TableCell>
+                            <Badge variant={statusVariant[obs.status]}>{obs.status}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            {obs.imageUrl ? (
+                              <div className="w-16 h-12 relative">
+                                <Image
+                                  src={obs.imageUrl}
+                                  alt={`Observation ${obs.observation_id}`}
+                                  fill
+                                  className="rounded-md object-cover"
+                                  data-ai-hint="safety observation"
+                                />
+                              </div>
+                            ) : (
+                              <div className="w-16 h-12 flex items-center justify-center bg-muted rounded-md">
+                                <Camera className="h-6 w-6 text-muted-foreground" />
+                              </div>
                             )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                          </TableCell>
+                          <TableCell className="text-right">
+                              {canEdit && (
+                                <Button variant="ghost" size="icon" onClick={(e) => handleEditClick(e, obs)}>
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {isAdmin && (
+                                  <AlertDialog>
+                                      <AlertDialogTrigger asChild>
+                                          <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                                              <Trash2 className="h-4 w-4 text-destructive" />
+                                          </Button>
+                                      </AlertDialogTrigger>
+                                      <AlertDialogContent>
+                                          <AlertDialogHeader>
+                                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                              <AlertDialogDescription>
+                                                  This will permanently delete observation <span className="font-mono">{obs.observation_id}</span>. This action cannot be undone.
+                                              </AlertDialogDescription>
+                                          </AlertDialogHeader>
+                                          <AlertDialogFooter>
+                                              <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
+                                              <AlertDialogAction onClick={(e) => handleDelete(e, obs.observation_id)}>Delete</AlertDialogAction>
+                                          </AlertDialogFooter>
+                                      </AlertDialogContent>
+                                  </AlertDialog>
+                              )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </CardContent>
@@ -871,6 +1092,11 @@ export default function ObservationsPage() {
           observation={selectedObservation}
           isOpen={isDetailsOpen}
           onOpenChange={setDetailsOpen}
+        />
+        <EditObservationDialog
+          observation={editingObservation}
+          isOpen={!!editingObservation}
+          onOpenChange={(open) => !open && setEditingObservation(null)}
         />
       </div>
     </AppShell>

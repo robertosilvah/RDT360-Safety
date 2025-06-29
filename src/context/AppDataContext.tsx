@@ -13,6 +13,7 @@ type IncidentData = Omit<Incident, 'incident_id' | 'date' | 'linked_docs' | 'com
 interface AppDataContextType {
   observations: Observation[];
   addObservation: (observation: Omit<Observation, 'observation_id' | 'status'>) => Promise<DocumentReference>;
+  updateObservation: (observation: Observation) => Promise<void>;
   deleteObservation: (observationId: string) => Promise<void>;
   correctiveActions: CorrectiveAction[];
   addCorrectiveAction: (action: Omit<CorrectiveAction, 'action_id' | 'comments'>) => Promise<void>;
@@ -119,6 +120,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
   const addObservation = async (observation: Omit<Observation, 'observation_id' | 'status'>) => {
     return await addDoc(collection(db, 'observations'), { ...observation, status: 'Open' });
+  };
+
+  const updateObservation = async (observation: Observation) => {
+    const { observation_id, ...data } = observation;
+    await updateDoc(doc(db, 'observations', observation_id), data);
   };
   
   const deleteObservation = async (observationId: string) => {
@@ -305,7 +311,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AppDataContext.Provider value={{
-      observations, addObservation, deleteObservation,
+      observations, addObservation, updateObservation, deleteObservation,
       correctiveActions, addCorrectiveAction, updateCorrectiveAction, addCommentToAction,
       incidents, updateIncident, addCommentToIncident, addIncident,
       safetyWalks, addSafetyWalk, updateSafetyWalk, addCommentToSafetyWalk,
