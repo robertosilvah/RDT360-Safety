@@ -19,29 +19,6 @@ export const mockPredefinedChecklistItems: PredefinedChecklistItem[] = [
   { id: 'pcl-5', text: 'Emergency E-Stops Clear' },
 ];
 
-// Mock data for UI development where real data is not yet available or needed
-export const mockObservationsByMonth = [
-    { name: 'Jan', total: Math.floor(Math.random() * 30) + 10 },
-    { name: 'Feb', total: Math.floor(Math.random() * 30) + 10 },
-    { name: 'Mar', total: Math.floor(Math.random() * 30) + 10 },
-    { name: 'Apr', total: Math.floor(Math.random() * 30) + 10 },
-    { name: 'May', total: Math.floor(Math.random() * 30) + 10 },
-    { name: 'Jun', total: Math.floor(Math.random() * 30) + 10 },
-    { name: 'Jul', total: Math.floor(Math.random() * 30) + 10 },
-    { name: 'Aug', total: Math.floor(Math.random() * 30) + 10 },
-    { name: 'Sep', total: Math.floor(Math.random() * 30) + 10 },
-    { name: 'Oct', total: Math.floor(Math.random() * 30) + 10 },
-    { name: 'Nov', total: Math.floor(Math.random() * 30) + 10 },
-    { name: 'Dec', total: Math.floor(Math.random() * 30) + 10 },
-];
-
-// Note: This is now just for calculating the initial pie chart state.
-// The actual data comes from the `observations` state in AppDataContext.
-export const mockObservationStatus = [
-    { name: 'Open', value: 4, fill: 'var(--color-open)' },
-    { name: 'Closed', value: 2, fill: 'var(--color-closed)' },
-];
-
 // Note: This mock data is used by the JSA and Hot Work pages,
 // which still use local state.
 // To make them persistent, they should be moved to Firestore

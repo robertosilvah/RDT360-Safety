@@ -135,6 +135,40 @@ export default function DashboardPage() {
       .map(([person, count]) => ({ person, count }))
       .sort((a, b) => b.count - a.count);
   }, [correctiveActions]);
+  
+  const observationsByMonthData = useMemo(() => {
+    const monthlyCounts: { [key: string]: number } = {
+      Jan: 0, Feb: 0, Mar: 0, Apr: 0, May: 0, Jun: 0,
+      Jul: 0, Aug: 0, Sep: 0, Oct: 0, Nov: 0, Dec: 0,
+    };
+
+    observations.forEach(obs => {
+        try {
+            const month = format(new Date(obs.date), 'MMM');
+            if (monthlyCounts.hasOwnProperty(month)) {
+                monthlyCounts[month]++;
+            }
+        } catch (e) {
+            console.error(`Invalid date for observation ${obs.observation_id}: ${obs.date}`);
+        }
+    });
+
+    return Object.entries(monthlyCounts).map(([name, total]) => ({
+        name,
+        total,
+    }));
+  }, [observations]);
+
+  const observationStatusData = useMemo(() => {
+    const openCount = observations.filter(obs => obs.status === 'Open').length;
+    const closedCount = observations.filter(obs => obs.status === 'Closed').length;
+
+    return [
+        { name: 'Open' as const, value: openCount, fill: 'var(--color-open)' },
+        { name: 'Closed' as const, value: closedCount, fill: 'var(--color-closed)' },
+    ];
+  }, [observations]);
+
 
   return (
     <AppShell>
@@ -174,7 +208,7 @@ export default function DashboardPage() {
               <CardTitle>Monthly Safety Observations</CardTitle>
             </CardHeader>
             <CardContent className="pl-2">
-              <ObservationsChart />
+              <ObservationsChart data={observationsByMonthData} />
             </CardContent>
           </Card>
           <Card className="col-span-4 lg:col-span-3">
@@ -185,7 +219,7 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <StatusPieChart />
+              <StatusPieChart data={observationStatusData} />
             </CardContent>
           </Card>
         </div>

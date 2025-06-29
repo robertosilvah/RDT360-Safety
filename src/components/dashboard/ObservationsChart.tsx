@@ -1,7 +1,6 @@
 'use client';
 
 import { Bar, BarChart, XAxis, YAxis } from 'recharts';
-import { mockObservationsByMonth } from '@/lib/mockData';
 import {
   ChartContainer,
   ChartTooltip,
@@ -16,10 +15,14 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function ObservationsChart() {
+type ObservationsChartProps = {
+  data: { name: string; total: number }[];
+};
+
+export function ObservationsChart({ data }: ObservationsChartProps) {
   return (
     <ChartContainer config={chartConfig} className="h-[350px] w-full">
-      <BarChart accessibilityLayer data={mockObservationsByMonth}>
+      <BarChart accessibilityLayer data={data}>
         <XAxis
           dataKey="name"
           stroke="#888888"

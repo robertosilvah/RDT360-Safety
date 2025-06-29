@@ -10,7 +10,6 @@ import {
   ChartLegend,
   ChartLegendContent,
 } from '@/components/ui/chart';
-import { mockObservationStatus } from '@/lib/mockData';
 
 const chartConfig = {
   open: {
@@ -23,12 +22,15 @@ const chartConfig = {
   },
 } satisfies ChartConfig;
 
-export function StatusPieChart() {
-  const chartData = [
-    { name: 'Open', value: mockObservationStatus[0].value, fill: 'var(--color-open)' },
-    { name: 'Closed', value: mockObservationStatus[1].value, fill: 'var(--color-closed)' },
-  ];
+type StatusPieChartProps = {
+    data: {
+        name: 'Open' | 'Closed';
+        value: number;
+        fill: string;
+    }[];
+}
 
+export function StatusPieChart({ data }: StatusPieChartProps) {
   return (
     <ChartContainer
       config={chartConfig}
@@ -40,13 +42,13 @@ export function StatusPieChart() {
           content={<ChartTooltipContent hideLabel />}
         />
         <Pie
-          data={chartData}
+          data={data}
           dataKey="value"
           nameKey="name"
           innerRadius={60}
           strokeWidth={5}
         >
-          {chartData.map((entry, index) => (
+          {data.map((entry, index) => (
             <Cell key={`cell-${index}`} fill={entry.fill} />
           ))}
         </Pie>
