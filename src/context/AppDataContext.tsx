@@ -93,11 +93,52 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const unsubscribers = [
       onSnapshot(collection(db, 'observations'), (snapshot) => setObservations(mapFromSnapshot(snapshot, 'observation_id'))),
-      onSnapshot(collection(db, 'correctiveActions'), (snapshot) => setCorrectiveActions(mapFromSnapshot(snapshot, 'action_id'))),
+      onSnapshot(collection(db, 'correctiveActions'), (snapshot) => {
+        const actionsFromDb = mapFromSnapshot<CorrectiveAction>(snapshot, 'action_id');
+        const now = new Date();
+        const batch = writeBatch(db);
+        let hasUpdates = false;
+    
+        const processedActions = actionsFromDb.map(action => {
+            if (
+                (action.status === 'Pending' || action.status === 'In Progress') &&
+                new Date(action.due_date) < now
+            ) {
+                if (action.status !== 'Overdue') {
+                    const actionRef = doc(db, 'correctiveActions', action.action_id);
+                    batch.update(actionRef, { status: 'Overdue' });
+                    hasUpdates = true;
+                }
+                return { ...action, status: 'Overdue' as const };
+            }
+            return action;
+        });
+    
+        if (hasUpdates) {
+            batch.commit().catch(console.error);
+        }
+        
+        setCorrectiveActions(processedActions);
+      }),
       onSnapshot(collection(db, 'incidents'), (snapshot) => setIncidents(mapFromSnapshot(snapshot, 'incident_id'))),
       onSnapshot(collection(db, 'safetyWalks'), (snapshot) => setSafetyWalks(mapFromSnapshot(snapshot, 'safety_walk_id'))),
       onSnapshot(collection(db, 'forkliftInspections'), (snapshot) => setForkliftInspections(mapFromSnapshot(snapshot, 'inspection_id'))),
-      onSnapshot(collection(db, 'users'), (snapshot) => setUsers(mapFromSnapshot(snapshot, 'id'))),
+      onSnapshot(collection(db, 'users'), (snapshot) => {
+        const usersFromDb = mapFromSnapshot<User>(snapshot, 'id');
+        // Special handling for mock admin user to ensure it's always in the list for development
+        const adminId = 'admin-user-id-001';
+        const hasAdmin = usersFromDb.some(u => u.id === adminId);
+        if (!hasAdmin) {
+          usersFromDb.push({
+            id: adminId,
+            name: 'Admin User',
+            email: 'admin@example.com',
+            role: 'Administrator',
+            status: 'Active',
+          });
+        }
+        setUsers(usersFromDb);
+      }),
       onSnapshot(collection(db, 'forklifts'), (snapshot) => setForklifts(mapFromSnapshot(snapshot, 'id'))),
       onSnapshot(collection(db, 'predefinedChecklistItems'), (snapshot) => setPredefinedChecklistItems(mapFromSnapshot(snapshot, 'id'))),
       onSnapshot(collection(db, 'areas'), (snapshot) => setAreas(mapFromSnapshot(snapshot, 'area_id'))),
@@ -133,12 +174,14 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
   const addCorrectiveAction = async (action: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'>) => {
     const displayId = `ACT${String(correctiveActions.length + 1).padStart(3, '0')}`;
-    await addDoc(collection(db, 'correctiveActions'), { ...action, display_id: displayId, comments: [] });
+    const { linkType, ...rest } = action as any;
+    await addDoc(collection(db, 'correctiveActions'), { ...rest, display_id: displayId, comments: [] });
   };
   
   const updateCorrectiveAction = async (updatedAction: CorrectiveAction) => {
      const { action_id, ...data } = updatedAction;
-     await updateDoc(doc(db, 'correctiveActions', action_id), data);
+     const { linkType, ...rest } = data as any;
+     await updateDoc(doc(db, 'correctiveActions', action_id), rest);
   };
   
   const addCommentToAction = async (actionId: string, comment: Comment) => {
