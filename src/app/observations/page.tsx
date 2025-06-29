@@ -77,7 +77,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
-const observationFormSchema = z.object({
+const baseObservationSchema = z.object({
   report_type: z.enum(['Safety Concern', 'Positive Observation', 'Near Miss'], {
     required_error: 'You need to select a report type.',
   }),
@@ -93,10 +93,13 @@ const observationFormSchema = z.object({
   unsafe_category: z.enum(['Unsafe Behavior', 'Unsafe Condition', 'N/A'], {
     required_error: 'You need to select a category.',
   }),
-  createAction: z.boolean().default(false).optional(),
-  actionDescription: z.string().optional(),
-  actionResponsiblePerson: z.string().optional(),
-  actionDueDate: z.string().optional(),
+});
+
+const observationFormSchema = baseObservationSchema.extend({
+    createAction: z.boolean().default(false).optional(),
+    actionDescription: z.string().optional(),
+    actionResponsiblePerson: z.string().optional(),
+    actionDueDate: z.string().optional(),
 }).refine(data => {
     if (data.createAction) {
         return data.actionDescription && data.actionResponsiblePerson && data.actionDueDate && !isNaN(Date.parse(data.actionDueDate));
@@ -107,7 +110,7 @@ const observationFormSchema = z.object({
     path: ['actionDescription'],
 });
 
-const editObservationFormSchema = observationFormSchema.omit({ createAction: true, actionDescription: true, actionResponsiblePerson: true, actionDueDate: true });
+const editObservationFormSchema = baseObservationSchema;
 type EditObservationFormValues = z.infer<typeof editObservationFormSchema>;
 
 const AreaSelectOptions = ({ areas, level = 0 }: { areas: Area[]; level?: number }) => {
