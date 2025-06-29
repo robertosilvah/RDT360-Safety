@@ -470,7 +470,7 @@ export default function CorrectiveActionsPage() {
       const newAction: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'> = {
         description: values.description,
         responsible_person: values.responsible_person,
-        due_date: new Date(values.date).toISOString(),
+        due_date: new Date(values.due_date).toISOString(),
         status: 'Pending',
         related_to_incident: values.linkType === 'incident' ? values.linked_id : undefined,
         related_to_observation: values.linkType === 'observation' ? values.linked_id : undefined,
