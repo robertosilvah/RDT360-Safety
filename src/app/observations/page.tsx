@@ -63,6 +63,7 @@ import Link from 'next/link';
 import { storage } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 
 const observationFormSchema = z.object({
   report_type: z.enum(['Safety Concern', 'Positive Observation', 'Near Miss'], {
@@ -237,14 +238,16 @@ const ObservationDetailsDialog = ({
 
 export default function ObservationsPage() {
   const { observations, addObservation, addCorrectiveAction, users } = useAppData();
+  const { user: authUser } = useAuth();
   const [selectedObservation, setSelectedObservation] = useState<Observation | null>(null);
   const [isDetailsOpen, setDetailsOpen] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const currentUser = users.find(u => u.id === 'user-1') || users[0];
+  const currentUser = users.find(u => u.id === authUser?.uid);
 
+  // In a real app, these permissions would be more robust.
   const canImport = currentUser?.role === 'Administrator';
   const canExport = currentUser?.role === 'Administrator' || currentUser?.role === 'Manager';
 
@@ -259,7 +262,7 @@ export default function ObservationsPage() {
   const form = useForm<z.infer<typeof observationFormSchema>>({
     resolver: zodResolver(observationFormSchema),
     defaultValues: {
-      submitted_by: '',
+      submitted_by: authUser?.displayName || '',
       description: '',
       actions: '',
       person_involved: '',
@@ -307,17 +310,19 @@ export default function ObservationsPage() {
           unsafe_category: values.unsafe_category,
           imageUrl: imageUrl,
       };
-      await addObservation(newObservationData);
+      
+      // In a real app, you would get the new observation ID back from the server
+      // to link the corrective action. For this prototype, we are creating it unlinked.
+      const newObservationRef = await addObservation(newObservationData);
 
       if (values.createAction && values.actionDescription && values.actionResponsiblePerson && values.actionDueDate) {
-          const newActionData: Omit<CorrectiveAction, 'action_id' | 'related_to_observation' | 'comments'> = {
+          const newActionData: Omit<CorrectiveAction, 'action_id' | 'comments'> = {
               description: values.actionDescription,
               responsible_person: values.actionResponsiblePerson,
               due_date: new Date(values.actionDueDate).toISOString(),
               status: 'Pending',
+              related_to_observation: newObservationRef.id,
           };
-          // This is a simplified linking. In a real app, you'd get the new observation's ID
-          // back and then create the action with the correct `related_to_observation` ID.
           await addCorrectiveAction(newActionData);
           toast({
               title: 'Observation & Action Created',
@@ -824,5 +829,7 @@ export default function ObservationsPage() {
     </AppShell>
   );
 }
+
+    
 
     

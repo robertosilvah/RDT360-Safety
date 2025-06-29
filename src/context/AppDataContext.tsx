@@ -4,16 +4,16 @@
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings } from '@/types';
 import { db, storage } from '@/lib/firebase';
-import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, writeBatch } from 'firebase/firestore';
+import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, writeBatch, DocumentReference } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 type IncidentData = Omit<Incident, 'incident_id' | 'date' | 'linked_docs' | 'comments' | 'investigation_id' | 'status'>;
 
 interface AppDataContextType {
   observations: Observation[];
-  addObservation: (observation: Omit<Observation, 'observation_id' | 'status'>) => Promise<void>;
+  addObservation: (observation: Omit<Observation, 'observation_id' | 'status'>) => Promise<DocumentReference>;
   correctiveActions: CorrectiveAction[];
-  addCorrectiveAction: (action: Omit<CorrectiveAction, 'action_id'>) => Promise<void>;
+  addCorrectiveAction: (action: Omit<CorrectiveAction, 'action_id' | 'comments'>) => Promise<void>;
   updateCorrectiveAction: (updatedAction: CorrectiveAction) => Promise<void>;
   addCommentToAction: (actionId: string, comment: Comment) => Promise<void>;
   incidents: Incident[];
@@ -116,11 +116,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const addObservation = async (observation: Omit<Observation, 'observation_id' | 'status'>) => {
-    await addDoc(collection(db, 'observations'), { ...observation, status: 'Open' });
+    return await addDoc(collection(db, 'observations'), { ...observation, status: 'Open' });
   };
 
-  const addCorrectiveAction = async (action: Omit<CorrectiveAction, 'action_id'>) => {
-    await addDoc(collection(db, 'correctiveActions'), action);
+  const addCorrectiveAction = async (action: Omit<CorrectiveAction, 'action_id' | 'comments'>) => {
+    await addDoc(collection(db, 'correctiveActions'), { ...action, comments: [] });
   };
   
   const updateCorrectiveAction = async (updatedAction: CorrectiveAction) => {
@@ -327,3 +327,5 @@ export const useAppData = () => {
   }
   return context;
 };
+
+    
