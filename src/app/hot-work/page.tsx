@@ -1,3 +1,4 @@
+
 'use client';
 
 import { AppShell } from '@/components/AppShell';
@@ -507,6 +508,15 @@ export default function HotWorkPermitsPage() {
     const { toast } = useToast();
     const [isDialogOpen, setDialogOpen] = useState(false);
     const [selectedPermit, setSelectedPermit] = useState<HotWorkPermit | null>(null);
+
+    useEffect(() => {
+        if (selectedPermit?.permit_id && isDialogOpen) {
+            const freshPermit = hotWorkPermits.find(p => p.permit_id === selectedPermit.permit_id);
+            if (freshPermit && JSON.stringify(freshPermit) !== JSON.stringify(selectedPermit)) {
+                setSelectedPermit(freshPermit);
+            }
+        }
+    }, [hotWorkPermits, selectedPermit, isDialogOpen]);
 
     const handleAddPermit = async (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, locationName: string): Promise<boolean> => {
         try {
