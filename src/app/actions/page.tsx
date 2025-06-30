@@ -248,11 +248,6 @@ const ActionDetailsDialog = ({
             status: values.status || actionToUpdate.status,
         };
         updateCorrectiveAction(updatedAction);
-
-        if (newComment.trim()) {
-            addCommentToAction(action.action_id, { user: 'Safety Manager', comment: newComment.trim(), date: new Date().toISOString() });
-            setNewComment('');
-        }
     }
 
     const handleAddComment = () => {

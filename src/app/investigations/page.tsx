@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
@@ -159,13 +160,18 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
   const handleSubmit = (values: InvestigationFormValues) => {
     const updatedInvestigation = { ...investigation, ...values };
     updateInvestigation(updatedInvestigation);
-    if (newComment.trim()) {
-      addCommentToInvestigation(investigation.investigation_id, { user: 'Safety Manager', comment: newComment.trim(), date: new Date().toISOString() });
-    }
     toast({ title: 'Investigation Updated' });
     onOpenChange(false);
   };
   
+  const handleAddComment = () => {
+    if(newComment.trim()) {
+      addCommentToInvestigation(investigation.investigation_id, { user: 'Safety Manager', comment: newComment.trim(), date: new Date().toISOString() });
+      setNewComment('');
+      toast({ title: 'Comment Added' });
+    }
+  }
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0] && investigation) {
         const file = e.target.files[0];
@@ -335,7 +341,7 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
             </div>
             <div className="flex flex-col gap-2 mt-auto">
               <Textarea placeholder={isLocked ? "Comments are locked." : "Add a comment..."} value={newComment} onChange={(e) => setNewComment(e.target.value)} rows={2} disabled={isLocked} />
-              <Button size="sm" onClick={() => handleSubmit(form.getValues())} disabled={isLocked || !newComment.trim()}>Add Comment & Save</Button>
+              <Button size="sm" onClick={handleAddComment} disabled={isLocked || !newComment.trim()}>Add Comment</Button>
             </div>
           </div>
         </div>

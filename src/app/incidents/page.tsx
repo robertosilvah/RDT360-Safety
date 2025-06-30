@@ -226,13 +226,16 @@ const IncidentDetailsDialog = ({
   const handleSubmit = (values: IncidentFormValues) => {
     const updatedIncident = { ...incident, ...values, assigned_to: values.assigned_to || undefined };
     updateIncident(updatedIncident);
-
-    if (newComment.trim()) {
-      addCommentToIncident(incident.incident_id, { user: 'Safety Manager', comment: newComment.trim(), date: new Date().toISOString() });
-    }
-    
     toast({ title: 'Incident Updated', description: `Incident ${incident.display_id} has been updated.` });
     onOpenChange(false);
+  };
+
+  const handleAddComment = () => {
+    if (newComment.trim()) {
+      addCommentToIncident(incident.incident_id, { user: 'Safety Manager', comment: newComment.trim(), date: new Date().toISOString() });
+      setNewComment('');
+      toast({ title: 'Comment Added' });
+    }
   };
 
 
@@ -381,7 +384,7 @@ const IncidentDetailsDialog = ({
                         onChange={(e) => setNewComment(e.target.value)}
                         rows={2}
                     />
-                    <Button size="sm" className="mt-2" onClick={() => handleSubmit(form.getValues())} disabled={!newComment.trim()}>Add Comment</Button>
+                    <Button size="sm" className="mt-2" onClick={handleAddComment} disabled={!newComment.trim()}>Add Comment</Button>
                   </div>
               </div>
             </div>
