@@ -227,7 +227,7 @@ const ObservationForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
           date: new Date(values.date).toISOString(),
           areaId: values.areaId,
           person_involved: values.person_involved,
-          risk_level: values.risk_level,
+          risk_level: values.risk_level as Observation['risk_level'],
           description: values.description,
           actions: values.actions,
           unsafe_category: values.unsafe_category,
@@ -584,6 +584,7 @@ const EditObservationDialog = ({
       ...observation,
       ...values,
       date: new Date(values.date).toISOString(),
+      risk_level: values.risk_level as Observation['risk_level'],
     };
     await updateObservation(updatedObservationData);
     toast({ title: "Observation Updated", description: "The observation has been successfully updated." });
