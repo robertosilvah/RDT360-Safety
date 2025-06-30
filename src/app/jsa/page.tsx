@@ -70,7 +70,7 @@ const AreaSelectOptions = ({ areas, level = 0 }: { areas: Area[]; level?: number
 };
 
 
-const CreateJsaForm = ({ onAddJsa, setOpen }: { onAddJsa: (jsa: Omit<JSA, 'jsa_id'>) => Promise<void>, setOpen: (open: boolean) => void }) => {
+const CreateJsaForm = ({ onAddJsa, setOpen }: { onAddJsa: (jsa: Omit<JSA, 'jsa_id' | 'display_id'>) => Promise<void>, setOpen: (open: boolean) => void }) => {
   const form = useForm<JsaFormValues>({
     resolver: zodResolver(jsaFormSchema),
     defaultValues: {
@@ -91,30 +91,39 @@ const CreateJsaForm = ({ onAddJsa, setOpen }: { onAddJsa: (jsa: Omit<JSA, 'jsa_i
   const { toast } = useToast();
 
   const onSubmit = async (data: JsaFormValues) => {
-    const otherPpeItems = data.other_ppe ? data.other_ppe.split(',').map(s => s.trim()).filter(Boolean) : [];
-    const allPpe = [...(data.required_ppe || []), ...otherPpeItems];
+    try {
+        const otherPpeItems = data.other_ppe ? data.other_ppe.split(',').map(s => s.trim()).filter(Boolean) : [];
+        const allPpe = [...(data.required_ppe || []), ...otherPpeItems];
 
-    const newJsa: Omit<JSA, 'jsa_id'> = {
-        title: data.title,
-        job_description: data.job_description,
-        areaId: data.areaId,
-        required_ppe: allPpe,
-        steps: data.steps.map(step => ({
-            step_description: step.step_description,
-            hazards: step.hazards.split(',').map(s => s.trim()).filter(Boolean),
-            controls: step.controls.split(',').map(s => s.trim()).filter(Boolean),
-        })),
-        created_by: 'Safety Manager',
-        created_date: new Date().toISOString(),
-        signatures: [],
-    };
-    await onAddJsa(newJsa);
-    toast({
-      title: 'JSA Created',
-      description: `The JSA "${data.title}" has been successfully created.`,
-    });
-    setOpen(false);
-    form.reset();
+        const newJsa: Omit<JSA, 'jsa_id' | 'display_id'> = {
+            title: data.title,
+            job_description: data.job_description,
+            areaId: data.areaId,
+            required_ppe: allPpe,
+            steps: data.steps.map(step => ({
+                step_description: step.step_description,
+                hazards: step.hazards.split(',').map(s => s.trim()).filter(Boolean),
+                controls: step.controls.split(',').map(s => s.trim()).filter(Boolean),
+            })),
+            created_by: 'Safety Manager',
+            created_date: new Date().toISOString(),
+            signatures: [],
+        };
+        await onAddJsa(newJsa);
+        toast({
+          title: 'JSA Created',
+          description: `The JSA "${data.title}" has been successfully created.`,
+        });
+        setOpen(false);
+        form.reset();
+    } catch (error) {
+        console.error("Failed to create JSA:", error);
+        toast({
+            variant: "destructive",
+            title: "Creation Failed",
+            description: "There was an error creating the JSA. Please try again.",
+        });
+    }
   };
 
   return (
@@ -371,7 +380,7 @@ const JsaCard = ({ jsa, onSign, currentUser, areaPath, isOpen, onOpenChange, onS
                 <CardHeader>
                     <CardTitle className="flex items-start justify-between">
                         <span>{jsa.title}</span>
-                        <Badge variant="outline">{jsa.jsa_id}</Badge>
+                        <Badge variant="outline">{jsa.display_id}</Badge>
                     </CardTitle>
                     <CardDescription className="line-clamp-2 h-10">{jsa.job_description}</CardDescription>
                 </CardHeader>

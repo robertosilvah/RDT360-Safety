@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
@@ -53,10 +54,10 @@ interface AppDataContextType {
   addCommentToInvestigation: (investigationId: string, comment: Comment) => Promise<void>;
   addDocumentToInvestigation: (investigationId: string, document: { name: string; url: string }) => Promise<void>;
   jsas: JSA[];
-  addJsa: (jsa: Omit<JSA, 'jsa_id'>) => Promise<void>;
+  addJsa: (jsa: Omit<JSA, 'jsa_id' | 'display_id'>) => Promise<void>;
   updateJsa: (updatedJsa: JSA) => Promise<void>;
   hotWorkPermits: HotWorkPermit[];
-  addHotWorkPermit: (permit: Omit<HotWorkPermit, 'permit_id'>) => Promise<void>;
+  addHotWorkPermit: (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id'>) => Promise<void>;
   updateHotWorkPermit: (updatedPermit: HotWorkPermit) => Promise<void>;
   brandingSettings: BrandingSettings | null;
   updateBrandingSettings: (logoFile: File) => Promise<void>;
@@ -356,16 +357,18 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const addJsa = async (jsa: Omit<JSA, 'jsa_id'>) => {
-    await addDoc(collection(db, 'jsas'), jsa);
+  const addJsa = async (jsa: Omit<JSA, 'jsa_id' | 'display_id'>) => {
+    const displayId = `JSA${String(jsas.length + 1).padStart(3, '0')}`;
+    await addDoc(collection(db, 'jsas'), { ...jsa, display_id: displayId });
   };
   const updateJsa = async (updatedJsa: JSA) => {
     const { jsa_id, ...data } = updatedJsa;
     await updateDoc(doc(db, 'jsas', jsa_id), data);
   };
 
-  const addHotWorkPermit = async (permit: Omit<HotWorkPermit, 'permit_id'>) => {
-    await addDoc(collection(db, 'hotWorkPermits'), permit);
+  const addHotWorkPermit = async (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id'>) => {
+    const displayId = `HWP${String(hotWorkPermits.length + 1).padStart(3, '0')}`;
+    await addDoc(collection(db, 'hotWorkPermits'), {...permit, display_id: displayId});
   };
   const updateHotWorkPermit = async (updatedPermit: HotWorkPermit) => {
     const { permit_id, ...data } = updatedPermit;

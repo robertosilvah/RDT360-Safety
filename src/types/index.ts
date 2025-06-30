@@ -119,6 +119,7 @@ export type JsaStep = {
 
 export type JSA = {
   jsa_id: string;
+  display_id: string;
   title: string;
   job_description: string;
   areaId: string;
@@ -131,6 +132,7 @@ export type JSA = {
 
 export type HotWorkPermit = {
   permit_id: string;
+  display_id: string;
   title: string;
   description: string;
   areaId: string;

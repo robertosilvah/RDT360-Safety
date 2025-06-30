@@ -69,7 +69,7 @@ const AreaSelectOptions = ({ areas, level = 0 }: { areas: Area[]; level?: number
 };
 
 
-const CreatePermitForm = ({ onAddPermit, setOpen }: { onAddPermit: (permit: Omit<HotWorkPermit, 'permit_id'>) => Promise<void>, setOpen: (open: boolean) => void }) => {
+const CreatePermitForm = ({ onAddPermit, setOpen }: { onAddPermit: (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id'>) => Promise<void>, setOpen: (open: boolean) => void }) => {
   const form = useForm<PermitFormValues>({
     resolver: zodResolver(permitFormSchema),
     defaultValues: {
@@ -89,7 +89,7 @@ const CreatePermitForm = ({ onAddPermit, setOpen }: { onAddPermit: (permit: Omit
         allPrecautions.push(data.other_precautions);
     }
 
-    const newPermit: Omit<HotWorkPermit, 'permit_id'> = {
+    const newPermit: Omit<HotWorkPermit, 'permit_id' | 'display_id'> = {
         title: data.title,
         description: data.description,
         areaId: data.areaId,
@@ -287,7 +287,7 @@ const PermitCard = ({ permit, onSign, currentUser, areaPath, isOpen, onOpenChang
                 <CardHeader>
                     <CardTitle className="flex items-start justify-between">
                         <span>{permit.title}</span>
-                        <Badge variant="outline">{permit.permit_id}</Badge>
+                        <Badge variant="outline">{permit.display_id}</Badge>
                     </CardTitle>
                     <CardDescription className="line-clamp-2 h-10">{permit.description}</CardDescription>
                 </CardHeader>
