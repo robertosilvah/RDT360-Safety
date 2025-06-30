@@ -1,30 +1,36 @@
+
 'use server';
 
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/lib/firebase';
 
-export async function fetchAndUploadImageAction(imageUrl: string): Promise<string> {
-  if (!imageUrl) {
-    throw new Error('Invalid input: Image URL cannot be empty.');
+export async function fetchAndUploadImageAction(imageUrlOrId: string): Promise<string> {
+  if (!imageUrlOrId) {
+    throw new Error('Invalid input: Image URL or ID cannot be empty.');
   }
 
-  let effectiveUrl = imageUrl;
+  let effectiveUrl = imageUrlOrId;
 
-  // This logic is designed to handle various Google Drive link formats
-  // and transform them into a direct download link.
-  if (imageUrl.includes('drive.google.com')) {
+  // Check if it's a potential Google Drive ID (and not a full URL).
+  // A simple heuristic: it's a long string without slashes.
+  const isLikelyId = !imageUrlOrId.includes('/') && imageUrlOrId.length > 20;
+
+  if (isLikelyId) {
+    effectiveUrl = `https://drive.google.com/uc?export=view&id=${imageUrlOrId}`;
+    console.log(`Treated input as Google Drive ID. Constructed URL: ${effectiveUrl}`);
+  } else if (imageUrlOrId.includes('drive.google.com')) {
     // Regex to capture file ID from formats like:
     // - /file/d/ID/...
     // - ?id=ID
     const regex = /\/file\/d\/([a-zA-Z0-9_-]+)|[?&]id=([a-zA-Z0-9_-]+)/;
-    const match = imageUrl.match(regex);
+    const match = imageUrlOrId.match(regex);
     
     if (match && (match[1] || match[2])) {
       const fileId = match[1] || match[2];
       effectiveUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
       console.log(`Transformed Google Drive URL to direct view link: ${effectiveUrl}`);
     } else {
-      console.warn(`Could not extract file ID from Google Drive URL. Attempting to use original URL: ${imageUrl}`);
+      console.warn(`Could not extract file ID from Google Drive URL. Attempting to use original URL: ${imageUrlOrId}`);
     }
   }
 
@@ -60,7 +66,7 @@ export async function fetchAndUploadImageAction(imageUrl: string): Promise<strin
       throw new Error('Fetched an empty image buffer from the URL.');
     }
 
-    const fileName = imageUrl.substring(imageUrl.lastIndexOf('/') + 1).split('?')[0] || 'imported-image.jpg';
+    const fileName = imageUrlOrId.substring(imageUrlOrId.lastIndexOf('/') + 1).split('?')[0] || 'imported-image.jpg';
     const storageRef = ref(storage, `observations/imported/${Date.now()}_${fileName}`);
 
     await uploadBytes(storageRef, imageBuffer, { contentType });
