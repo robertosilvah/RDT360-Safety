@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
-import { Camera, Eye, Siren, User, Users, FileText, ClipboardCheck, Upload, Download, Trash2, Edit, Wrench } from 'lucide-react';
+import { Camera, Eye, Siren, User, Users, FileText, ClipboardCheck, Upload, Download, Trash2, Edit, Wrench, FilePlus2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -52,6 +52,7 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
+  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -158,6 +159,386 @@ const riskVariant: { [key: number]: 'outline' | 'secondary' | 'default' | 'destr
   3: 'default',
   4: 'destructive',
 };
+
+
+const ObservationForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
+  const { addObservation, addCorrectiveAction, uploadSettings, areas } = useAppData();
+  const { user: authUser } = useAuth();
+  const { toast } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  const form = useForm<z.infer<typeof observationFormSchema>>({
+    resolver: zodResolver(observationFormSchema),
+    defaultValues: {
+      submitted_by: authUser?.displayName || '',
+      date: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+      description: '',
+      actions: '',
+      person_involved: '',
+      risk_level: 1,
+      areaId: '',
+      createAction: false,
+      actionDescription: '',
+      actionResponsiblePerson: '',
+      actionDueDate: '',
+    },
+  });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const maxSizeMB = uploadSettings?.imageMaxSizeMB || 5;
+      const maxSizeInBytes = maxSizeMB * 1024 * 1024;
+      if (file.size > maxSizeInBytes) {
+        toast({
+          variant: 'destructive',
+          title: 'File too large',
+          description: `The image must be smaller than ${maxSizeMB}MB.`,
+        });
+        if (e.target) e.target.value = '';
+        return;
+      }
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  async function onSubmit(values: z.infer<typeof observationFormSchema>) {
+    setIsSubmitting(true);
+    try {
+      let imageUrl: string | undefined = undefined;
+      if (selectedFile) {
+        toast({ title: "Uploading image...", description: "Please wait." });
+        const storageRef = ref(storage, `observations/${Date.now()}_${selectedFile.name}`);
+        await uploadBytes(storageRef, selectedFile);
+        imageUrl = await getDownloadURL(storageRef);
+      }
+
+      const newObservationData: Omit<Observation, 'observation_id' | 'display_id' | 'status'> = {
+          report_type: values.report_type,
+          submitted_by: values.submitted_by,
+          date: new Date(values.date).toISOString(),
+          areaId: values.areaId,
+          person_involved: values.person_involved,
+          risk_level: values.risk_level,
+          description: values.description,
+          actions: values.actions,
+          unsafe_category: values.unsafe_category,
+      };
+      
+      const observationWithImage = { ...newObservationData, ...(imageUrl && { imageUrl }) };
+      const newObservationRef = await addObservation(observationWithImage);
+
+      if (values.createAction && values.actionDescription && values.actionResponsiblePerson && values.actionDueDate) {
+          const newActionData: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'> = {
+              description: values.actionDescription,
+              responsible_person: values.actionResponsiblePerson,
+              due_date: new Date(values.actionDueDate).toISOString(),
+              status: 'Pending',
+              related_to_observation: newObservationRef.id,
+          };
+          await addCorrectiveAction(newActionData);
+          toast({
+              title: 'Observation & Action Created',
+              description: 'The observation and a linked corrective action have been submitted.',
+          });
+      } else {
+          toast({
+              title: 'Observation Submitted',
+              description: 'Your observation has been successfully submitted.',
+          });
+      }
+
+      form.reset();
+      setImagePreview(null);
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      setOpen(false);
+    } catch (error) {
+        console.error("Failed to submit observation:", error);
+        toast({
+            variant: "destructive",
+            title: "Submission Failed",
+            description: "There was an error submitting your observation. Please try again.",
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <DialogHeader>
+          <DialogTitle>Submit an Observation</DialogTitle>
+          <DialogDescription>
+            Fill out the form below to document a safety observation.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-6">
+          <FormField
+            control={form.control}
+            name="report_type"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Type of Safety Report</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a report type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="Safety Concern">Safety Concern</SelectItem>
+                    <SelectItem value="Positive Observation">
+                      Positive Observation
+                    </SelectItem>
+                    <SelectItem value="Near Miss">Near Miss</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="submitted_by"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Person Documenting</FormLabel>
+                <FormControl>
+                  <Input placeholder="e.g., John Doe" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="date"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Date and Time</FormLabel>
+                <FormControl>
+                  <Input type="datetime-local" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="areaId"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Area where it happened</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select an area or operation" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <AreaSelectOptions areas={areas} />
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="person_involved"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Person Involved (optional)</FormLabel>
+                <FormControl>
+                  <Input placeholder="Name of person involved" {...field} value={field.value ?? ''} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="risk_level"
+            render={({ field }) => (
+              <FormItem className="space-y-3">
+                <FormLabel>Risk Evaluation (1-4)</FormLabel>
+                <FormControl>
+                  <RadioGroup
+                    onValueChange={(value) => field.onChange(parseInt(value))}
+                    defaultValue={String(field.value)}
+                    className="flex space-x-4"
+                  >
+                    {[1, 2, 3, 4].map((level) => (
+                      <FormItem
+                        key={level}
+                        className="flex items-center space-x-2 space-y-0"
+                      >
+                        <FormControl>
+                          <RadioGroupItem value={String(level)} />
+                        </FormControl>
+                        <FormLabel className="font-normal">{riskLabels[level]}</FormLabel>
+                      </FormItem>
+                    ))}
+                  </RadioGroup>
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Brief Description</FormLabel>
+                <FormControl>
+                  <Textarea placeholder="Describe what you observed..." {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="actions"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Immediate Actions Taken</FormLabel>
+                <FormControl>
+                  <Textarea
+                    placeholder="Describe immediate actions taken..."
+                    {...field}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="unsafe_category"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Unsafe Behavior or Condition</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a category" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="Unsafe Behavior">Unsafe Behavior</SelectItem>
+                    <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
+                    <SelectItem value="N/A">N/A</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <div className="space-y-2">
+            <FormLabel htmlFor="photo">Picture</FormLabel>
+            <Input id="photo" type="file" accept="image/*" onChange={handleFileChange} ref={fileInputRef} />
+          </div>
+          {imagePreview && (
+            <div className="mt-4 relative w-full aspect-video">
+              <Image
+                src={imagePreview}
+                alt="Observation preview"
+                fill
+                className="rounded-md object-cover"
+                data-ai-hint="observation photo"
+              />
+            </div>
+          )}
+          
+          <Separator />
+
+          <FormField
+            control={form.control}
+            name="createAction"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4 shadow-sm">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel>
+                    Create Corrective Action
+                  </FormLabel>
+                  <FormDescription>
+                    Check this box to create a linked corrective action for this observation.
+                  </FormDescription>
+                </div>
+              </FormItem>
+            )}
+          />
+
+          {form.watch('createAction') && (
+            <div className="space-y-4 p-4 border rounded-md bg-muted/30">
+              <FormField
+                control={form.control}
+                name="actionDescription"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Action Description</FormLabel>
+                    <FormControl><Textarea placeholder="Describe the required follow-up action..." {...field} value={field.value ?? ''} /></FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="actionResponsiblePerson"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Responsible Person</FormLabel>
+                      <FormControl><Input placeholder="e.g., Facility Manager" {...field} value={field.value ?? ''} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="actionDueDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Due Date</FormLabel>
+                      <FormControl><Input type="date" {...field} value={field.value ?? ''} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Submit Observation
+          </Button>
+        </DialogFooter>
+      </form>
+    </Form>
+  );
+};
+
 
 const EditObservationDialog = ({
   observation,
@@ -504,11 +885,12 @@ const parseCsvRow = (row: string): string[] => {
 };
 
 export default function ObservationsPage() {
-  const { observations, addObservation, deleteObservation, addCorrectiveAction, users, updateObservation, uploadSettings, areas } = useAppData();
+  const { observations, deleteObservation, users, areas } = useAppData();
   const { user: authUser } = useAuth();
   const [selectedObservation, setSelectedObservation] = useState<Observation | null>(null);
   const [editingObservation, setEditingObservation] = useState<Observation | null>(null);
   const [isDetailsOpen, setDetailsOpen] = useState(false);
+  const [isNewObservationOpen, setNewObservationOpen] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -528,111 +910,6 @@ export default function ObservationsPage() {
   const myObservations = observations.filter(
     (obs) => authUser && obs.submitted_by === authUser.displayName
   );
-
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
-  const form = useForm<z.infer<typeof observationFormSchema>>({
-    resolver: zodResolver(observationFormSchema),
-    defaultValues: {
-      submitted_by: authUser?.displayName || '',
-      date: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-      description: '',
-      actions: '',
-      person_involved: '',
-      risk_level: 1,
-      areaId: '',
-      createAction: false,
-      actionDescription: '',
-      actionResponsiblePerson: '',
-      actionDueDate: '',
-    },
-  });
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const maxSizeMB = uploadSettings?.imageMaxSizeMB || 5; 
-      const maxSizeInBytes = maxSizeMB * 1024 * 1024;
-      if (file.size > maxSizeInBytes) {
-        toast({
-          variant: 'destructive',
-          title: 'File too large',
-          description: `The image must be smaller than ${maxSizeMB}MB.`,
-        });
-        if (e.target) e.target.value = ''; 
-        return;
-      }
-      setSelectedFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  async function onSubmit(values: z.infer<typeof observationFormSchema>) {
-    setIsSubmitting(true);
-    try {
-      let imageUrl: string | undefined = undefined;
-      if (selectedFile) {
-        toast({ title: "Uploading image...", description: "Please wait." });
-        const storageRef = ref(storage, `observations/${Date.now()}_${selectedFile.name}`);
-        await uploadBytes(storageRef, selectedFile);
-        imageUrl = await getDownloadURL(storageRef);
-      }
-
-      const newObservationData: Omit<Observation, 'observation_id' | 'display_id' | 'status'> = {
-          report_type: values.report_type,
-          submitted_by: values.submitted_by,
-          date: new Date(values.date).toISOString(),
-          areaId: values.areaId,
-          person_involved: values.person_involved,
-          risk_level: values.risk_level,
-          description: values.description,
-          actions: values.actions,
-          unsafe_category: values.unsafe_category,
-      };
-      
-      const observationWithImage = { ...newObservationData, ...(imageUrl && { imageUrl }) };
-      const newObservationRef = await addObservation(observationWithImage);
-
-      if (values.createAction && values.actionDescription && values.actionResponsiblePerson && values.actionDueDate) {
-          const newActionData: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'> = {
-              description: values.actionDescription,
-              responsible_person: values.actionResponsiblePerson,
-              due_date: new Date(values.actionDueDate).toISOString(),
-              status: 'Pending',
-              related_to_observation: newObservationRef.id,
-          };
-          await addCorrectiveAction(newActionData);
-          toast({
-              title: 'Observation & Action Created',
-              description: 'The observation and a linked corrective action have been submitted.',
-          });
-      } else {
-          toast({
-              title: 'Observation Submitted',
-              description: 'Your observation has been successfully submitted.',
-          });
-      }
-
-      form.reset();
-      setImagePreview(null);
-      setSelectedFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = '';
-    } catch (error) {
-        console.error("Failed to submit observation:", error);
-        toast({
-            variant: "destructive",
-            title: "Submission Failed",
-            description: "There was an error submitting your observation. Please try again.",
-        });
-    } finally {
-        setIsSubmitting(false);
-    }
-  }
 
   const handleRowClick = (observation: Observation) => {
     setSelectedObservation(observation);
@@ -830,506 +1107,251 @@ export default function ObservationsPage() {
   return (
     <AppShell>
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-        <h2 className="text-3xl font-bold tracking-tight">Safety Observations</h2>
-
-        <div className="grid gap-6 lg:grid-cols-5">
-          <div className="lg:col-span-2">
+        <div className="flex items-center justify-between space-y-2">
+            <h2 className="text-3xl font-bold tracking-tight">Safety Observations</h2>
+             <Dialog open={isNewObservationOpen} onOpenChange={setNewObservationOpen}>
+                <DialogTrigger asChild>
+                    <Button>
+                        <FilePlus2 className="mr-2 h-4 w-4" /> Add New Observation
+                    </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                    <ObservationForm setOpen={setNewObservationOpen} />
+                </DialogContent>
+            </Dialog>
+        </div>
+        
+        <Tabs defaultValue="all">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="all">All Observations</TabsTrigger>
+            <TabsTrigger value="my">My Observations</TabsTrigger>
+          </TabsList>
+          <TabsContent value="all" className="mt-4">
             <Card>
               <CardHeader>
-                <CardTitle>Submit an Observation</CardTitle>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle>Observation History</CardTitle>
+                        <CardDescription>
+                        A list of all submitted safety observations. Click a row to see details.
+                        </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        {isAdmin && (
+                            <>
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    className="hidden"
+                                    accept=".csv"
+                                    onChange={handleFileImport}
+                                />
+                                <Button variant="outline" size="sm" onClick={handleImportClick} disabled={isSubmitting}>
+                                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                                    Import
+                                </Button>
+                            </>
+                        )}
+                        {canExport && (
+                           <Button variant="outline" size="sm" onClick={handleExport}>
+                                <Download className="mr-2 h-4 w-4" /> Export
+                            </Button>
+                        )}
+                    </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>ID</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Risk</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Photo</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {observations.length > 0 ? (
+                      observations.map((obs) => {
+                        const canEdit = isAdmin || (authUser && authUser.displayName === obs.submitted_by);
+                        return (
+                          <TableRow key={obs.observation_id} onClick={() => handleRowClick(obs)} className="cursor-pointer">
+                            <TableCell className="font-medium">{obs.display_id}</TableCell>
+                            <TableCell>{new Date(obs.date).toLocaleDateString()}</TableCell>
+                            <TableCell>{obs.report_type}</TableCell>
+                            <TableCell>
+                              <Badge variant={riskVariant[obs.risk_level]}>
+                                {riskLabels[obs.risk_level]}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="max-w-xs truncate">{obs.description}</TableCell>
+                            <TableCell>
+                              <Badge variant={statusVariant[obs.status]}>{obs.status}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              {obs.imageUrl ? (
+                                <div className="w-16 h-12 relative">
+                                  <Image
+                                    src={obs.imageUrl}
+                                    alt={`Observation ${obs.observation_id}`}
+                                    fill
+                                    className="rounded-md object-cover"
+                                    data-ai-hint="safety observation"
+                                  />
+                                </div>
+                              ) : (
+                                <div className="w-16 h-12 flex items-center justify-center bg-muted rounded-md">
+                                  <Camera className="h-6 w-6 text-muted-foreground" />
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                                {canEdit && (
+                                  <Button variant="ghost" size="icon" onClick={(e) => handleEditClick(e, obs)}>
+                                    <Edit className="h-4 w-4" />
+                                  </Button>
+                                )}
+                                {isAdmin && (
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This will permanently delete observation <span className="font-mono">{obs.display_id}</span>. This action cannot be undone.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={(e) => handleDelete(e, obs.observation_id)}>Delete</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={8} className="h-24 text-center">
+                          No observations have been recorded yet.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+          <TabsContent value="my" className="mt-4">
+             <Card>
+              <CardHeader>
+                <CardTitle>My Submitted Observations</CardTitle>
                 <CardDescription>
-                  Fill out the form below to document a safety observation.
+                  A list of all safety observations you have submitted.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                    <FormField
-                      control={form.control}
-                      name="report_type"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Type of Safety Report</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select a report type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="Safety Concern">Safety Concern</SelectItem>
-                              <SelectItem value="Positive Observation">
-                                Positive Observation
-                              </SelectItem>
-                              <SelectItem value="Near Miss">Near Miss</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="submitted_by"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Person Documenting</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g., John Doe" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="date"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Date and Time</FormLabel>
-                          <FormControl>
-                            <Input type="datetime-local" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="areaId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Area where it happened</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select an area or operation" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <AreaSelectOptions areas={areas} />
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="person_involved"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Person Involved (optional)</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Name of person involved" {...field} value={field.value ?? ''} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="risk_level"
-                      render={({ field }) => (
-                        <FormItem className="space-y-3">
-                          <FormLabel>Risk Evaluation (1-4)</FormLabel>
-                          <FormControl>
-                            <RadioGroup
-                              onValueChange={(value) => field.onChange(parseInt(value))}
-                              defaultValue={String(field.value)}
-                              className="flex space-x-4"
-                            >
-                              {[1, 2, 3, 4].map((level) => (
-                                <FormItem
-                                  key={level}
-                                  className="flex items-center space-x-2 space-y-0"
-                                >
-                                  <FormControl>
-                                    <RadioGroupItem value={String(level)} />
-                                  </FormControl>
-                                  <FormLabel className="font-normal">{riskLabels[level]}</FormLabel>
-                                </FormItem>
-                              ))}
-                            </RadioGroup>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="description"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Brief Description</FormLabel>
-                          <FormControl>
-                            <Textarea placeholder="Describe what you observed..." {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="actions"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Immediate Actions Taken</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Describe immediate actions taken..."
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="unsafe_category"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Unsafe Behavior or Condition</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select a category" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="Unsafe Behavior">Unsafe Behavior</SelectItem>
-                              <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
-                              <SelectItem value="N/A">N/A</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <div className="space-y-2">
-                      <FormLabel htmlFor="photo">Picture</FormLabel>
-                      <Input id="photo" type="file" accept="image/*" onChange={handleFileChange} ref={fileInputRef} />
-                    </div>
-                    {imagePreview && (
-                      <div className="mt-4 relative w-full aspect-video">
-                        <Image
-                          src={imagePreview}
-                          alt="Observation preview"
-                          fill
-                          className="rounded-md object-cover"
-                          data-ai-hint="observation photo"
-                        />
-                      </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>ID</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Risk</TableHead>
+                      <TableHead>Description</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Photo</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {myObservations.length > 0 ? (
+                        myObservations.map((obs) => {
+                        const canEdit = isAdmin || (authUser && authUser.displayName === obs.submitted_by);
+                        return (
+                            <TableRow key={obs.observation_id} onClick={() => handleRowClick(obs)} className="cursor-pointer">
+                            <TableCell className="font-medium">{obs.display_id}</TableCell>
+                            <TableCell>{new Date(obs.date).toLocaleDateString()}</TableCell>
+                            <TableCell>{obs.report_type}</TableCell>
+                            <TableCell>
+                                <Badge variant={riskVariant[obs.risk_level]}>
+                                {riskLabels[obs.risk_level]}
+                                </Badge>
+                            </TableCell>
+                            <TableCell className="max-w-xs truncate">{obs.description}</TableCell>
+                            <TableCell>
+                                <Badge variant={statusVariant[obs.status]}>{obs.status}</Badge>
+                            </TableCell>
+                            <TableCell>
+                                {obs.imageUrl ? (
+                                <div className="w-16 h-12 relative">
+                                    <Image
+                                    src={obs.imageUrl}
+                                    alt={`Observation ${obs.observation_id}`}
+                                    fill
+                                    className="rounded-md object-cover"
+                                    data-ai-hint="safety observation"
+                                    />
+                                </div>
+                                ) : (
+                                <div className="w-16 h-12 flex items-center justify-center bg-muted rounded-md">
+                                    <Camera className="h-6 w-6 text-muted-foreground" />
+                                </div>
+                                )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                                {canEdit && (
+                                    <Button variant="ghost" size="icon" onClick={(e) => handleEditClick(e, obs)}>
+                                    <Edit className="h-4 w-4" />
+                                    </Button>
+                                )}
+                                {isAdmin && (
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This will permanently delete observation <span className="font-mono">{obs.display_id}</span>. This action cannot be undone.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={(e) => handleDelete(e, obs.observation_id)}>Delete</AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                )}
+                            </TableCell>
+                            </TableRow>
+                        );
+                        })
+                    ) : (
+                        <TableRow>
+                            <TableCell colSpan={8} className="text-center">You have not submitted any observations yet.</TableCell>
+                        </TableRow>
                     )}
-                    
-                    <Separator />
-
-                    <FormField
-                      control={form.control}
-                      name="createAction"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4 shadow-sm">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                          <div className="space-y-1 leading-none">
-                            <FormLabel>
-                              Create Corrective Action
-                            </FormLabel>
-                            <FormDescription>
-                              Check this box to create a linked corrective action for this observation.
-                            </FormDescription>
-                          </div>
-                        </FormItem>
-                      )}
-                    />
-
-                    {form.watch('createAction') && (
-                      <div className="space-y-4 p-4 border rounded-md bg-muted/30">
-                        <FormField
-                          control={form.control}
-                          name="actionDescription"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Action Description</FormLabel>
-                              <FormControl><Textarea placeholder="Describe the required follow-up action..." {...field} value={field.value ?? ''} /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={form.control}
-                            name="actionResponsiblePerson"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Responsible Person</FormLabel>
-                                <FormControl><Input placeholder="e.g., Facility Manager" {...field} value={field.value ?? ''} /></FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="actionDueDate"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Due Date</FormLabel>
-                                <FormControl><Input type="date" {...field} value={field.value ?? ''} /></FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                      </div>
-                    )}
-
-                    <Button type="submit" className="w-full" disabled={isSubmitting}>
-                      {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Submit Observation
-                    </Button>
-                  </form>
-                </Form>
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
-          </div>
-          <div className="lg:col-span-3">
-            <Tabs defaultValue="all">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="all">All Observations</TabsTrigger>
-                <TabsTrigger value="my">My Observations</TabsTrigger>
-              </TabsList>
-              <TabsContent value="all" className="mt-4">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle>Observation History</CardTitle>
-                            <CardDescription>
-                            A list of all submitted safety observations. Click a row to see details.
-                            </CardDescription>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            {isAdmin && (
-                                <>
-                                    <input
-                                        type="file"
-                                        ref={fileInputRef}
-                                        className="hidden"
-                                        accept=".csv"
-                                        onChange={handleFileImport}
-                                    />
-                                    <Button variant="outline" size="sm" onClick={handleImportClick} disabled={isSubmitting}>
-                                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                                        Import
-                                    </Button>
-                                </>
-                            )}
-                            {canExport && (
-                               <Button variant="outline" size="sm" onClick={handleExport}>
-                                    <Download className="mr-2 h-4 w-4" /> Export
-                                </Button>
-                            )}
-                        </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>ID</TableHead>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead>Risk</TableHead>
-                          <TableHead>Description</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Photo</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {observations.length > 0 ? (
-                          observations.map((obs) => {
-                            const canEdit = isAdmin || (authUser && authUser.displayName === obs.submitted_by);
-                            return (
-                              <TableRow key={obs.observation_id} onClick={() => handleRowClick(obs)} className="cursor-pointer">
-                                <TableCell className="font-medium">{obs.display_id}</TableCell>
-                                <TableCell>{new Date(obs.date).toLocaleDateString()}</TableCell>
-                                <TableCell>{obs.report_type}</TableCell>
-                                <TableCell>
-                                  <Badge variant={riskVariant[obs.risk_level]}>
-                                    {riskLabels[obs.risk_level]}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="max-w-xs truncate">{obs.description}</TableCell>
-                                <TableCell>
-                                  <Badge variant={statusVariant[obs.status]}>{obs.status}</Badge>
-                                </TableCell>
-                                <TableCell>
-                                  {obs.imageUrl ? (
-                                    <div className="w-16 h-12 relative">
-                                      <Image
-                                        src={obs.imageUrl}
-                                        alt={`Observation ${obs.observation_id}`}
-                                        fill
-                                        className="rounded-md object-cover"
-                                        data-ai-hint="safety observation"
-                                      />
-                                    </div>
-                                  ) : (
-                                    <div className="w-16 h-12 flex items-center justify-center bg-muted rounded-md">
-                                      <Camera className="h-6 w-6 text-muted-foreground" />
-                                    </div>
-                                  )}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    {canEdit && (
-                                      <Button variant="ghost" size="icon" onClick={(e) => handleEditClick(e, obs)}>
-                                        <Edit className="h-4 w-4" />
-                                      </Button>
-                                    )}
-                                    {isAdmin && (
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
-                                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        This will permanently delete observation <span className="font-mono">{obs.display_id}</span>. This action cannot be undone.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={(e) => handleDelete(e, obs.observation_id)}>Delete</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    )}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={8} className="h-24 text-center">
-                              No observations have been recorded yet.
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              <TabsContent value="my" className="mt-4">
-                 <Card>
-                  <CardHeader>
-                    <CardTitle>My Submitted Observations</CardTitle>
-                    <CardDescription>
-                      A list of all safety observations you have submitted.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>ID</TableHead>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Type</TableHead>
-                          <TableHead>Risk</TableHead>
-                          <TableHead>Description</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Photo</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {myObservations.length > 0 ? (
-                            myObservations.map((obs) => {
-                            const canEdit = isAdmin || (authUser && authUser.displayName === obs.submitted_by);
-                            return (
-                                <TableRow key={obs.observation_id} onClick={() => handleRowClick(obs)} className="cursor-pointer">
-                                <TableCell className="font-medium">{obs.display_id}</TableCell>
-                                <TableCell>{new Date(obs.date).toLocaleDateString()}</TableCell>
-                                <TableCell>{obs.report_type}</TableCell>
-                                <TableCell>
-                                    <Badge variant={riskVariant[obs.risk_level]}>
-                                    {riskLabels[obs.risk_level]}
-                                    </Badge>
-                                </TableCell>
-                                <TableCell className="max-w-xs truncate">{obs.description}</TableCell>
-                                <TableCell>
-                                    <Badge variant={statusVariant[obs.status]}>{obs.status}</Badge>
-                                </TableCell>
-                                <TableCell>
-                                    {obs.imageUrl ? (
-                                    <div className="w-16 h-12 relative">
-                                        <Image
-                                        src={obs.imageUrl}
-                                        alt={`Observation ${obs.observation_id}`}
-                                        fill
-                                        className="rounded-md object-cover"
-                                        data-ai-hint="safety observation"
-                                        />
-                                    </div>
-                                    ) : (
-                                    <div className="w-16 h-12 flex items-center justify-center bg-muted rounded-md">
-                                        <Camera className="h-6 w-6 text-muted-foreground" />
-                                    </div>
-                                    )}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    {canEdit && (
-                                        <Button variant="ghost" size="icon" onClick={(e) => handleEditClick(e, obs)}>
-                                        <Edit className="h-4 w-4" />
-                                        </Button>
-                                    )}
-                                    {isAdmin && (
-                                        <AlertDialog>
-                                            <AlertDialogTrigger asChild>
-                                                <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
-                                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                                </Button>
-                                            </AlertDialogTrigger>
-                                            <AlertDialogContent>
-                                                <AlertDialogHeader>
-                                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                    <AlertDialogDescription>
-                                                        This will permanently delete observation <span className="font-mono">{obs.display_id}</span>. This action cannot be undone.
-                                                    </AlertDialogDescription>
-                                                </AlertDialogHeader>
-                                                <AlertDialogFooter>
-                                                    <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
-                                                    <AlertDialogAction onClick={(e) => handleDelete(e, obs.observation_id)}>Delete</AlertDialogAction>
-                                                </AlertDialogFooter>
-                                            </AlertDialogContent>
-                                        </AlertDialog>
-                                    )}
-                                </TableCell>
-                                </TableRow>
-                            );
-                            })
-                        ) : (
-                            <TableRow>
-                                <TableCell colSpan={8} className="text-center">You have not submitted any observations yet.</TableCell>
-                            </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </Tabs>
-          </div>
-        </div>
+          </TabsContent>
+        </Tabs>
+        
         <ObservationDetailsDialog
           observation={selectedObservation}
           isOpen={isDetailsOpen}
