@@ -54,10 +54,10 @@ interface AppDataContextType {
   addCommentToInvestigation: (investigationId: string, comment: Comment) => Promise<void>;
   addDocumentToInvestigation: (investigationId: string, document: { name: string; url: string }) => Promise<void>;
   jsas: JSA[];
-  addJsa: (jsa: Omit<JSA, 'jsa_id' | 'display_id' | 'status' | 'created_by' | 'created_date' | 'signatures'>) => Promise<void>;
-  updateJsa: (updatedJsa: JSA) => Promise<void>;
+  addJsa: (jsa: Omit<JSA, 'jsa_id' | 'display_id' | 'status' | 'created_by' | 'created_date' | 'signatures'>) => Promise<boolean>;
+  updateJsa: (updatedJsa: JSA) => Promise<boolean>;
   hotWorkPermits: HotWorkPermit[];
-  addHotWorkPermit: (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id'>) => Promise<void>;
+  addHotWorkPermit: (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date'>) => Promise<void>;
   updateHotWorkPermit: (updatedPermit: HotWorkPermit) => Promise<void>;
   brandingSettings: BrandingSettings | null;
   updateBrandingSettings: (logoFile: File) => Promise<void>;
@@ -428,30 +428,45 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const addJsa = async (jsaData: Omit<JSA, 'jsa_id' | 'display_id' | 'status' | 'created_by' | 'created_date' | 'signatures'>) => {
-    const displayId = `JSA${String(jsas.length + 1).padStart(3, '0')}`;
-    const status = new Date(jsaData.valid_to) < new Date() ? 'Expired' : 'Active';
-    const newJsaForDb = { 
-        ...jsaData,
-        valid_from: new Date(jsaData.valid_from).toISOString(),
-        valid_to: new Date(jsaData.valid_to).toISOString(),
-        display_id: displayId, 
-        status: status,
-        created_by: 'Safety Manager', // Mocked
-        created_date: new Date().toISOString(),
-        signatures: [],
-     };
-    await addDoc(collection(db, 'jsas'), newJsaForDb);
+  const addJsa = async (jsaData: Omit<JSA, 'jsa_id' | 'display_id' | 'status' | 'created_by' | 'created_date' | 'signatures'>): Promise<boolean> => {
+    try {
+        const displayId = `JSA${String(jsas.length + 1).padStart(3, '0')}`;
+        const status = new Date(jsaData.valid_to) < new Date() ? 'Expired' : 'Active';
+        const newJsaForDb = { 
+            ...jsaData,
+            display_id: displayId, 
+            status: status,
+            created_by: 'Safety Manager', // Mocked
+            created_date: new Date().toISOString(),
+            signatures: [],
+        };
+        await addDoc(collection(db, 'jsas'), newJsaForDb);
+        return true;
+    } catch (error) {
+        console.error("Failed to add JSA:", error);
+        return false;
+    }
   };
-  const updateJsa = async (updatedJsa: JSA) => {
-    const { jsa_id, ...data } = updatedJsa;
-    data.status = new Date(data.valid_to) < new Date() ? 'Expired' : 'Active';
-    await updateDoc(doc(db, 'jsas', jsa_id), data);
+  const updateJsa = async (updatedJsa: JSA): Promise<boolean> => {
+    try {
+        const { jsa_id, ...data } = updatedJsa;
+        data.status = new Date(data.valid_to) < new Date() ? 'Expired' : 'Active';
+        await updateDoc(doc(db, 'jsas', jsa_id), data);
+        return true;
+    } catch (error) {
+        console.error("Failed to update JSA:", error);
+        return false;
+    }
   };
 
-  const addHotWorkPermit = async (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id'>) => {
+  const addHotWorkPermit = async (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date'>) => {
     const displayId = `HWP${String(hotWorkPermits.length + 1).padStart(3, '0')}`;
-    await addDoc(collection(db, 'hotWorkPermits'), {...permit, display_id: displayId});
+    const newPermitData = {
+        ...permit,
+        display_id: displayId,
+        created_date: new Date().toISOString(),
+    };
+    await addDoc(collection(db, 'hotWorkPermits'), newPermitData);
   };
   const updateHotWorkPermit = async (updatedPermit: HotWorkPermit) => {
     const { permit_id, ...data } = updatedPermit;

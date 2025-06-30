@@ -134,18 +134,40 @@ export type JSA = {
   signatures: { employee_name: string; sign_date: string }[];
 };
 
+export type HotWorkPermitChecklist = {
+  fire_extinguisher: boolean;
+  equipment_good_repair: boolean;
+  energy_locked_out: boolean;
+  flammables_removed: boolean;
+  floors_swept: boolean;
+  fire_resistive_covers: boolean;
+  openings_covered: boolean;
+  walls_ceilings_protected: boolean;
+  adequate_ventilation: boolean;
+  atmosphere_checked: boolean;
+  vapors_purged: boolean;
+  confined_space_permit: boolean;
+  fire_watch_provided: boolean;
+};
+
 export type HotWorkPermit = {
   permit_id: string;
   display_id: string;
-  title: string;
-  description: string;
-  areaId: string;
-  valid_from: string;
-  valid_to: string;
-  precautions: string[];
-  created_by: string;
+  supervisor: string;
+  performed_by_type: 'RDT Employee' | 'Contractor';
+  location: string;
+  work_to_be_performed_by: string;
+  permit_expires: string; // ISO String
+  work_complete?: string; // ISO String
+  final_check?: string; // ISO String
+  special_instructions?: string;
+  enclosed_equip_notes?: string;
+  fire_watch_required: 'Yes' | 'No';
+  checklist: HotWorkPermitChecklist;
   created_date: string;
-  signatures: { employee_name: string; sign_date: string }[];
+  supervisor_signature?: { name: string, date: string };
+  employee_signature?: { name: string, date: string };
+  final_supervisor_signature?: { name: string, date: string };
 };
 
 export type Forklift = {
