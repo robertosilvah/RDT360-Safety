@@ -496,11 +496,34 @@ const TempImageUploader = () => {
     const [url, setUrl] = useState('');
     const [result, setResult] = useState('');
     const [isUploading, setIsUploading] = useState(false);
+    const [validationError, setValidationError] = useState('');
     const { toast } = useToast();
 
+    const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newUrl = e.target.value;
+        setUrl(newUrl);
+
+        if (!newUrl) {
+            setValidationError('');
+            return;
+        }
+
+        const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp'];
+        const hasValidExtension = validExtensions.some(ext => newUrl.toLowerCase().split('?')[0].endsWith(ext));
+
+        if (!newUrl.toLowerCase().startsWith('http')) {
+             setValidationError('Please enter a full URL starting with http:// or https://');
+        } else if (!newUrl.includes('drive.google.com') && !hasValidExtension) {
+             setValidationError('Warning: URL may not be a direct image link. Common extensions are .jpg, .png, .svg, etc.');
+        } else {
+            setValidationError('');
+        }
+    };
+
+
     const handleUpload = async () => {
-        if (!url) {
-            toast({ variant: 'destructive', title: 'URL required' });
+        if (!url || validationError) {
+            toast({ variant: 'destructive', title: 'Invalid URL', description: validationError || 'A valid URL is required.' });
             return;
         }
         setIsUploading(true);
@@ -532,10 +555,16 @@ const TempImageUploader = () => {
             <CardContent className="space-y-4">
                 <div className="space-y-2">
                     <Label htmlFor="image-url-test">Image URL to Upload</Label>
-                    <Input id="image-url-test" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9" />
+                    <Input 
+                      id="image-url-test" 
+                      value={url} 
+                      onChange={handleUrlChange} 
+                      placeholder="e.g., https://example.com/image.jpg"
+                    />
+                    {validationError && <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">{validationError}</p>}
                     <p className="text-sm text-muted-foreground">Note: This only works with public web URLs (http://...). It cannot access local computer addresses (C:\...).</p>
                 </div>
-                <Button onClick={handleUpload} disabled={isUploading}>
+                <Button onClick={handleUpload} disabled={isUploading || !!validationError}>
                     {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
                     Test Upload
                 </Button>
@@ -628,7 +657,7 @@ export default function ObservationsPage() {
         imageUrl = await getDownloadURL(storageRef);
       }
 
-      const newObservationData: Omit<Observation, 'observation_id' | 'display_id' | 'status' | 'safety_walk_id'> = {
+      const newObservationData: Omit<Observation, 'observation_id' | 'display_id' | 'status'> = {
           report_type: values.report_type,
           submitted_by: values.submitted_by,
           date: new Date(values.date).toISOString(),
@@ -761,7 +790,7 @@ export default function ObservationsPage() {
               return;
             }
 
-            const headers = rows[0].split(',').map(h => h.trim());
+            const headers = parseCsvRow(rows[0]);
             const requiredHeaders = ['report_type', 'submitted_by', 'areaId', 'description'];
             for(const reqHeader of requiredHeaders) {
                 if (!headers.includes(reqHeader)) {
@@ -834,7 +863,11 @@ export default function ObservationsPage() {
               const batch = writeBatch(db);
               enrichedObservations.forEach(obs => {
                   const newDocRef = doc(obsCollection);
-                  batch.set(newDocRef, obs);
+                  const newObsWithUrl = { ...obs };
+                  if (!newObsWithUrl.imageUrl) delete (newObsWithUrl as any).imageUrl;
+                  if (!newObsWithUrl.safety_walk_id) delete (newObsWithUrl as any).safety_walk_id;
+
+                  batch.set(newDocRef, newObsWithUrl);
               });
               await batch.commit();
               toast({ title: 'Import Successful', description: `${enrichedObservations.length} new observations imported.` });
