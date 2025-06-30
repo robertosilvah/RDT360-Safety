@@ -70,8 +70,9 @@ import { useAppData } from '@/context/AppDataContext';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
-import { storage } from '@/lib/firebase';
+import { storage, db } from '@/lib/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, writeBatch, doc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -667,7 +668,7 @@ export default function ObservationsPage() {
         }
 
         try {
-            const rows = text.split('\n').filter(row => row.trim() !== '');
+            const rows = text.split(/\r\n|\n|\r/).filter(row => row.trim() !== '');
             if (rows.length < 2) {
               toast({ variant: 'destructive', title: 'Import Failed', description: 'CSV file is empty or has no data rows.' });
               return;
@@ -682,35 +683,59 @@ export default function ObservationsPage() {
                 }
             }
             
+            const batch = writeBatch(db);
             let importedCount = 0;
+            const obsCollection = collection(db, 'observations');
+            const currentObsCount = observations.length;
+
             for (let i = 1; i < rows.length; i++) {
                 const values = rows[i].split(',');
+                if (values.length !== headers.length) {
+                    console.warn(`Skipping malformed row ${i + 1}: Check column count.`);
+                    continue;
+                }
+                
                 const obsData: { [key: string]: string } = {};
                 headers.forEach((header, index) => {
-                    obsData[header] = values[index]?.trim();
+                    let value = values[index]?.trim();
+                    if (value?.startsWith('"') && value.endsWith('"')) {
+                        value = value.substring(1, value.length - 1);
+                    }
+                    obsData[header] = value;
                 });
 
-                const newObservation: Omit<Observation, 'observation_id' | 'display_id' | 'status'> = {
+                if (!obsData.report_type || !obsData.submitted_by || !obsData.areaId || !obsData.description) {
+                    console.warn(`Skipping row ${i+1} due to missing required data.`);
+                    continue;
+                }
+
+                const displayId = `OBS${String(currentObsCount + importedCount + 1).padStart(3, '0')}`;
+                const newDocRef = doc(obsCollection);
+
+                const newObservation: Omit<Observation, 'observation_id'> = {
+                    display_id: displayId,
+                    status: 'Open',
                     report_type: obsData.report_type as Observation['report_type'] || 'Safety Concern',
                     submitted_by: obsData.submitted_by,
-                    date: obsData.date || new Date().toISOString(),
+                    date: obsData.date ? new Date(obsData.date).toISOString() : new Date().toISOString(),
                     areaId: obsData.areaId,
-                    person_involved: obsData.person_involved,
+                    person_involved: obsData.person_involved || '',
                     risk_level: (parseInt(obsData.risk_level, 10) as Observation['risk_level']) || 1,
                     description: obsData.description,
                     actions: obsData.actions || 'No immediate actions logged.',
                     unsafe_category: obsData.unsafe_category as Observation['unsafe_category'] || 'N/A',
-                    imageUrl: obsData.imageUrl,
-                    safety_walk_id: obsData.safety_walk_id
+                    imageUrl: obsData.imageUrl || undefined,
+                    safety_walk_id: obsData.safety_walk_id || undefined
                 };
-                await addObservation(newObservation);
+                batch.set(newDocRef, newObservation as any);
                 importedCount++;
             }
 
             if (importedCount > 0) {
+              await batch.commit();
               toast({ title: 'Import Successful', description: `${importedCount} new observations imported.` });
             } else {
-              toast({ title: 'Import Complete', description: 'No new observations to import.' });
+              toast({ title: 'Import Complete', description: 'No new observations to import, or all rows were malformed.' });
             }
 
         } catch (error) {
