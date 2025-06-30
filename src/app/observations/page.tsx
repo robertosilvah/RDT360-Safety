@@ -770,14 +770,21 @@ export default function ObservationsPage() {
             }
             
             const enrichedObservations = [...observationsToCommit] as Omit<Observation, 'observation_id'>[];
-            for (const { index, url } of imageUrlsToProcess) {
+            if (imageUrlsToProcess.length > 0) {
+              toast({ title: "Processing images...", description: `Found ${imageUrlsToProcess.length} images to import.` });
+            }
+
+            const imageProcessingPromises = imageUrlsToProcess.map(async ({ index, url }) => {
                 try {
-                  const dataUri = await fetchAndUploadImageAction(url);
-                  if (dataUri) {
-                      const storageRef = ref(storage, `observations/imported/${Date.now()}_${index}.jpg`);
-                      const uploadResult = await uploadString(storageRef, dataUri, 'data_url');
-                      (enrichedObservations[index] as any).imageUrl = await getDownloadURL(uploadResult.ref);
-                  }
+                    const dataUri = await fetchAndUploadImageAction(url);
+                    if (dataUri) {
+                        const storageRef = ref(storage, `observations/imported/${Date.now()}_${index}.jpg`);
+                        const uploadResult = await uploadString(storageRef, dataUri, 'data_url');
+                        const downloadUrl = await getDownloadURL(uploadResult.ref);
+                        if (enrichedObservations[index]) {
+                           (enrichedObservations[index] as any).imageUrl = downloadUrl;
+                        }
+                    }
                 } catch (error) {
                     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
                     console.error(`Failed to process image for row ${index + 2}: ${errorMessage}`);
@@ -788,18 +795,20 @@ export default function ObservationsPage() {
                         duration: 5000,
                     });
                 }
-            }
+            });
 
+            await Promise.all(imageProcessingPromises);
 
             if (enrichedObservations.length > 0) {
               const batch = writeBatch(db);
               enrichedObservations.forEach(obs => {
                   const newDocRef = doc(obsCollection);
-                  const newObsWithUrl = { ...obs };
-                  if (!newObsWithUrl.imageUrl) delete (newObsWithUrl as any).imageUrl;
-                  if (!newObsWithUrl.safety_walk_id) delete (newObsWithUrl as any).safety_walk_id;
+                  const cleanObs = { ...obs };
+                  if (!cleanObs.imageUrl) delete (cleanObs as any).imageUrl;
+                  if (!cleanObs.safety_walk_id) delete (cleanObs as any).safety_walk_id;
+                  if (!cleanObs.person_involved) delete (cleanObs as any).person_involved;
 
-                  batch.set(newDocRef, newObsWithUrl);
+                  batch.set(newDocRef, cleanObs);
               });
               await batch.commit();
               toast({ title: 'Import Successful', description: `${enrichedObservations.length} new observations imported.` });
@@ -1329,5 +1338,3 @@ export default function ObservationsPage() {
     </AppShell>
   );
 }
-
-    
