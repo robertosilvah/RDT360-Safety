@@ -57,8 +57,9 @@ interface AppDataContextType {
   addJsa: (jsa: Omit<JSA, 'jsa_id' | 'display_id' | 'status' | 'created_by' | 'created_date' | 'signatures'>) => Promise<boolean>;
   updateJsa: (updatedJsa: JSA) => Promise<boolean>;
   hotWorkPermits: HotWorkPermit[];
-  addHotWorkPermit: (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName'>, supervisorName: string, locationName: string) => Promise<void>;
+  addHotWorkPermit: (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, supervisorName: string, locationName: string) => Promise<void>;
   updateHotWorkPermit: (updatedPermit: HotWorkPermit) => Promise<void>;
+  addCommentToHotWorkPermit: (permitId: string, comment: Comment) => Promise<void>;
   brandingSettings: BrandingSettings | null;
   updateBrandingSettings: (logoFile: File) => Promise<void>;
   uploadSettings: UploadSettings | null;
@@ -459,7 +460,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const addHotWorkPermit = async (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName'>, supervisorName: string, locationName: string) => {
+  const addHotWorkPermit = async (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, supervisorName: string, locationName: string) => {
     const displayId = `HWP${String(hotWorkPermits.length + 1).padStart(3, '0')}`;
     const newPermitData = {
         ...permit,
@@ -468,12 +469,20 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         supervisor_signature: { name: supervisorName, date: new Date().toISOString() },
         status: 'Active' as const,
         locationName: locationName,
+        comments: [],
     };
     await addDoc(collection(db, 'hotWorkPermits'), newPermitData);
   };
   const updateHotWorkPermit = async (updatedPermit: HotWorkPermit) => {
     const { permit_id, ...data } = updatedPermit;
     await updateDoc(doc(db, 'hotWorkPermits', permit_id), data);
+  };
+  const addCommentToHotWorkPermit = async (permitId: string, comment: Comment) => {
+    const permit = hotWorkPermits.find(p => p.permit_id === permitId);
+    if (permit) {
+      const updatedComments = [...(permit.comments || []), comment];
+      await updateDoc(doc(db, 'hotWorkPermits', permitId), { comments: updatedComments });
+    }
   };
   
   const updateBrandingSettings = async (logoFile: File) => {
@@ -503,7 +512,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       complianceRecords, addComplianceRecord, updateComplianceRecord, removeComplianceRecord,
       investigations, updateInvestigation, addCommentToInvestigation, addDocumentToInvestigation,
       jsas, addJsa, updateJsa,
-      hotWorkPermits, addHotWorkPermit, updateHotWorkPermit,
+      hotWorkPermits, addHotWorkPermit, updateHotWorkPermit, addCommentToHotWorkPermit,
       brandingSettings, updateBrandingSettings,
       uploadSettings, updateUploadSettings,
     }}>

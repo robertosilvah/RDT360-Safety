@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import type { HotWorkPermit, HotWorkPermitChecklist, Area } from '@/types';
-import { PlusCircle, Users, FileSignature, Flame, Clock, CheckSquare, Trash2, UserCheck, Edit } from 'lucide-react';
+import type { HotWorkPermit, HotWorkPermitChecklist, Area, Comment } from '@/types';
+import { PlusCircle, Users, FileSignature, Flame, Clock, CheckSquare, Trash2, UserCheck, Edit, MessageSquare } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -18,12 +18,13 @@ import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { useAppData } from '@/context/AppDataContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/context/AuthContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 const checklistSchema = z.object({
   fire_extinguisher: z.boolean().default(false),
@@ -90,17 +91,20 @@ const PermitDetailsDialog = ({
     permit,
     onSave, 
     onUpdate,
+    addComment,
     setOpen,
     areas,
 }: { 
     permit?: HotWorkPermit | null; 
     onSave: (data: PermitFormValues) => void;
     onUpdate: (data: HotWorkPermit) => void;
+    addComment: (permitId: string, comment: Comment) => void;
     setOpen: (open: boolean) => void;
     areas: Area[];
 }) => {
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
+  const [newComment, setNewComment] = useState('');
   const isCreateMode = !permit;
 
   const form = useForm<PermitFormValues>({
@@ -116,13 +120,24 @@ const PermitDetailsDialog = ({
             fire_extinguisher: true, equipment_good_repair: true, energy_locked_out: true,
             floors_swept: true, fire_resistive_covers: true, openings_covered: true,
             walls_ceilings_protected: true, fire_watch_provided: true,
-        }
+        },
     } : {
         ...permit,
         areaId: permit.areaId,
         permit_expires: format(new Date(permit.permit_expires), "yyyy-MM-dd'T'HH:mm"),
     },
   });
+
+   useEffect(() => {
+    if (permit) {
+      form.reset({
+        ...permit,
+        areaId: permit.areaId,
+        permit_expires: format(new Date(permit.permit_expires), "yyyy-MM-dd'T'HH:mm"),
+      });
+      setNewComment('');
+    }
+  }, [permit, form]);
 
   const handleSign = async (signatureType: 'employee' | 'final_supervisor') => {
     if (!permit || !currentUser?.displayName) {
@@ -132,23 +147,54 @@ const PermitDetailsDialog = ({
     
     let updatedPermit = { ...permit };
     const signature = { name: currentUser.displayName, date: new Date().toISOString() };
+    let commentLog: Comment | null = null;
 
     if (signatureType === 'employee' && !updatedPermit.employee_signature) {
         updatedPermit.employee_signature = signature;
         updatedPermit.work_complete = new Date().toISOString();
+        commentLog = {
+          user: 'System Log',
+          comment: `${currentUser.displayName} signed to confirm work completion.`,
+          date: new Date().toISOString(),
+        };
     } else if (signatureType === 'final_supervisor' && !updatedPermit.final_supervisor_signature) {
         updatedPermit.final_supervisor_signature = signature;
         updatedPermit.final_check = new Date().toISOString();
         updatedPermit.status = 'Closed';
+        commentLog = {
+          user: 'System Log',
+          comment: `${currentUser.displayName} performed the final check and closed the permit.`,
+          date: new Date().toISOString(),
+        };
     } else {
         return; // Already signed
     }
     
+    if (commentLog) {
+      updatedPermit.comments = [...(updatedPermit.comments || []), commentLog];
+    }
+
     onUpdate(updatedPermit);
     toast({ title: 'Permit Signed', description: 'The permit has been successfully signed.' });
   };
   
+  const handleAddComment = () => {
+    if (newComment.trim() && permit && currentUser) {
+      addComment(permit.permit_id, {
+        user: currentUser.displayName || 'Anonymous',
+        comment: newComment.trim(),
+        date: new Date().toISOString(),
+      });
+      setNewComment('');
+    }
+  };
+  
   const isFormLocked = !isCreateMode && permit?.status === 'Closed';
+  
+  const getAvatarInitials = (name: string) => {
+    if (name === 'System Log') return 'SL';
+    return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+  }
 
   return (
     <Form {...form}>
@@ -159,115 +205,152 @@ const PermitDetailsDialog = ({
             {isCreateMode ? 'Fill in the details below to issue a new permit.' : `Details for permit in ${permit.locationName}`}
           </DialogDescription>
         </DialogHeader>
-        <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-6 border-t pt-6">
-          <div className="text-center mb-4">
-              <p className="font-semibold">Before starting hot work, review all safety precautions.</p>
-              <p className="text-sm text-muted-foreground">Can this job be avoided or is there a safer way?</p>
-          </div>
+        <div className="max-h-[70vh] overflow-y-auto pr-2">
+         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+           {/* Left/Main Column */}
+           <div className="md:col-span-2 space-y-6">
+              <div className="text-center mb-4">
+                  <p className="font-semibold">Before starting hot work, review all safety precautions.</p>
+                  <p className="text-sm text-muted-foreground">Can this job be avoided or is there a safer way?</p>
+              </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
-            {/* Left Column */}
-            <div className="space-y-4">
-                <FormField control={form.control} name="supervisor" render={({ field }) => (
-                    <FormItem><FormLabel>Supervisor</FormLabel><FormControl><Input {...field} disabled={!isCreateMode} /></FormControl><FormMessage /></FormItem>
-                )}/>
-                
-                <FormField control={form.control} name="performed_by_type" render={({ field }) => (
-                    <FormItem><FormLabel>Hot work performed by:</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4" disabled={!isCreateMode}><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="RDT Employee" /></FormControl><FormLabel className="font-normal">RDT Employee</FormLabel></FormItem><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Contractor" /></FormControl><FormLabel className="font-normal">Contractor</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>
-                )}/>
-
-                <FormField control={form.control} name="areaId" render={({ field }) => (
-                    <FormItem><FormLabel>Location/bldg./room/floor</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isCreateMode}>
-                            <FormControl><SelectTrigger><SelectValue placeholder="Select an area..." /></SelectTrigger></FormControl>
-                            <SelectContent><AreaSelectOptions areas={areas} /></SelectContent>
-                        </Select>
-                    <FormMessage /></FormItem>
-                )}/>
-
-                <FormField control={form.control} name="work_to_be_performed_by" render={({ field }) => (
-                    <FormItem><FormLabel>Work to be performed by</FormLabel><FormControl><Input {...field} disabled={!isCreateMode} /></FormControl><FormMessage /></FormItem>
-                )}/>
-                
-                {!isCreateMode && permit.supervisor_signature && (
-                    <div><FormLabel>Supervisor Signature</FormLabel><p className="text-sm p-2 border rounded-md bg-muted">{permit.supervisor_signature.name} on {format(new Date(permit.supervisor_signature.date), 'P')}</p></div>
-                )}
-            </div>
-
-            {/* Right Column (Checklist) */}
-            <div className="space-y-4 row-span-2">
-                <h3 className="font-bold text-lg">Precaution & safeguard checklist</h3>
-                
-                <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'precautions')} isViewMode={!isCreateMode} />
-                
-                <div>
-                    <h4 className="font-semibold text-sm mt-4">Requirements within 35 ft. of work:</h4>
-                    <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'requirements')} isViewMode={!isCreateMode} />
-                </div>
-                
-                <div>
-                    <h4 className="font-semibold text-sm mt-4">Work on enclosed/confined equip:</h4>
-                    <FormField control={form.control} name="enclosed_equip_notes" render={({ field }) => (
-                         <FormControl><Input placeholder="N/A" {...field} value={field.value ?? ""} className="inline-block w-auto text-sm h-8" disabled={!isCreateMode} /></FormControl>
-                    )}/>
-                    <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'enclosed')} isViewMode={!isCreateMode} />
-                </div>
-
-                <div>
-                    <FormField control={form.control} name="fire_watch_required" render={({ field }) => (
-                        <FormItem><FormLabel>Fire watch required?</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4" disabled={!isCreateMode}><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Yes" /></FormControl><FormLabel className="font-normal">Yes</FormLabel></FormItem><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="No" /></FormControl><FormLabel className="font-normal">No</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>
-                    )}/>
-                    <div className="mt-2"><ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'fire_watch')} isViewMode={!isCreateMode} /></div>
-                </div>
-            </div>
-
-             <FormField control={form.control} name="permit_expires" render={({ field }) => (
-                <FormItem><FormLabel>Permit Expires</FormLabel><FormControl><Input type="datetime-local" {...field} disabled={!isCreateMode} /></FormControl><FormMessage /></FormItem>
-            )}/>
-
-             <FormField control={form.control} name="special_instructions" render={({ field }) => (
-                <FormItem><FormLabel>Special instructions</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={!isCreateMode} /></FormControl><FormMessage /></FormItem>
-            )}/>
-            
-            {!isCreateMode && (
-                <>
-                <Separator />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                {/* Left Sub-Column */}
                 <div className="space-y-4">
-                    <h3 className="font-bold text-lg">Work Completion & Final Check</h3>
+                    <FormField control={form.control} name="supervisor" render={({ field }) => (
+                        <FormItem><FormLabel>Supervisor</FormLabel><FormControl><Input {...field} disabled={!isCreateMode} /></FormControl><FormMessage /></FormItem>
+                    )}/>
                     
-                    {/* Employee Signature */}
+                    <FormField control={form.control} name="performed_by_type" render={({ field }) => (
+                        <FormItem><FormLabel>Hot work performed by:</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4" disabled={!isCreateMode}><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="RDT Employee" /></FormControl><FormLabel className="font-normal">RDT Employee</FormLabel></FormItem><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Contractor" /></FormControl><FormLabel className="font-normal">Contractor</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>
+                    )}/>
+
+                    <FormField control={form.control} name="areaId" render={({ field }) => (
+                        <FormItem><FormLabel>Location/bldg./room/floor</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isCreateMode}>
+                                <FormControl><SelectTrigger><SelectValue placeholder="Select an area..." /></SelectTrigger></FormControl>
+                                <SelectContent><AreaSelectOptions areas={areas} /></SelectContent>
+                            </Select>
+                        <FormMessage /></FormItem>
+                    )}/>
+
+                    <FormField control={form.control} name="work_to_be_performed_by" render={({ field }) => (
+                        <FormItem><FormLabel>Work to be performed by</FormLabel><FormControl><Input {...field} disabled={!isCreateMode} /></FormControl><FormMessage /></FormItem>
+                    )}/>
+                    
+                    {!isCreateMode && permit.supervisor_signature && (
+                        <div><FormLabel>Supervisor Signature</FormLabel><p className="text-sm p-2 border rounded-md bg-muted">{permit.supervisor_signature.name} on {format(new Date(permit.supervisor_signature.date), 'P')}</p></div>
+                    )}
+                </div>
+
+                {/* Right Sub-Column (Checklist) */}
+                <div className="space-y-4 row-span-2">
+                    <h3 className="font-bold text-lg">Precaution & safeguard checklist</h3>
+                    
+                    <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'precautions')} isViewMode={!isCreateMode} />
+                    
                     <div>
-                        <FormLabel>Employee Acknowledgement</FormLabel>
-                        {permit.employee_signature ? (
-                            <p className="text-sm p-2 border rounded-md bg-muted">Work completed by {permit.employee_signature.name} on {format(new Date(permit.employee_signature.date), 'P p')}</p>
-                        ) : (
-                            <div className="p-4 border rounded-md bg-muted/50 flex items-center justify-between">
-                                <p className="text-sm text-muted-foreground">Employee performing work must sign to confirm completion.</p>
-                                <Button type="button" onClick={() => handleSign('employee')} disabled={isFormLocked}>
-                                    <UserCheck className="mr-2 h-4 w-4" /> Sign Work Complete
-                                </Button>
-                            </div>
-                        )}
+                        <h4 className="font-semibold text-sm mt-4">Requirements within 35 ft. of work:</h4>
+                        <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'requirements')} isViewMode={!isCreateMode} />
+                    </div>
+                    
+                    <div>
+                        <h4 className="font-semibold text-sm mt-4">Work on enclosed/confined equip:</h4>
+                        <FormField control={form.control} name="enclosed_equip_notes" render={({ field }) => (
+                            <FormControl><Input placeholder="N/A" {...field} value={field.value ?? ""} className="inline-block w-auto text-sm h-8" disabled={!isCreateMode} /></FormControl>
+                        )}/>
+                        <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'enclosed')} isViewMode={!isCreateMode} />
                     </div>
 
-                    {/* Final Supervisor Signature */}
                     <div>
-                        <FormLabel>Final Supervisor Check</FormLabel>
-                        {permit.final_supervisor_signature ? (
-                            <p className="text-sm p-2 border rounded-md bg-muted">Final check by {permit.final_supervisor_signature.name} on {format(new Date(permit.final_supervisor_signature.date), 'P p')}</p>
-                        ) : (
-                            <div className="p-4 border rounded-md bg-muted/50 flex items-center justify-between">
-                                <p className="text-sm text-muted-foreground">Supervisor must perform final check after 30 mins.</p>
-                                <Button type="button" onClick={() => handleSign('final_supervisor')} disabled={!permit.employee_signature || isFormLocked}>
-                                    <FileSignature className="mr-2 h-4 w-4" /> Sign and Close Permit
-                                </Button>
-                            </div>
-                        )}
+                        <FormField control={form.control} name="fire_watch_required" render={({ field }) => (
+                            <FormItem><FormLabel>Fire watch required?</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4" disabled={!isCreateMode}><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Yes" /></FormControl><FormLabel className="font-normal">Yes</FormLabel></FormItem><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="No" /></FormControl><FormLabel className="font-normal">No</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>
+                        )}/>
+                        <div className="mt-2"><ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'fire_watch')} isViewMode={!isCreateMode} /></div>
                     </div>
                 </div>
-                </>
+
+                <FormField control={form.control} name="permit_expires" render={({ field }) => (
+                    <FormItem><FormLabel>Permit Expires</FormLabel><FormControl><Input type="datetime-local" {...field} disabled={!isCreateMode} /></FormControl><FormMessage /></FormItem>
+                )}/>
+
+                <FormField control={form.control} name="special_instructions" render={({ field }) => (
+                    <FormItem><FormLabel>Special instructions</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={!isCreateMode} /></FormControl><FormMessage /></FormItem>
+                )}/>
+                
+                {!isCreateMode && (
+                    <>
+                    <Separator />
+                    <div className="space-y-4">
+                        <h3 className="font-bold text-lg">Work Completion & Final Check</h3>
+                        
+                        {/* Employee Signature */}
+                        <div>
+                            <FormLabel>Employee Acknowledgement</FormLabel>
+                            {permit.employee_signature ? (
+                                <p className="text-sm p-2 border rounded-md bg-muted">Work completed by {permit.employee_signature.name} on {format(new Date(permit.employee_signature.date), 'P p')}</p>
+                            ) : (
+                                <div className="p-4 border rounded-md bg-muted/50 flex items-center justify-between">
+                                    <p className="text-sm text-muted-foreground">Employee performing work must sign to confirm completion.</p>
+                                    <Button type="button" onClick={() => handleSign('employee')} disabled={isFormLocked}>
+                                        <UserCheck className="mr-2 h-4 w-4" /> Sign Work Complete
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Final Supervisor Signature */}
+                        <div>
+                            <FormLabel>Final Supervisor Check</FormLabel>
+                            {permit.final_supervisor_signature ? (
+                                <p className="text-sm p-2 border rounded-md bg-muted">Final check by {permit.final_supervisor_signature.name} on {format(new Date(permit.final_supervisor_signature.date), 'P p')}</p>
+                            ) : (
+                                <div className="p-4 border rounded-md bg-muted/50 flex items-center justify-between">
+                                    <p className="text-sm text-muted-foreground">Supervisor must perform final check after 30 mins.</p>
+                                    <Button type="button" onClick={() => handleSign('final_supervisor')} disabled={!permit.employee_signature || isFormLocked}>
+                                        <FileSignature className="mr-2 h-4 w-4" /> Sign and Close Permit
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    </>
+                )}
+              </div>
+            </div>
+            {/* Right Column (Comments) */}
+            {!isCreateMode && permit && (
+              <div className="md:col-span-1 flex flex-col gap-4 border-l pl-6">
+                <h3 className="text-lg font-semibold flex items-center gap-2"><MessageSquare className="h-5 w-5" /> Comments & Logs</h3>
+                <div className="flex-1 space-y-4 overflow-y-auto pr-2">
+                    {(permit.comments || []).map((comment, index) => (
+                        <div key={index} className="flex gap-3">
+                        <Avatar>
+                            <AvatarImage src={comment.user !== 'System Log' ? `https://placehold.co/40x40.png?text=${getAvatarInitials(comment.user)}` : undefined} />
+                            <AvatarFallback>{getAvatarInitials(comment.user)}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1">
+                            <div className="flex justify-between items-center">
+                                <p className="font-semibold text-sm">{comment.user}</p>
+                                <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(comment.date), { addSuffix: true })}</p>
+                            </div>
+                            <p className="text-sm text-muted-foreground bg-secondary p-3 rounded-lg mt-1">{comment.comment}</p>
+                        </div>
+                        </div>
+                    ))}
+                    {(permit.comments || []).length === 0 && (
+                      <p className="text-sm text-center text-muted-foreground py-4">No comments or logs yet.</p>
+                    )}
+                </div>
+                <div className="flex flex-col gap-2 mt-auto">
+                    <Textarea placeholder="Add a comment..." value={newComment} onChange={(e) => setNewComment(e.target.value)} rows={2} disabled={isFormLocked}/>
+                    <Button size="sm" onClick={handleAddComment} disabled={!newComment.trim() || isFormLocked}>
+                        Add Comment
+                    </Button>
+                </div>
+              </div>
             )}
-          </div>
+         </div>
         </div>
         {isCreateMode && (
             <DialogFooter>
@@ -296,7 +379,7 @@ const ChecklistSection = ({ form, items, isViewMode }: { form: any; items: { id:
 
 export default function HotWorkPermitsPage() {
     const { user } = useAuth();
-    const { hotWorkPermits, addHotWorkPermit, updateHotWorkPermit, areas } = useAppData();
+    const { hotWorkPermits, addHotWorkPermit, updateHotWorkPermit, addCommentToHotWorkPermit, areas } = useAppData();
     const { toast } = useToast();
     const [isDialogOpen, setDialogOpen] = useState(false);
     const [selectedPermit, setSelectedPermit] = useState<HotWorkPermit | null>(null);
@@ -326,7 +409,7 @@ export default function HotWorkPermitsPage() {
             return;
         }
 
-        const newPermit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName'> = {
+        const newPermit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'> = {
             supervisor: data.supervisor,
             performed_by_type: data.performed_by_type,
             areaId: data.areaId,
@@ -348,6 +431,10 @@ export default function HotWorkPermitsPage() {
     
     const handleUpdatePermit = async (permit: HotWorkPermit) => {
         await updateHotWorkPermit(permit);
+    };
+
+    const handleAddCommentToPermit = async (permitId: string, comment: Comment) => {
+        await addCommentToHotWorkPermit(permitId, comment);
     };
 
     const handleOpenDialog = (permit?: HotWorkPermit) => {
@@ -421,6 +508,7 @@ export default function HotWorkPermitsPage() {
                     <PermitDetailsDialog 
                         onSave={handleSavePermit} 
                         onUpdate={handleUpdatePermit}
+                        addComment={handleAddCommentToPermit}
                         setOpen={setDialogOpen} 
                         permit={selectedPermit}
                         areas={areas}

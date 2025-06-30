@@ -1,5 +1,6 @@
 
 
+
 export type Comment = {
   user: string;
   comment: string;
@@ -171,6 +172,7 @@ export type HotWorkPermit = {
   supervisor_signature?: { name: string; date: string };
   employee_signature?: { name: string; date: string };
   final_supervisor_signature?: { name: string; date: string };
+  comments: Comment[];
 };
 
 export type Forklift = {
