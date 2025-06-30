@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import type { HotWorkPermit, HotWorkPermitChecklist } from '@/types';
+import type { HotWorkPermit, HotWorkPermitChecklist, Area } from '@/types';
 import { PlusCircle, Users, FileSignature, Flame, Clock, CheckSquare, Trash2, UserCheck, Edit } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
@@ -23,7 +23,7 @@ import { useAppData } from '@/context/AppDataContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/context/AuthContext';
-
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const checklistSchema = z.object({
   fire_extinguisher: z.boolean().default(false),
@@ -44,7 +44,7 @@ const checklistSchema = z.object({
 const permitFormSchema = z.object({
   supervisor: z.string().min(1, "Supervisor name is required."),
   performed_by_type: z.enum(['RDT Employee', 'Contractor'], { required_error: "You must select who performed the work."}),
-  location: z.string().min(1, "Location is required."),
+  areaId: z.string().min(1, "Location is required."),
   work_to_be_performed_by: z.string().min(1, "Personnel details are required."),
   permit_expires: z.string().refine((val) => val && !isNaN(Date.parse(val)), { message: "Permit Expiry is required." }),
   special_instructions: z.string().optional(),
@@ -71,41 +71,92 @@ const CHECKLIST_ITEMS: { id: keyof HotWorkPermitChecklist; label: string; group:
     { id: 'fire_watch_provided', label: 'Trained and equipped Fire Watch provided during operations and at least 30 minutes after.', group: 'fire_watch' },
 ];
 
-const PermitForm = ({ onSave, setOpen, permit }: { onSave: (permit: PermitFormValues) => void, setOpen: (open: boolean) => void, permit?: HotWorkPermit }) => {
+const AreaSelectOptions = ({ areas, level = 0 }: { areas: Area[]; level?: number }) => {
+  return (
+    <>
+      {areas.map(area => (
+        <React.Fragment key={area.area_id}>
+          <SelectItem value={area.area_id}>
+             <span style={{ paddingLeft: `${level * 1.25}rem` }}>{area.name}</span>
+          </SelectItem>
+          {area.children && <AreaSelectOptions areas={area.children} level={level + 1} />}
+        </React.Fragment>
+      ))}
+    </>
+  );
+};
+
+const PermitDetailsDialog = ({ 
+    permit,
+    onSave, 
+    onUpdate,
+    setOpen,
+    areas,
+}: { 
+    permit?: HotWorkPermit | null; 
+    onSave: (data: PermitFormValues) => void;
+    onUpdate: (data: HotWorkPermit) => void;
+    setOpen: (open: boolean) => void;
+    areas: Area[];
+}) => {
+  const { user: currentUser } = useAuth();
+  const { toast } = useToast();
+  const isCreateMode = !permit;
+
   const form = useForm<PermitFormValues>({
     resolver: zodResolver(permitFormSchema),
-    defaultValues: permit ? {
-        ...permit,
-        permit_expires: format(new Date(permit.permit_expires), "yyyy-MM-dd'T'HH:mm"),
-    } : {
-        supervisor: '',
-        location: '',
+    defaultValues: isCreateMode ? {
+        supervisor: currentUser?.displayName || '',
+        areaId: '',
         work_to_be_performed_by: '',
         permit_expires: '',
         special_instructions: '',
         enclosed_equip_notes: '',
         checklist: {
-            fire_extinguisher: true,
-            equipment_good_repair: true,
-            energy_locked_out: true,
-            floors_swept: true,
-            fire_resistive_covers: true,
-            openings_covered: true,
-            walls_ceilings_protected: true,
-            fire_watch_provided: true,
+            fire_extinguisher: true, equipment_good_repair: true, energy_locked_out: true,
+            floors_swept: true, fire_resistive_covers: true, openings_covered: true,
+            walls_ceilings_protected: true, fire_watch_provided: true,
         }
+    } : {
+        ...permit,
+        areaId: permit.areaId,
+        permit_expires: format(new Date(permit.permit_expires), "yyyy-MM-dd'T'HH:mm"),
     },
   });
+
+  const handleSign = async (signatureType: 'employee' | 'final_supervisor') => {
+    if (!permit || !currentUser?.displayName) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Cannot sign permit.' });
+        return;
+    }
+    
+    let updatedPermit = { ...permit };
+    const signature = { name: currentUser.displayName, date: new Date().toISOString() };
+
+    if (signatureType === 'employee' && !updatedPermit.employee_signature) {
+        updatedPermit.employee_signature = signature;
+        updatedPermit.work_complete = new Date().toISOString();
+    } else if (signatureType === 'final_supervisor' && !updatedPermit.final_supervisor_signature) {
+        updatedPermit.final_supervisor_signature = signature;
+        updatedPermit.final_check = new Date().toISOString();
+        updatedPermit.status = 'Closed';
+    } else {
+        return; // Already signed
+    }
+    
+    onUpdate(updatedPermit);
+    toast({ title: 'Permit Signed', description: 'The permit has been successfully signed.' });
+  };
   
-  const isViewMode = !!permit;
+  const isFormLocked = !isCreateMode && permit?.status === 'Closed';
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSave)} className="space-y-6">
         <DialogHeader>
-          <DialogTitle>{isViewMode ? `Hot Work Permit: ${permit.display_id}` : 'Create a New Hot Work Permit'}</DialogTitle>
+          <DialogTitle>{isCreateMode ? 'Create New Hot Work Permit' : `Hot Work Permit: ${permit.display_id}`}</DialogTitle>
           <DialogDescription>
-            {isViewMode ? `Details for permit in ${permit.location}` : 'Fill in the details below to issue a new permit.'}
+            {isCreateMode ? 'Fill in the details below to issue a new permit.' : `Details for permit in ${permit.locationName}`}
           </DialogDescription>
         </DialogHeader>
         <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-6 border-t pt-6">
@@ -118,22 +169,27 @@ const PermitForm = ({ onSave, setOpen, permit }: { onSave: (permit: PermitFormVa
             {/* Left Column */}
             <div className="space-y-4">
                 <FormField control={form.control} name="supervisor" render={({ field }) => (
-                    <FormItem><FormLabel>Supervisor</FormLabel><FormControl><Input {...field} disabled={isViewMode} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Supervisor</FormLabel><FormControl><Input {...field} disabled={!isCreateMode} /></FormControl><FormMessage /></FormItem>
                 )}/>
                 
                 <FormField control={form.control} name="performed_by_type" render={({ field }) => (
-                    <FormItem><FormLabel>Hot work performed by:</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4" disabled={isViewMode}><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="RDT Employee" /></FormControl><FormLabel className="font-normal">RDT Employee</FormLabel></FormItem><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Contractor" /></FormControl><FormLabel className="font-normal">Contractor</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Hot work performed by:</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4" disabled={!isCreateMode}><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="RDT Employee" /></FormControl><FormLabel className="font-normal">RDT Employee</FormLabel></FormItem><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Contractor" /></FormControl><FormLabel className="font-normal">Contractor</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>
                 )}/>
 
-                <FormField control={form.control} name="location" render={({ field }) => (
-                    <FormItem><FormLabel>Location/bldg./room/floor</FormLabel><FormControl><Input {...field} disabled={isViewMode} /></FormControl><FormMessage /></FormItem>
+                <FormField control={form.control} name="areaId" render={({ field }) => (
+                    <FormItem><FormLabel>Location/bldg./room/floor</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isCreateMode}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Select an area..." /></SelectTrigger></FormControl>
+                            <SelectContent><AreaSelectOptions areas={areas} /></SelectContent>
+                        </Select>
+                    <FormMessage /></FormItem>
                 )}/>
 
                 <FormField control={form.control} name="work_to_be_performed_by" render={({ field }) => (
-                    <FormItem><FormLabel>Work to be performed by</FormLabel><FormControl><Input {...field} disabled={isViewMode} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Work to be performed by</FormLabel><FormControl><Input {...field} disabled={!isCreateMode} /></FormControl><FormMessage /></FormItem>
                 )}/>
                 
-                {isViewMode && permit.supervisor_signature && (
+                {!isCreateMode && permit.supervisor_signature && (
                     <div><FormLabel>Supervisor Signature</FormLabel><p className="text-sm p-2 border rounded-md bg-muted">{permit.supervisor_signature.name} on {format(new Date(permit.supervisor_signature.date), 'P')}</p></div>
                 )}
             </div>
@@ -142,56 +198,81 @@ const PermitForm = ({ onSave, setOpen, permit }: { onSave: (permit: PermitFormVa
             <div className="space-y-4 row-span-2">
                 <h3 className="font-bold text-lg">Precaution & safeguard checklist</h3>
                 
-                <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'precautions')} isViewMode={isViewMode} />
+                <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'precautions')} isViewMode={!isCreateMode} />
                 
                 <div>
                     <h4 className="font-semibold text-sm mt-4">Requirements within 35 ft. of work:</h4>
-                    <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'requirements')} isViewMode={isViewMode} />
+                    <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'requirements')} isViewMode={!isCreateMode} />
                 </div>
                 
                 <div>
                     <h4 className="font-semibold text-sm mt-4">Work on enclosed/confined equip:</h4>
                     <FormField control={form.control} name="enclosed_equip_notes" render={({ field }) => (
-                         <FormControl><Input placeholder="N/A" {...field} value={field.value ?? ""} className="inline-block w-auto text-sm h-8" disabled={isViewMode} /></FormControl>
+                         <FormControl><Input placeholder="N/A" {...field} value={field.value ?? ""} className="inline-block w-auto text-sm h-8" disabled={!isCreateMode} /></FormControl>
                     )}/>
-                    <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'enclosed')} isViewMode={isViewMode} />
+                    <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'enclosed')} isViewMode={!isCreateMode} />
                 </div>
 
                 <div>
                     <FormField control={form.control} name="fire_watch_required" render={({ field }) => (
-                        <FormItem><FormLabel>Fire watch required?</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4" disabled={isViewMode}><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Yes" /></FormControl><FormLabel className="font-normal">Yes</FormLabel></FormItem><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="No" /></FormControl><FormLabel className="font-normal">No</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Fire watch required?</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4" disabled={!isCreateMode}><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Yes" /></FormControl><FormLabel className="font-normal">Yes</FormLabel></FormItem><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="No" /></FormControl><FormLabel className="font-normal">No</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>
                     )}/>
-                    <div className="mt-2"><ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'fire_watch')} isViewMode={isViewMode} /></div>
+                    <div className="mt-2"><ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'fire_watch')} isViewMode={!isCreateMode} /></div>
                 </div>
-
             </div>
 
              <FormField control={form.control} name="permit_expires" render={({ field }) => (
-                <FormItem><FormLabel>Permit Expires</FormLabel><FormControl><Input type="datetime-local" {...field} disabled={isViewMode} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Permit Expires</FormLabel><FormControl><Input type="datetime-local" {...field} disabled={!isCreateMode} /></FormControl><FormMessage /></FormItem>
             )}/>
 
              <FormField control={form.control} name="special_instructions" render={({ field }) => (
-                <FormItem><FormLabel>Special instructions</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={isViewMode} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Special instructions</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={!isCreateMode} /></FormControl><FormMessage /></FormItem>
             )}/>
+            
+            {!isCreateMode && (
+                <>
+                <Separator />
+                <div className="space-y-4">
+                    <h3 className="font-bold text-lg">Work Completion & Final Check</h3>
+                    
+                    {/* Employee Signature */}
+                    <div>
+                        <FormLabel>Employee Acknowledgement</FormLabel>
+                        {permit.employee_signature ? (
+                            <p className="text-sm p-2 border rounded-md bg-muted">Work completed by {permit.employee_signature.name} on {format(new Date(permit.employee_signature.date), 'P p')}</p>
+                        ) : (
+                            <div className="p-4 border rounded-md bg-muted/50 flex items-center justify-between">
+                                <p className="text-sm text-muted-foreground">Employee performing work must sign to confirm completion.</p>
+                                <Button type="button" onClick={() => handleSign('employee')} disabled={isFormLocked}>
+                                    <UserCheck className="mr-2 h-4 w-4" /> Sign Work Complete
+                                </Button>
+                            </div>
+                        )}
+                    </div>
 
-             {isViewMode && permit.work_complete && (
-                <div><FormLabel>Work Complete</FormLabel><p className="text-sm p-2 border rounded-md bg-muted">{format(new Date(permit.work_complete), 'Pp')}</p></div>
-            )}
-             {isViewMode && permit.final_check && (
-                <div><FormLabel>Final Check</FormLabel><p className="text-sm p-2 border rounded-md bg-muted">{format(new Date(permit.final_check), 'Pp')}</p></div>
-            )}
-             {isViewMode && permit.employee_signature && (
-                <div><FormLabel>Employee Signature</FormLabel><p className="text-sm p-2 border rounded-md bg-muted">{permit.employee_signature.name} on {format(new Date(permit.employee_signature.date), 'P')}</p></div>
-            )}
-             {isViewMode && permit.final_supervisor_signature && (
-                <div><FormLabel>Final Supervisor Signature</FormLabel><p className="text-sm p-2 border rounded-md bg-muted">{permit.final_supervisor_signature.name} on {format(new Date(permit.final_supervisor_signature.date), 'P')}</p></div>
+                    {/* Final Supervisor Signature */}
+                    <div>
+                        <FormLabel>Final Supervisor Check</FormLabel>
+                        {permit.final_supervisor_signature ? (
+                            <p className="text-sm p-2 border rounded-md bg-muted">Final check by {permit.final_supervisor_signature.name} on {format(new Date(permit.final_supervisor_signature.date), 'P p')}</p>
+                        ) : (
+                            <div className="p-4 border rounded-md bg-muted/50 flex items-center justify-between">
+                                <p className="text-sm text-muted-foreground">Supervisor must perform final check after 30 mins.</p>
+                                <Button type="button" onClick={() => handleSign('final_supervisor')} disabled={!permit.employee_signature || isFormLocked}>
+                                    <FileSignature className="mr-2 h-4 w-4" /> Sign and Close Permit
+                                </Button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+                </>
             )}
           </div>
         </div>
-        {!isViewMode && (
+        {isCreateMode && (
             <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit">Create Permit</Button>
+            <Button type="submit">Create & Sign Permit</Button>
             </DialogFooter>
         )}
       </form>
@@ -215,16 +296,40 @@ const ChecklistSection = ({ form, items, isViewMode }: { form: any; items: { id:
 
 export default function HotWorkPermitsPage() {
     const { user } = useAuth();
-    const { hotWorkPermits, addHotWorkPermit, updateHotWorkPermit } = useAppData();
+    const { hotWorkPermits, addHotWorkPermit, updateHotWorkPermit, areas } = useAppData();
     const { toast } = useToast();
     const [isDialogOpen, setDialogOpen] = useState(false);
     const [selectedPermit, setSelectedPermit] = useState<HotWorkPermit | null>(null);
 
+    const findAreaPathById = (areasToSearch: Area[], id: string, path: string[] = []): string => {
+        for (const area of areasToSearch) {
+            const newPath = [...path, area.name];
+            if (area.area_id === id) {
+                return newPath.join(' / ');
+            }
+            if (area.children) {
+                const foundPath = findAreaPathById(area.children, id, newPath);
+                if (foundPath) return foundPath;
+            }
+        }
+        return '';
+    };
+
     const handleSavePermit = async (data: PermitFormValues) => {
-        const newPermit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date'> = {
+        if (!user || !user.displayName) {
+            toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.'});
+            return;
+        }
+        const locationName = findAreaPathById(areas, data.areaId);
+        if (!locationName) {
+            toast({ variant: 'destructive', title: 'Invalid Area', description: 'Could not find the selected area.' });
+            return;
+        }
+
+        const newPermit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName'> = {
             supervisor: data.supervisor,
             performed_by_type: data.performed_by_type,
-            location: data.location,
+            areaId: data.areaId,
             work_to_be_performed_by: data.work_to_be_performed_by,
             permit_expires: new Date(data.permit_expires).toISOString(),
             special_instructions: data.special_instructions,
@@ -232,12 +337,17 @@ export default function HotWorkPermitsPage() {
             fire_watch_required: data.fire_watch_required,
             checklist: data.checklist,
         };
-        await addHotWorkPermit(newPermit);
+
+        await addHotWorkPermit(newPermit, data.supervisor, locationName);
         toast({
             title: 'Hot Work Permit Created',
-            description: `The permit for "${data.location}" has been successfully created.`,
+            description: `The permit for "${locationName}" has been successfully created.`,
         });
         setDialogOpen(false);
+    };
+    
+    const handleUpdatePermit = async (permit: HotWorkPermit) => {
+        await updateHotWorkPermit(permit);
     };
 
     const handleOpenDialog = (permit?: HotWorkPermit) => {
@@ -245,6 +355,16 @@ export default function HotWorkPermitsPage() {
         setDialogOpen(true);
     }
     
+    const calculateStatus = (permit: HotWorkPermit): { text: HotWorkPermit['status'], variant: 'default' | 'destructive' | 'outline' } => {
+        if (permit.status === 'Closed') {
+            return { text: 'Closed', variant: 'outline' };
+        }
+        if (new Date(permit.permit_expires) < new Date()) {
+            return { text: 'Expired', variant: 'destructive' };
+        }
+        return { text: 'Active', variant: 'default' };
+    }
+
     return (
         <AppShell>
             <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -270,21 +390,25 @@ export default function HotWorkPermitsPage() {
                                     <TableHead>Location</TableHead>
                                     <TableHead>Supervisor</TableHead>
                                     <TableHead>Expires</TableHead>
+                                    <TableHead>Status</TableHead>
                                     <TableHead>Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {hotWorkPermits.length > 0 ? hotWorkPermits.map((permit) => (
+                                {hotWorkPermits.length > 0 ? hotWorkPermits.map((permit) => {
+                                    const status = calculateStatus(permit);
+                                    return (
                                     <TableRow key={permit.permit_id} className="cursor-pointer" onClick={() => handleOpenDialog(permit)}>
                                         <TableCell><Badge variant="outline">{permit.display_id}</Badge></TableCell>
-                                        <TableCell className="font-medium">{permit.location}</TableCell>
+                                        <TableCell className="font-medium">{permit.locationName}</TableCell>
                                         <TableCell>{permit.supervisor}</TableCell>
                                         <TableCell>{format(new Date(permit.permit_expires), 'P p')}</TableCell>
+                                        <TableCell><Badge variant={status.variant}>{status.text}</Badge></TableCell>
                                         <TableCell><Button variant="ghost" size="sm">View</Button></TableCell>
                                     </TableRow>
-                                )) : (
+                                )}) : (
                                     <TableRow>
-                                        <TableCell colSpan={5} className="text-center">No hot work permits found.</TableCell>
+                                        <TableCell colSpan={6} className="text-center">No hot work permits found.</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
@@ -292,12 +416,14 @@ export default function HotWorkPermitsPage() {
                     </CardContent>
                 </Card>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) setSelectedPermit(null); setDialogOpen(open); }}>
                 <DialogContent className="max-w-5xl">
-                    <PermitForm 
+                    <PermitDetailsDialog 
                         onSave={handleSavePermit} 
+                        onUpdate={handleUpdatePermit}
                         setOpen={setDialogOpen} 
-                        permit={selectedPermit || undefined}
+                        permit={selectedPermit}
+                        areas={areas}
                     />
                 </DialogContent>
             </Dialog>

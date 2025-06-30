@@ -1,4 +1,5 @@
 
+
 export type Comment = {
   user: string;
   comment: string;
@@ -153,21 +154,23 @@ export type HotWorkPermitChecklist = {
 export type HotWorkPermit = {
   permit_id: string;
   display_id: string;
+  status: 'Active' | 'Expired' | 'Closed';
   supervisor: string;
   performed_by_type: 'RDT Employee' | 'Contractor';
-  location: string;
+  areaId: string;
+  locationName: string;
   work_to_be_performed_by: string;
-  permit_expires: string; // ISO String
-  work_complete?: string; // ISO String
-  final_check?: string; // ISO String
+  permit_expires: string; 
+  work_complete?: string; 
+  final_check?: string; 
   special_instructions?: string;
   enclosed_equip_notes?: string;
   fire_watch_required: 'Yes' | 'No';
   checklist: HotWorkPermitChecklist;
   created_date: string;
-  supervisor_signature?: { name: string, date: string };
-  employee_signature?: { name: string, date: string };
-  final_supervisor_signature?: { name: string, date: string };
+  supervisor_signature?: { name: string; date: string };
+  employee_signature?: { name: string; date: string };
+  final_supervisor_signature?: { name: string; date: string };
 };
 
 export type Forklift = {
