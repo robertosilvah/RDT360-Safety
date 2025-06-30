@@ -3,10 +3,9 @@
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/lib/firebase';
 
-export async function fetchAndUploadImageAction(imageUrl: string): Promise<string | null> {
+export async function fetchAndUploadImageAction(imageUrl: string): Promise<string> {
   if (!imageUrl) {
-    console.error(`Invalid input provided to fetchAndUploadImageAction: received empty string or null.`);
-    return null;
+    throw new Error('Invalid input: Image URL cannot be empty.');
   }
 
   let effectiveUrl = imageUrl;
@@ -43,20 +42,22 @@ export async function fetchAndUploadImageAction(imageUrl: string): Promise<strin
       const responseBody = await response.text();
       console.error(`Server failed to fetch image from ${effectiveUrl}. Status: ${response.status} ${response.statusText}`);
       console.error(`Response body: ${responseBody}`);
-      return null;
+      throw new Error(`Server failed to fetch image. Status: ${response.status} ${response.statusText}. See server console for response body.`);
     }
 
     const contentType = response.headers.get('content-type');
     if (!contentType || !contentType.startsWith('image/')) {
+      const responseBody = await response.text();
       console.error(`URL did not return an image. Content-Type: ${contentType}`);
-      return null;
+      console.error(`Response body: ${responseBody}`);
+      throw new Error(`URL did not return an image. The server returned content type '${contentType}'. See server console for response body.`);
     }
 
     const imageBuffer = await response.arrayBuffer();
 
     if (imageBuffer.byteLength === 0) {
       console.error(`Fetched empty image buffer from ${effectiveUrl}.`);
-      return null;
+      throw new Error('Fetched an empty image buffer from the URL.');
     }
 
     const fileName = imageUrl.substring(imageUrl.lastIndexOf('/') + 1).split('?')[0] || 'imported-image.jpg';
@@ -67,11 +68,10 @@ export async function fetchAndUploadImageAction(imageUrl: string): Promise<strin
 
     return downloadUrl;
   } catch (error) {
-    if (error instanceof TypeError) {
-      console.error(`Network error or invalid URL in fetchAndUploadImageAction for URL ${effectiveUrl}.`, error);
-    } else {
-      console.error(`Generic error in fetchAndUploadImageAction for URL ${effectiveUrl}:`, error);
+    console.error(`Error in fetchAndUploadImageAction for URL ${effectiveUrl}:`, error);
+    if (error instanceof Error) {
+        throw new Error(error.message);
     }
-    return null;
+    throw new Error('An unknown error occurred during image fetching and uploading.');
   }
 }

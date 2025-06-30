@@ -502,6 +502,10 @@ export default function ObservationsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const [debugUrl, setDebugUrl] = useState('');
+  const [debugLog, setDebugLog] = useState('');
+  const [isDebugLoading, setIsDebugLoading] = useState(false);
+
   const userRole = authUser?.uid === 'admin-user-id-001' 
     ? 'Administrator' 
     : users.find(u => u.id === authUser?.uid)?.role;
@@ -759,14 +763,18 @@ export default function ObservationsPage() {
             
             const enrichedObservations = [...observationsToCommit] as Omit<Observation, 'observation_id'>[];
             for (const { index, url } of imageUrlsToProcess) {
-                const uploadedUrl = await fetchAndUploadImageAction(url);
-                if (uploadedUrl) {
-                    (enrichedObservations[index] as any).imageUrl = uploadedUrl;
-                } else {
+                try {
+                  const uploadedUrl = await fetchAndUploadImageAction(url);
+                  if (uploadedUrl) {
+                      (enrichedObservations[index] as any).imageUrl = uploadedUrl;
+                  }
+                } catch (error) {
+                    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                    console.error(`Failed to process image for row ${index + 2}: ${errorMessage}`);
                     toast({
                         variant: 'destructive',
-                        title: 'Image Upload Failed',
-                        description: `Could not upload image for row ${index + 2}. The observation will be created without it.`,
+                        title: `Image Upload Failed (Row ${index + 2})`,
+                        description: `Could not upload image from URL. See console for details.`,
                         duration: 5000,
                     });
                 }
@@ -799,6 +807,27 @@ export default function ObservationsPage() {
     };
     reader.readAsText(file);
   };
+  
+  const handleDebugTest = async () => {
+    if (!debugUrl) {
+        setDebugLog('Error: Please enter a URL.');
+        return;
+    }
+    setIsDebugLoading(true);
+    setDebugLog('Starting upload test...');
+    try {
+        const resultUrl = await fetchAndUploadImageAction(debugUrl);
+        setDebugLog(`✅ Success!\nNew Firebase Storage URL:\n${resultUrl}`);
+    } catch (error) {
+        if (error instanceof Error) {
+            setDebugLog(`❌ Upload Failed!\n\nReason:\n${error.message}`);
+        } else {
+            setDebugLog('❌ Upload Failed!\n\nAn unknown error occurred.');
+        }
+    } finally {
+        setIsDebugLoading(false);
+    }
+};
 
   return (
     <AppShell>
@@ -806,6 +835,36 @@ export default function ObservationsPage() {
         <h2 className="text-3xl font-bold tracking-tight">Safety Observations</h2>
 
         <div className="grid gap-6 lg:grid-cols-5">
+           <Card className="lg:col-span-5 bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800">
+              <CardHeader>
+                  <CardTitle>🧪 Debug Tool: URL Uploader</CardTitle>
+                  <CardDescription>
+                      Use this temporary tool to test image uploads from a public URL. The result or error will appear in the log below.
+                  </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                  <div className="flex gap-2">
+                      <Input 
+                          placeholder="Paste a public image URL here..."
+                          value={debugUrl}
+                          onChange={(e) => setDebugUrl(e.target.value)}
+                          disabled={isDebugLoading}
+                      />
+                      <Button onClick={handleDebugTest} disabled={isDebugLoading || !debugUrl}>
+                          {isDebugLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                          Test Upload
+                      </Button>
+                  </div>
+                  {debugLog && (
+                      <div>
+                          <Label>Log / Result:</Label>
+                          <pre className="mt-2 w-full text-xs p-4 rounded-md bg-background border whitespace-pre-wrap break-all">
+                              {debugLog}
+                          </pre>
+                      </div>
+                  )}
+              </CardContent>
+          </Card>
           <div className="lg:col-span-2">
             <Card>
               <CardHeader>
