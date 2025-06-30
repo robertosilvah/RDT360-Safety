@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -24,6 +24,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useSearchParams } from 'next/navigation';
 import { getInvestigationAnalysisAction } from '@/app/actions';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const investigationFormSchema = z.object({
   status: z.enum(['Open', 'In Progress', 'Closed']),
@@ -351,7 +352,7 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
   );
 };
 
-export default function InvestigationsPage() {
+const InvestigationsPageContent = () => {
   const { investigations, incidents } = useAppData();
   const searchParams = useSearchParams();
   const [selectedInvestigation, setSelectedInvestigation] = useState<Investigation | null>(null);
@@ -433,4 +434,37 @@ export default function InvestigationsPage() {
       />
     </AppShell>
   );
+};
+
+// Loading Skeleton Component
+const PageSkeleton = () => (
+    <AppShell>
+        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+            <div className="flex items-center justify-between space-y-2">
+                <Skeleton className="h-10 w-1/3" />
+            </div>
+            <Card>
+                <CardHeader>
+                    <Skeleton className="h-8 w-1/4" />
+                    <Skeleton className="h-4 w-1/2" />
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-2">
+                        {[...Array(5)].map((_, i) => (
+                            <Skeleton key={i} className="h-12 w-full" />
+                        ))}
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    </AppShell>
+);
+
+export default function InvestigationsPage() {
+  // Main component now wraps the content in Suspense
+  return (
+    <Suspense fallback={<PageSkeleton />}>
+        <InvestigationsPageContent />
+    </Suspense>
+  )
 }
