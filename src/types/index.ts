@@ -127,6 +127,9 @@ export type JSA = {
   steps: JsaStep[];
   created_by: string;
   created_date: string;
+  valid_from: string;
+  valid_to: string;
+  status: 'Active' | 'Expired' | 'Draft';
   signatures: { employee_name: string; sign_date: string }[];
 };
 

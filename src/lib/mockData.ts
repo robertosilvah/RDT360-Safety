@@ -19,8 +19,4 @@ export const mockPredefinedChecklistItems: PredefinedChecklistItem[] = [
   { id: 'pcl-5', text: 'Emergency E-Stops Clear' },
 ];
 
-// Note: This mock data is used by the JSA and Hot Work pages,
-// which still use local state.
-// To make them persistent, they should be moved to Firestore
-// and managed through AppDataContext like the other data types.
-export { mockJSAs, mockHotWorkPermits, mockAreas } from '@/lib/mockDataLocal';
+export { mockAreas } from '@/lib/mockDataLocal';

@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import { mockAreas } from '@/lib/mockDataLocal';
 import type { HotWorkPermit, Area } from '@/types';
 import { PlusCircle, Users, FileSignature, Edit, UserCheck, Trash2, MapPin, Flame, Clock, CheckSquare, Share2, Printer } from 'lucide-react';
 import React, { useState } from 'react';
@@ -69,7 +68,7 @@ const AreaSelectOptions = ({ areas, level = 0 }: { areas: Area[]; level?: number
 };
 
 
-const CreatePermitForm = ({ onAddPermit, setOpen }: { onAddPermit: (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id'>) => Promise<void>, setOpen: (open: boolean) => void }) => {
+const CreatePermitForm = ({ onAddPermit, setOpen, areas }: { onAddPermit: (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id'>) => Promise<void>, setOpen: (open: boolean) => void, areas: Area[] }) => {
   const form = useForm<PermitFormValues>({
     resolver: zodResolver(permitFormSchema),
     defaultValues: {
@@ -141,7 +140,7 @@ const CreatePermitForm = ({ onAddPermit, setOpen }: { onAddPermit: (permit: Omit
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <AreaSelectOptions areas={mockAreas} />
+                      <AreaSelectOptions areas={areas} />
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -406,7 +405,7 @@ const PermitCard = ({ permit, onSign, currentUser, areaPath, isOpen, onOpenChang
 
 export default function HotWorkPermitsPage() {
     const MOCKED_CURRENT_USER = "Sarah Miller";
-    const { hotWorkPermits, addHotWorkPermit, updateHotWorkPermit } = useAppData();
+    const { hotWorkPermits, addHotWorkPermit, updateHotWorkPermit, areas } = useAppData();
     const { toast } = useToast();
     const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
     const searchParams = useSearchParams();
@@ -449,7 +448,7 @@ export default function HotWorkPermitsPage() {
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="max-w-4xl">
-                            <CreatePermitForm onAddPermit={addHotWorkPermit} setOpen={setCreateDialogOpen} />
+                            <CreatePermitForm onAddPermit={addHotWorkPermit} setOpen={setCreateDialogOpen} areas={areas} />
                         </DialogContent>
                     </Dialog>
                 </div>
@@ -459,7 +458,7 @@ export default function HotWorkPermitsPage() {
 
                 <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
                     {hotWorkPermits.map((permit) => {
-                        const areaPath = findAreaPathById(mockAreas, permit.areaId) || 'Unknown Area';
+                        const areaPath = findAreaPathById(areas, permit.areaId) || 'Unknown Area';
                         return (
                           <PermitCard 
                             key={permit.permit_id} 

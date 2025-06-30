@@ -54,7 +54,7 @@ interface AppDataContextType {
   addCommentToInvestigation: (investigationId: string, comment: Comment) => Promise<void>;
   addDocumentToInvestigation: (investigationId: string, document: { name: string; url: string }) => Promise<void>;
   jsas: JSA[];
-  addJsa: (jsa: Omit<JSA, 'jsa_id' | 'display_id'>) => Promise<void>;
+  addJsa: (jsa: Omit<JSA, 'jsa_id' | 'display_id' | 'status' | 'created_by' | 'created_date' | 'signatures'>) => Promise<void>;
   updateJsa: (updatedJsa: JSA) => Promise<void>;
   hotWorkPermits: HotWorkPermit[];
   addHotWorkPermit: (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id'>) => Promise<void>;
@@ -147,7 +147,27 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       onSnapshot(collection(db, 'safetyDocs'), (snapshot) => setSafetyDocs(mapFromSnapshot(snapshot, 'doc_id'))),
       onSnapshot(collection(db, 'complianceRecords'), (snapshot) => setComplianceRecords(mapFromSnapshot(snapshot, 'employee_id'))),
       onSnapshot(collection(db, 'investigations'), (snapshot) => setInvestigations(mapFromSnapshot(snapshot, 'investigation_id'))),
-      onSnapshot(collection(db, 'jsas'), (snapshot) => setJsas(mapFromSnapshot(snapshot, 'jsa_id'))),
+      onSnapshot(collection(db, 'jsas'), (snapshot) => {
+        const jsasFromDb = mapFromSnapshot<JSA>(snapshot, 'jsa_id');
+        const now = new Date();
+        const batch = writeBatch(db);
+        let hasUpdates = false;
+
+        const processedJsas = jsasFromDb.map(jsa => {
+            if (jsa.status === 'Active' && new Date(jsa.valid_to) < now) {
+                const jsaRef = doc(db, 'jsas', jsa.jsa_id);
+                batch.update(jsaRef, { status: 'Expired' });
+                hasUpdates = true;
+                return { ...jsa, status: 'Expired' as const };
+            }
+            return jsa;
+        });
+
+        if (hasUpdates) {
+            batch.commit().catch(console.error);
+        }
+        setJsas(processedJsas);
+      }),
       onSnapshot(collection(db, 'hotWorkPermits'), (snapshot) => setHotWorkPermits(mapFromSnapshot(snapshot, 'permit_id'))),
       onSnapshot(doc(db, 'settings', 'branding'), (doc) => {
         if (doc.exists()) {
@@ -184,14 +204,12 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
   const addCorrectiveAction = async (action: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'>) => {
     const displayId = `ACT${String(correctiveActions.length + 1).padStart(3, '0')}`;
-    const { linkType, ...rest } = action as any;
-    await addDoc(collection(db, 'correctiveActions'), { ...rest, display_id: displayId, comments: [] });
+    await addDoc(collection(db, 'correctiveActions'), { ...action, display_id: displayId, comments: [] });
   };
   
   const updateCorrectiveAction = async (updatedAction: CorrectiveAction) => {
      const { action_id, ...data } = updatedAction;
-     const { linkType, ...rest } = data as any;
-     await updateDoc(doc(db, 'correctiveActions', action_id), rest);
+     await updateDoc(doc(db, 'correctiveActions', action_id), data);
   };
   
   const addCommentToAction = async (actionId: string, comment: Comment) => {
@@ -357,12 +375,21 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const addJsa = async (jsa: Omit<JSA, 'jsa_id' | 'display_id'>) => {
+  const addJsa = async (jsa: Omit<JSA, 'jsa_id' | 'display_id' | 'status' | 'created_by' | 'created_date' | 'signatures'>) => {
     const displayId = `JSA${String(jsas.length + 1).padStart(3, '0')}`;
-    await addDoc(collection(db, 'jsas'), { ...jsa, display_id: displayId });
+    const status = new Date(jsa.valid_to) < new Date() ? 'Expired' : 'Active';
+    await addDoc(collection(db, 'jsas'), { 
+        ...jsa, 
+        display_id: displayId, 
+        status: status,
+        created_by: 'Safety Manager', // Mocked
+        created_date: new Date().toISOString(),
+        signatures: [],
+     });
   };
   const updateJsa = async (updatedJsa: JSA) => {
     const { jsa_id, ...data } = updatedJsa;
+    data.status = new Date(data.valid_to) < new Date() ? 'Expired' : 'Active';
     await updateDoc(doc(db, 'jsas', jsa_id), data);
   };
 
