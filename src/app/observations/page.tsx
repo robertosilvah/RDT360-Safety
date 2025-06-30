@@ -533,6 +533,7 @@ const TempImageUploader = () => {
                 <div className="space-y-2">
                     <Label htmlFor="image-url-test">Image URL to Upload</Label>
                     <Input id="image-url-test" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9" />
+                    <p className="text-sm text-muted-foreground">Note: This only works with public web URLs (http://...). It cannot access local computer addresses (C:\...).</p>
                 </div>
                 <Button onClick={handleUpload} disabled={isUploading}>
                     {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
@@ -627,7 +628,7 @@ export default function ObservationsPage() {
         imageUrl = await getDownloadURL(storageRef);
       }
 
-      const newObservationData: Omit<Observation, 'observation_id' | 'display_id' | 'status' | 'imageUrl'> = {
+      const newObservationData: Omit<Observation, 'observation_id' | 'display_id' | 'status' | 'imageUrl' | 'safety_walk_id'> = {
           report_type: values.report_type,
           submitted_by: values.submitted_by,
           date: new Date(values.date).toISOString(),
