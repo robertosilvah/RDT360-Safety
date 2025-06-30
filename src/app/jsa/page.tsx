@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Separator } from '@/components/ui/separator';
 import { mockAreas } from '@/lib/mockDataLocal';
 import type { JSA, Area } from '@/types';
-import { PlusCircle, Users, Shield, FileSignature, Edit, UserCheck, Trash2, MapPin, Share2 } from 'lucide-react';
+import { PlusCircle, Users, Shield, FileSignature, Edit, UserCheck, Trash2, MapPin, Share2, Printer } from 'lucide-react';
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -320,6 +320,10 @@ const JsaCard = ({ jsa, onSign, currentUser, areaPath, isOpen, onOpenChange, onS
             onSign(updatedJsa);
         }
     };
+    
+    const handlePrint = () => {
+        window.print();
+    };
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -350,14 +354,20 @@ const JsaCard = ({ jsa, onSign, currentUser, areaPath, isOpen, onOpenChange, onS
                 </CardFooter>
             </Card>
 
-            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col printable-area">
                 <DialogHeader>
                     <DialogTitle className="text-2xl flex items-center justify-between gap-2">
                         <span className="flex items-center gap-2"><FileSignature /> {jsa.title}</span>
-                         <Button type="button" variant="ghost" size="icon" onClick={onShare}>
-                            <Share2 className="h-5 w-5" />
-                            <span className="sr-only">Share</span>
-                         </Button>
+                         <div className="flex items-center gap-1 no-print">
+                            <Button type="button" variant="ghost" size="icon" onClick={onShare}>
+                                <Share2 className="h-5 w-5" />
+                                <span className="sr-only">Share</span>
+                            </Button>
+                            <Button type="button" variant="ghost" size="icon" onClick={handlePrint}>
+                                <Printer className="h-5 w-5" />
+                                <span className="sr-only">Print</span>
+                            </Button>
+                         </div>
                     </DialogTitle>
                     <DialogDescription>{jsa.job_description}</DialogDescription>
                 </DialogHeader>
@@ -398,7 +408,7 @@ const JsaCard = ({ jsa, onSign, currentUser, areaPath, isOpen, onOpenChange, onS
                         </ul>
                     </div>
                 </div>
-                <DialogFooter className="mt-auto pt-4 border-t !justify-between">
+                <DialogFooter className="mt-auto pt-4 border-t !justify-between no-print">
                     <div className="text-xs text-muted-foreground">
                         {hasSigned ? `You acknowledged this on ${new Date(jsa.signatures.find(s => s.employee_name === currentUser)!.sign_date).toLocaleDateString()}` : "Please read carefully before signing."}
                     </div>
@@ -495,5 +505,3 @@ export default function JsaPage() {
         </AppShell>
     );
 }
-
-    

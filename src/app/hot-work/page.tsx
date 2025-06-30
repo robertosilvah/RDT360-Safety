@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Separator } from '@/components/ui/separator';
 import { mockAreas } from '@/lib/mockDataLocal';
 import type { HotWorkPermit, Area } from '@/types';
-import { PlusCircle, Users, FileSignature, Edit, UserCheck, Trash2, MapPin, Flame, Clock, CheckSquare, Share2 } from 'lucide-react';
+import { PlusCircle, Users, FileSignature, Edit, UserCheck, Trash2, MapPin, Flame, Clock, CheckSquare, Share2, Printer } from 'lucide-react';
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -276,6 +276,10 @@ const PermitCard = ({ permit, onSign, currentUser, areaPath, isOpen, onOpenChang
             onSign(updatedPermit);
         }
     };
+    
+    const handlePrint = () => {
+        window.print();
+    };
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -314,14 +318,20 @@ const PermitCard = ({ permit, onSign, currentUser, areaPath, isOpen, onOpenChang
                 </CardFooter>
             </Card>
 
-            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col printable-area">
                 <DialogHeader>
                     <DialogTitle className="text-2xl flex items-center justify-between gap-2">
                       <span className="flex items-center gap-2"><Flame /> {permit.title}</span>
-                      <Button type="button" variant="ghost" size="icon" onClick={onShare}>
-                        <Share2 className="h-5 w-5" />
-                        <span className="sr-only">Share</span>
-                      </Button>
+                      <div className="flex items-center gap-1 no-print">
+                        <Button type="button" variant="ghost" size="icon" onClick={onShare}>
+                          <Share2 className="h-5 w-5" />
+                          <span className="sr-only">Share</span>
+                        </Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={handlePrint}>
+                            <Printer className="h-5 w-5" />
+                            <span className="sr-only">Print</span>
+                        </Button>
+                      </div>
                     </DialogTitle>
                     <DialogDescription>{permit.description}</DialogDescription>
                 </DialogHeader>
@@ -365,7 +375,7 @@ const PermitCard = ({ permit, onSign, currentUser, areaPath, isOpen, onOpenChang
                         )}
                     </div>
                 </div>
-                <DialogFooter className="mt-auto pt-4 border-t !justify-between">
+                <DialogFooter className="mt-auto pt-4 border-t !justify-between no-print">
                     <div className="text-xs text-muted-foreground">
                         {!isClient ? (
                             <Skeleton className="h-4 w-48" />

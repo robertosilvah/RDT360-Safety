@@ -47,7 +47,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAppData } from '@/context/AppDataContext';
 import { FORKLIFT_CHECKLIST_QUESTIONS } from '@/lib/mockData';
 import type { ForkliftInspection } from '@/types';
-import { PlusCircle, AlertTriangle } from 'lucide-react';
+import { PlusCircle, AlertTriangle, Printer } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 
@@ -190,6 +190,10 @@ const ForkliftInspectionDetailsDialog = ({
 }) => {
     if (!inspection) return null;
 
+    const handlePrint = () => {
+        window.print();
+    };
+
     const statusVariant: { [key in 'Pass' | 'Fail' | 'N/A']: 'outline' | 'destructive' | 'secondary' } = {
         'Pass': 'outline',
         'Fail': 'destructive',
@@ -198,9 +202,15 @@ const ForkliftInspectionDetailsDialog = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-3xl">
+            <DialogContent className="max-w-3xl printable-area">
                 <DialogHeader>
-                    <DialogTitle>Inspection Details: {inspection.display_id}</DialogTitle>
+                    <DialogTitle className="flex justify-between items-center">
+                        <span>Inspection Details: {inspection.display_id}</span>
+                         <Button type="button" variant="ghost" size="icon" onClick={handlePrint} className="no-print">
+                            <Printer className="h-5 w-5" />
+                            <span className="sr-only">Print</span>
+                        </Button>
+                    </DialogTitle>
                     <DialogDescription>
                         For Forklift {inspection.forklift_id} by {inspection.operator_name} on {new Date(inspection.date).toLocaleString()}
                     </DialogDescription>
