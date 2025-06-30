@@ -67,11 +67,12 @@ interface AppDataContextType {
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
 
-const mapFromSnapshot = <T>(snapshot: any, idField: keyof T): T[] => {
-    return snapshot.docs.map((doc: any) => ({
-        [idField]: doc.id,
-        ...doc.data(),
-    } as T));
+const mapFromSnapshot = <T extends { [key: string]: any }>(snapshot: any, idField: keyof T): T[] => {
+    return snapshot.docs.map((doc: any) => {
+        const data = doc.data();
+        data[idField] = doc.id;
+        return data as T;
+    });
 };
 
 export const AppDataProvider = ({ children }: { children: ReactNode }) => {
@@ -427,17 +428,20 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const addJsa = async (jsa: Omit<JSA, 'jsa_id' | 'display_id' | 'status' | 'created_by' | 'created_date' | 'signatures'>) => {
+  const addJsa = async (jsaData: Omit<JSA, 'jsa_id' | 'display_id' | 'status' | 'created_by' | 'created_date' | 'signatures'>) => {
     const displayId = `JSA${String(jsas.length + 1).padStart(3, '0')}`;
-    const status = new Date(jsa.valid_to) < new Date() ? 'Expired' : 'Active';
-    await addDoc(collection(db, 'jsas'), { 
-        ...jsa, 
+    const status = new Date(jsaData.valid_to) < new Date() ? 'Expired' : 'Active';
+    const newJsaForDb = { 
+        ...jsaData,
+        valid_from: new Date(jsaData.valid_from).toISOString(),
+        valid_to: new Date(jsaData.valid_to).toISOString(),
         display_id: displayId, 
         status: status,
         created_by: 'Safety Manager', // Mocked
         created_date: new Date().toISOString(),
         signatures: [],
-     });
+     };
+    await addDoc(collection(db, 'jsas'), newJsaForDb);
   };
   const updateJsa = async (updatedJsa: JSA) => {
     const { jsa_id, ...data } = updatedJsa;

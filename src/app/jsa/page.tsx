@@ -398,17 +398,35 @@ export default function JsaPage() {
         const otherPpeItems = data.other_ppe ? data.other_ppe.split(',').map(s => s.trim()).filter(Boolean) : [];
         const allPpe = [...(data.required_ppe || []), ...otherPpeItems];
 
+        const transformedSteps = data.steps.map(step => ({
+            step_description: step.step_description,
+            hazards: step.hazards.split(',').map(s => s.trim()).filter(Boolean),
+            controls: step.controls.split(',').map(s => s.trim()).filter(Boolean),
+        }));
+
         if (jsaId && selectedJsa) { // Editing
             const updatedJsa: JSA = {
-                ...selectedJsa, ...data, required_ppe: allPpe,
+                ...selectedJsa,
+                title: data.title,
+                job_description: data.job_description,
+                areaId: data.areaId,
+                required_ppe: allPpe,
+                steps: transformedSteps,
                 valid_from: new Date(data.valid_from).toISOString(),
                 valid_to: new Date(data.valid_to).toISOString(),
-                steps: data.steps.map(step => ({...step, hazards: step.hazards.split(','), controls: step.controls.split(',')})),
             };
             await updateJsa(updatedJsa);
             toast({ title: "JSA Updated", description: "The JSA has been successfully updated." });
         } else { // Creating or Copying
-            const newJsaData = { ...data, required_ppe: allPpe, steps: data.steps.map(step => ({ ...step, hazards: step.hazards.split(','), controls: step.controls.split(',') }))};
+            const newJsaData: Omit<JSA, 'jsa_id' | 'display_id' | 'status' | 'created_by' | 'created_date' | 'signatures'> = {
+                title: data.title,
+                job_description: data.job_description,
+                areaId: data.areaId,
+                required_ppe: allPpe,
+                steps: transformedSteps,
+                valid_from: data.valid_from,
+                valid_to: data.valid_to,
+            };
             await addJsa(newJsaData);
             toast({ title: "JSA Created", description: `The JSA "${data.title}" has been successfully created.` });
         }
