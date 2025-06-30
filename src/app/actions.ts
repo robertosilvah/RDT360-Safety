@@ -54,21 +54,31 @@ export async function fetchAndUploadImageAction(imageUrl: string): Promise<strin
   }
   try {
     // This action runs on the server, so it can bypass browser CORS policies.
-    // Adding a User-Agent header to mimic a browser request, as some servers may block requests without one.
+    // Adding more browser-like headers to avoid being blocked by remote servers.
     const response = await fetch(imageUrl, {
         headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36',
+            'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.9',
         }
     });
 
     if (!response.ok) {
+      // Log the response body if it's not OK, as it might contain an error message.
+      const responseBody = await response.text();
       console.error(`Server failed to fetch image from ${imageUrl}. Status: ${response.status} ${response.statusText}`);
+      console.error(`Response body: ${responseBody}`);
       return null;
     }
     
     const contentType = response.headers.get('content-type') || 'image/jpeg';
     const imageBuffer = await response.arrayBuffer();
     
+    if (imageBuffer.byteLength === 0) {
+        console.error(`Fetched empty image buffer from ${imageUrl}.`);
+        return null;
+    }
+
     const fileName = imageUrl.substring(imageUrl.lastIndexOf('/') + 1).split('?')[0] || 'imported-image.jpg';
     const storageRef = ref(storage, `observations/imported/${Date.now()}_${fileName}`);
     
@@ -77,7 +87,8 @@ export async function fetchAndUploadImageAction(imageUrl: string): Promise<strin
     return downloadUrl;
   } catch (error) {
     if (error instanceof TypeError) {
-      console.error(`Network error or invalid URL in fetchAndUploadImageAction for URL ${imageUrl}:`, error.message);
+      // TypeError is often thrown for network errors in Node's fetch
+      console.error(`Network error or invalid URL in fetchAndUploadImageAction for URL ${imageUrl}. This can be due to CORS, SSL, or DNS issues.`, error);
     } else {
       console.error(`Generic error in fetchAndUploadImageAction for URL ${imageUrl}:`, error);
     }
