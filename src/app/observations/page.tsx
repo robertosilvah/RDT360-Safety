@@ -513,10 +513,6 @@ export default function ObservationsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const [debugUrl, setDebugUrl] = useState('');
-  const [debugLog, setDebugLog] = useState('');
-  const [isDebugLoading, setIsDebugLoading] = useState(false);
-
   const userRole = authUser?.uid === 'admin-user-id-001' 
     ? 'Administrator' 
     : users.find(u => u.id === authUser?.uid)?.role;
@@ -822,69 +818,12 @@ export default function ObservationsPage() {
     reader.readAsText(file);
   };
   
-  const handleDebugTest = async () => {
-    if (!debugUrl) {
-        setDebugLog('Error: Please enter a URL.');
-        return;
-    }
-    setIsDebugLoading(true);
-    setDebugLog('Starting image fetch from server...');
-    try {
-        const dataUri = await fetchAndUploadImageAction(debugUrl);
-        setDebugLog(`✅ Fetch successful. Data URI received. Now uploading to Firebase Storage...`);
-        
-        const storageRef = ref(storage, `observations/imported/${Date.now()}_debug_import.jpg`);
-        const uploadResult = await uploadString(storageRef, dataUri, 'data_url');
-        const downloadUrl = await getDownloadURL(uploadResult.ref);
-
-        setDebugLog(`✅ Success!\nNew Firebase Storage URL:\n${downloadUrl}`);
-    } catch (error) {
-        if (error instanceof Error) {
-            setDebugLog(`❌ Upload Failed!\n\nReason:\n${error.message}`);
-        } else {
-            setDebugLog('❌ Upload Failed!\n\nAn unknown error occurred.');
-        }
-    } finally {
-        setIsDebugLoading(false);
-    }
-};
-
   return (
     <AppShell>
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <h2 className="text-3xl font-bold tracking-tight">Safety Observations</h2>
 
         <div className="grid gap-6 lg:grid-cols-5">
-           <Card className="lg:col-span-5 bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800">
-              <CardHeader>
-                  <CardTitle>🧪 Debug Tool: URL Uploader</CardTitle>
-                  <CardDescription>
-                      Use this temporary tool to test image uploads from a public URL. The result or error will appear in the log below.
-                  </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                  <div className="flex gap-2">
-                      <Input 
-                          placeholder="Paste a public image URL or Google Drive ID here..."
-                          value={debugUrl}
-                          onChange={(e) => setDebugUrl(e.target.value)}
-                          disabled={isDebugLoading}
-                      />
-                      <Button onClick={handleDebugTest} disabled={isDebugLoading || !debugUrl}>
-                          {isDebugLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                          Test Upload
-                      </Button>
-                  </div>
-                  {debugLog && (
-                      <div>
-                          <Label>Log / Result:</Label>
-                          <pre className="mt-2 w-full text-xs p-4 rounded-md bg-background border whitespace-pre-wrap break-all">
-                              {debugLog}
-                          </pre>
-                      </div>
-                  )}
-              </CardContent>
-          </Card>
           <div className="lg:col-span-2">
             <Card>
               <CardHeader>
@@ -1390,3 +1329,5 @@ export default function ObservationsPage() {
     </AppShell>
   );
 }
+
+    
