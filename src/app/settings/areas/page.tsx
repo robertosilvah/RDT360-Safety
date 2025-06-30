@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -209,21 +210,33 @@ export default function AreaManagementPage() {
 
   const handleSaveArea = (data: AreaFormValues, areaId?: string) => {
     if (areaId) {
-       const existingArea = areas.flatMap(a => a.children ? [a, ...a.children] : [a]).find(a => a.area_id === areaId);
-       const updatedAreaData = {
-        area_id: areaId,
+      const findAreaByIdRecursive = (areasToSearch: Area[], id: string): Area | undefined => {
+        for (const area of areasToSearch) {
+          if (area.area_id === id) return area;
+          if (area.children) {
+            const found = findAreaByIdRecursive(area.children, id);
+            if (found) return found;
+          }
+        }
+        return undefined;
+      };
+      const existingArea = findAreaByIdRecursive(areas, areaId);
+      if (!existingArea) {
+        toast({ title: 'Error', description: 'Could not find area to update.', variant: 'destructive' });
+        return;
+      }
+
+      const updatedAreaData: Area = {
+        ...existingArea,
         name: data.name,
         machines: data.machines ? data.machines.split(',').map((m) => m.trim()) : [],
-        children: existingArea?.children || [],
       };
       updateArea(updatedAreaData);
       toast({ title: 'Area Updated', description: `"${data.name}" has been updated.` });
     } else {
-      const newArea: Area = {
-        area_id: `AREA${Date.now()}`,
+      const newArea: Omit<Area, 'area_id' | 'children'> = {
         name: data.name,
         machines: data.machines ? data.machines.split(',').map((m) => m.trim()) : [],
-        children: [],
       };
       addArea(newArea, data.parentId);
       toast({ title: 'Area Created', description: `"${newArea.name}" has been created.` });

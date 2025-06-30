@@ -40,7 +40,7 @@ interface AppDataContextType {
   updatePredefinedChecklistItem: (item: PredefinedChecklistItem) => Promise<void>;
   removePredefinedChecklistItem: (itemId: string) => Promise<void>;
   areas: Area[];
-  addArea: (area: Omit<Area, 'area_id'>, parentId?: string | null) => Promise<void>;
+  addArea: (area: Omit<Area, 'area_id' | 'children'>, parentId?: string | null) => Promise<void>;
   updateArea: (updatedArea: Area) => Promise<void>;
   deleteArea: (areaId: string) => Promise<void>;
   safetyDocs: SafetyDoc[];
@@ -143,7 +143,30 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       }),
       onSnapshot(collection(db, 'forklifts'), (snapshot) => setForklifts(mapFromSnapshot(snapshot, 'id'))),
       onSnapshot(collection(db, 'predefinedChecklistItems'), (snapshot) => setPredefinedChecklistItems(mapFromSnapshot(snapshot, 'id'))),
-      onSnapshot(collection(db, 'areas'), (snapshot) => setAreas(mapFromSnapshot(snapshot, 'area_id'))),
+      onSnapshot(collection(db, 'areas'), (snapshot) => {
+        const allAreas: Area[] = mapFromSnapshot(snapshot, 'area_id');
+        const areaMap = new Map<string, Area>();
+        const rootAreas: Area[] = [];
+
+        allAreas.forEach(area => {
+            area.children = [];
+            areaMap.set(area.area_id, area);
+        });
+
+        allAreas.forEach(area => {
+            if (area.parentId && areaMap.has(area.parentId)) {
+                const parent = areaMap.get(area.parentId)!;
+                if (!parent.children) {
+                  parent.children = [];
+                }
+                parent.children.push(area);
+            } else {
+                rootAreas.push(area);
+            }
+        });
+
+        setAreas(rootAreas);
+      }),
       onSnapshot(collection(db, 'safetyDocs'), (snapshot) => setSafetyDocs(mapFromSnapshot(snapshot, 'doc_id'))),
       onSnapshot(collection(db, 'complianceRecords'), (snapshot) => setComplianceRecords(mapFromSnapshot(snapshot, 'employee_id'))),
       onSnapshot(collection(db, 'investigations'), (snapshot) => setInvestigations(mapFromSnapshot(snapshot, 'investigation_id'))),
@@ -327,19 +350,48 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     await deleteDoc(doc(db, 'predefinedChecklistItems', itemId));
   };
 
-  const addArea = async (area: Omit<Area, 'area_id'>, parentId?: string | null) => {
-      // For simplicity, this example doesn't handle nested adds in Firestore.
-      // A more robust solution would use nested collections or path properties.
-      await addDoc(collection(db, 'areas'), area);
+  const addArea = async (area: Omit<Area, 'area_id' | 'children'>, parentId?: string | null) => {
+    const newAreaData: any = {
+      name: area.name,
+      machines: area.machines,
+    };
+    if (parentId) {
+      newAreaData.parentId = parentId;
+    }
+    await addDoc(collection(db, 'areas'), newAreaData);
   };
   const updateArea = async (updatedArea: Area) => {
-    const { area_id, ...data } = updatedArea;
+    const { area_id, children, ...data } = updatedArea;
     await updateDoc(doc(db, 'areas', area_id), data);
   };
   const deleteArea = async (areaId: string) => {
-    // This is a simplified delete. A real implementation would need to handle
-    // deleting sub-collections (children) recursively.
-    await deleteDoc(doc(db, 'areas', areaId));
+    const batch = writeBatch(db);
+
+    const findAreaRecursive = (areasToSearch: Area[], id: string): Area | undefined => {
+      for (const area of areasToSearch) {
+        if (area.area_id === id) return area;
+        if (area.children) {
+          const found = findAreaRecursive(area.children, id);
+          if (found) return found;
+        }
+      }
+      return undefined;
+    };
+    const areaToDelete = findAreaRecursive(areas, areaId);
+    if (!areaToDelete) return;
+
+    const idsToDelete: string[] = [];
+    const collectIds = (area: Area) => {
+        idsToDelete.push(area.area_id);
+        area.children?.forEach(collectIds);
+    };
+    collectIds(areaToDelete);
+
+    idsToDelete.forEach(id => {
+        batch.delete(doc(db, 'areas', id));
+    });
+
+    await batch.commit();
   };
 
   const addSafetyDoc = async (docData: Omit<SafetyDoc, 'doc_id' | 'display_id'>) => {

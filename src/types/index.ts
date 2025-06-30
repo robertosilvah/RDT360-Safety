@@ -99,6 +99,7 @@ export type Area = {
   area_id: string;
   name: string;
   machines: string[];
+  parentId?: string;
   children?: Area[];
 };
 
