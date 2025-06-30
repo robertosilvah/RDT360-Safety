@@ -3,6 +3,9 @@
 
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '@/lib/firebase';
+import { getJsaAnalysisAction, getInvestigationAnalysisAction, getKpiSummaryAction } from './actions.google';
+
+export { getJsaAnalysisAction, getInvestigationAnalysisAction, getKpiSummaryAction };
 
 export async function fetchAndUploadImageAction(imageUrlOrId: string): Promise<string> {
   if (!imageUrlOrId) {
