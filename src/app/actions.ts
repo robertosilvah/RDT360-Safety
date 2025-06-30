@@ -49,13 +49,20 @@ export async function getJsaAnalysisAction(input: JsaAnalysisInput): Promise<Jsa
 
 export async function fetchAndUploadImageAction(imageUrl: string): Promise<string | null> {
   if (!imageUrl || !imageUrl.startsWith('http')) {
+    console.error(`Invalid URL provided to fetchAndUploadImageAction: ${imageUrl}`);
     return null;
   }
   try {
     // This action runs on the server, so it can bypass browser CORS policies.
-    const response = await fetch(imageUrl);
+    // Adding a User-Agent header to mimic a browser request, as some servers may block requests without one.
+    const response = await fetch(imageUrl, {
+        headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+    });
+
     if (!response.ok) {
-      console.error(`Server failed to fetch image from ${imageUrl}. Status: ${response.status}`);
+      console.error(`Server failed to fetch image from ${imageUrl}. Status: ${response.status} ${response.statusText}`);
       return null;
     }
     
@@ -69,12 +76,11 @@ export async function fetchAndUploadImageAction(imageUrl: string): Promise<strin
     const downloadUrl = await getDownloadURL(storageRef);
     return downloadUrl;
   } catch (error) {
-    // Check if it's a fetch error due to private IP, etc.
-    if (error instanceof TypeError && error.message.includes('fetch')) {
-      console.error(`Fetch error in server action for URL ${imageUrl}:`, error.message);
-      return null;
+    if (error instanceof TypeError) {
+      console.error(`Network error or invalid URL in fetchAndUploadImageAction for URL ${imageUrl}:`, error.message);
+    } else {
+      console.error(`Generic error in fetchAndUploadImageAction for URL ${imageUrl}:`, error);
     }
-    console.error(`Generic error in fetchAndUploadImageAction for URL ${imageUrl}:`, error);
     return null;
   }
 }
