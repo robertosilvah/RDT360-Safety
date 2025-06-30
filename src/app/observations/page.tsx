@@ -76,6 +76,7 @@ import { collection, writeBatch, doc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { fetchAndUploadImageAction } from '@/app/actions';
 
 
 const baseObservationSchema = z.object({
@@ -462,30 +463,6 @@ const ObservationDetailsDialog = ({
   );
 };
 
-const uploadImageFromUrl = async (url: string): Promise<string | null> => {
-  if (!url || !url.startsWith('http')) {
-    return null;
-  }
-  try {
-    const response = await fetch(url);
-    if (!response.ok) {
-      console.error(`Failed to fetch image from ${url}. Status: ${response.status}`);
-      return null;
-    }
-    const blob = await response.blob();
-    
-    const fileName = url.substring(url.lastIndexOf('/') + 1) || 'imported-image';
-    const storageRef = ref(storage, `observations/imported/${Date.now()}_${fileName}`);
-    
-    await uploadBytes(storageRef, blob);
-    const downloadUrl = await getDownloadURL(storageRef);
-    return downloadUrl;
-  } catch (error) {
-    console.error(`Error uploading image from URL ${url}:`, error);
-    return null;
-  }
-};
-
 export default function ObservationsPage() {
   const { observations, addObservation, deleteObservation, addCorrectiveAction, users, updateObservation, uploadSettings, areas } = useAppData();
   const { user: authUser } = useAuth();
@@ -694,6 +671,7 @@ export default function ObservationsPage() {
             const rows = text.split(/\r\n|\n|\r/).filter(row => row.trim() !== '');
             if (rows.length < 2) {
               toast({ variant: 'destructive', title: 'Import Failed', description: 'CSV file is empty or has no data rows.' });
+              setIsSubmitting(false);
               return;
             }
 
@@ -702,6 +680,7 @@ export default function ObservationsPage() {
             for(const reqHeader of requiredHeaders) {
                 if (!headers.includes(reqHeader)) {
                     toast({ variant: 'destructive', title: 'Import Failed', description: `Missing required CSV column: ${reqHeader}` });
+                    setIsSubmitting(false);
                     return;
                 }
             }
@@ -733,7 +712,7 @@ export default function ObservationsPage() {
                 
                 let finalImageUrl: string | undefined = undefined;
                 if (obsData.imageUrl) {
-                    const uploadedUrl = await uploadImageFromUrl(obsData.imageUrl);
+                    const uploadedUrl = await fetchAndUploadImageAction(obsData.imageUrl);
                     if (uploadedUrl) {
                         finalImageUrl = uploadedUrl;
                     } else {
