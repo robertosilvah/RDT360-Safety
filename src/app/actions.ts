@@ -68,14 +68,13 @@ export async function fetchAndUploadImageAction(imageUrlOrId: string): Promise<s
       console.error(`Fetched empty image buffer from ${effectiveUrl}.`);
       throw new Error('Fetched an empty image buffer from the URL.');
     }
+    
+    // Convert to a data URI to send back to the client
+    const base64 = Buffer.from(imageBuffer).toString('base64');
+    const dataUri = `data:${contentType};base64,${base64}`;
 
-    const fileName = imageUrlOrId.substring(imageUrlOrId.lastIndexOf('/') + 1).split('?')[0] || 'imported-image.jpg';
-    const storageRef = ref(storage, `observations/imported/${Date.now()}_${fileName}`);
+    return dataUri;
 
-    await uploadBytes(storageRef, imageBuffer, { contentType });
-    const downloadUrl = await getDownloadURL(storageRef);
-
-    return downloadUrl;
   } catch (error) {
     console.error(`Error in fetchAndUploadImageAction for URL ${effectiveUrl}:`, error);
     if (error instanceof Error) {

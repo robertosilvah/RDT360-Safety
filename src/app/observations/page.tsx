@@ -71,7 +71,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { storage, db } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, uploadString } from 'firebase/storage';
 import { collection, writeBatch, doc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
@@ -776,9 +776,11 @@ export default function ObservationsPage() {
             const enrichedObservations = [...observationsToCommit] as Omit<Observation, 'observation_id'>[];
             for (const { index, url } of imageUrlsToProcess) {
                 try {
-                  const uploadedUrl = await fetchAndUploadImageAction(url);
-                  if (uploadedUrl) {
-                      (enrichedObservations[index] as any).imageUrl = uploadedUrl;
+                  const dataUri = await fetchAndUploadImageAction(url);
+                  if (dataUri) {
+                      const storageRef = ref(storage, `observations/imported/${Date.now()}_${index}.jpg`);
+                      const uploadResult = await uploadString(storageRef, dataUri, 'data_url');
+                      (enrichedObservations[index] as any).imageUrl = await getDownloadURL(uploadResult.ref);
                   }
                 } catch (error) {
                     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -826,10 +828,16 @@ export default function ObservationsPage() {
         return;
     }
     setIsDebugLoading(true);
-    setDebugLog('Starting upload test...');
+    setDebugLog('Starting image fetch from server...');
     try {
-        const resultUrl = await fetchAndUploadImageAction(debugUrl);
-        setDebugLog(`✅ Success!\nNew Firebase Storage URL:\n${resultUrl}`);
+        const dataUri = await fetchAndUploadImageAction(debugUrl);
+        setDebugLog(`✅ Fetch successful. Data URI received. Now uploading to Firebase Storage...`);
+        
+        const storageRef = ref(storage, `observations/imported/${Date.now()}_debug_import.jpg`);
+        const uploadResult = await uploadString(storageRef, dataUri, 'data_url');
+        const downloadUrl = await getDownloadURL(uploadResult.ref);
+
+        setDebugLog(`✅ Success!\nNew Firebase Storage URL:\n${downloadUrl}`);
     } catch (error) {
         if (error instanceof Error) {
             setDebugLog(`❌ Upload Failed!\n\nReason:\n${error.message}`);
@@ -857,7 +865,7 @@ export default function ObservationsPage() {
               <CardContent className="space-y-4">
                   <div className="flex gap-2">
                       <Input 
-                          placeholder="Paste a public image URL here..."
+                          placeholder="Paste a public image URL or Google Drive ID here..."
                           value={debugUrl}
                           onChange={(e) => setDebugUrl(e.target.value)}
                           disabled={isDebugLoading}
