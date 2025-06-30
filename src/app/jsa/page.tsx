@@ -1,4 +1,3 @@
-
 'use client';
 
 import { AppShell } from '@/components/AppShell';
@@ -365,6 +364,15 @@ export default function JsaPage() {
         }
     }, [searchParams, jsas]);
 
+    useEffect(() => {
+        if (selectedJsa?.jsa_id && isDetailsOpen) {
+            const freshJsa = jsas.find(j => j.jsa_id === selectedJsa.jsa_id);
+            if (freshJsa && JSON.stringify(freshJsa) !== JSON.stringify(selectedJsa)) {
+                setSelectedJsa(freshJsa);
+            }
+        }
+    }, [jsas, selectedJsa, isDetailsOpen]);
+
     const handleOpenCreate = () => {
         setSelectedJsa(null); setFormMode('create'); setFormOpen(true);
     }
@@ -400,30 +408,23 @@ export default function JsaPage() {
                 hazards: step.hazards.split(',').map(s => s.trim()).filter(Boolean),
                 controls: step.controls.split(',').map(s => s.trim()).filter(Boolean),
             }));
+            
+            const baseJsaData = {
+                title: data.title,
+                job_description: data.job_description,
+                areaId: data.areaId,
+                required_ppe: allPpe,
+                steps: transformedSteps,
+                valid_from: new Date(data.valid_from).toISOString(),
+                valid_to: new Date(data.valid_to).toISOString(),
+            };
 
             if (jsaId && selectedJsa) { // Editing
-                const updatedJsaData: JSA = {
-                    ...selectedJsa,
-                    title: data.title,
-                    job_description: data.job_description,
-                    areaId: data.areaId,
-                    required_ppe: allPpe,
-                    steps: transformedSteps,
-                    valid_from: new Date(data.valid_from).toISOString(),
-                    valid_to: new Date(data.valid_to).toISOString(),
-                };
+                const updatedJsaData: JSA = { ...selectedJsa, ...baseJsaData };
                 await updateJsa(updatedJsaData);
                 toast({ title: "JSA Updated", description: "The JSA has been successfully updated." });
             } else { // Creating or Copying
-                const newJsaData: Omit<JSA, 'jsa_id' | 'display_id' | 'status' | 'created_by' | 'created_date' | 'signatures'> = {
-                    title: data.title,
-                    job_description: data.job_description,
-                    areaId: data.areaId,
-                    required_ppe: allPpe,
-                    steps: transformedSteps,
-                    valid_from: data.valid_from,
-                    valid_to: data.valid_to,
-                };
+                const newJsaData: Omit<JSA, 'jsa_id' | 'display_id' | 'status' | 'created_by' | 'created_date' | 'signatures'> = baseJsaData;
                 await addJsa(newJsaData);
                 toast({ title: "JSA Created", description: `The JSA "${data.title}" has been successfully created.` });
             }
