@@ -75,6 +75,8 @@ const CreatePermitForm = ({ onAddPermit, setOpen, areas }: { onAddPermit: (permi
       title: '',
       description: '',
       areaId: '',
+      valid_from: '',
+      valid_to: '',
       precautions: [],
       other_precautions: '',
     },
