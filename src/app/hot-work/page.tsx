@@ -1,4 +1,3 @@
-
 'use client';
 
 import { AppShell } from '@/components/AppShell';
@@ -7,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import type { HotWorkPermit, HotWorkPermitChecklist, Area, Comment } from '@/types';
-import { PlusCircle, Users, FileSignature, Flame, Clock, CheckSquare, Trash2, UserCheck, Edit, MessageSquare } from 'lucide-react';
+import { PlusCircle, Users, FileSignature, Flame, Clock, CheckSquare, Trash2, UserCheck, Edit, MessageSquare, FilePenLine } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -65,10 +64,10 @@ const CHECKLIST_ITEMS: { id: keyof HotWorkPermitChecklist; label: string; group:
     { id: 'fire_resistive_covers', label: 'Fire-resistive covers and metal shields provided as needed.', group: 'requirements' },
     { id: 'openings_covered', label: 'All floor and wall openings covered and or protected.', group: 'requirements' },
     { id: 'walls_ceilings_protected', label: 'Walls/ceilings: remove combustibles away from opposite side or adjacent structures.', group: 'requirements' },
+    { id: 'confined_space_permit', label: 'Confined Space Permit obtained, if required.', group: 'enclosed' },
     { id: 'adequate_ventilation', label: 'Adequate ventilation is provided.', group: 'enclosed' },
     { id: 'atmosphere_checked', label: 'Atmosphere checked with gas detector.', group: 'enclosed' },
     { id: 'vapors_purged', label: 'Purge any flammable vapors.', group: 'enclosed' },
-    { id: 'confined_space_permit', label: 'Confined Space Permit obtained, if required.', group: 'enclosed' },
     { id: 'fire_watch_provided', label: 'Trained and equipped Fire Watch provided during operations and at least 30 minutes after.', group: 'fire_watch' },
 ];
 
@@ -87,16 +86,46 @@ const AreaSelectOptions = ({ areas, level = 0 }: { areas: Area[]; level?: number
   );
 };
 
+const ChecklistSection = ({ form, items, isViewMode }: { form: any; items: { id: keyof HotWorkPermitChecklist; label: string }[]; isViewMode: boolean }) => {
+  const confinedSpacePermitSelected = form.watch('checklist.confined_space_permit');
+  const isConditionalItem = (id: string) => ['adequate_ventilation', 'atmosphere_checked', 'vapors_purged'].includes(id);
+
+  return (
+    <div className="space-y-2 mt-2">
+      {items.map((item) => (
+        <FormField
+          key={item.id}
+          control={form.control}
+          name={`checklist.${item.id}`}
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center space-x-3 space-y-0">
+              <FormControl>
+                <Checkbox
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  disabled={isViewMode || (isConditionalItem(item.id) && !confinedSpacePermitSelected)}
+                />
+              </FormControl>
+              <FormLabel className="font-normal text-sm">{item.label}</FormLabel>
+            </FormItem>
+          )}
+        />
+      ))}
+    </div>
+  );
+};
+
+
 const PermitDetailsDialog = ({ 
     permit,
-    onSave, 
+    onAdd, 
     onUpdate,
     addComment,
     setOpen,
     areas,
 }: { 
     permit?: HotWorkPermit | null; 
-    onSave: (data: PermitFormValues) => void;
+    onAdd: (data: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, locationName: string) => Promise<void>;
     onUpdate: (data: HotWorkPermit) => void;
     addComment: (permitId: string, comment: Comment) => void;
     setOpen: (open: boolean) => void;
@@ -117,9 +146,11 @@ const PermitDetailsDialog = ({
         special_instructions: '',
         enclosed_equip_notes: '',
         checklist: {
-            fire_extinguisher: true, equipment_good_repair: true, energy_locked_out: true,
-            floors_swept: true, fire_resistive_covers: true, openings_covered: true,
-            walls_ceilings_protected: true, fire_watch_provided: true,
+            fire_extinguisher: false, equipment_good_repair: false, energy_locked_out: false,
+            flammables_removed: false, floors_swept: false, fire_resistive_covers: false,
+            openings_covered: false, walls_ceilings_protected: false,
+            adequate_ventilation: false, atmosphere_checked: false, vapors_purged: false,
+            confined_space_permit: false, fire_watch_provided: false,
         },
     } : {
         ...permit,
@@ -138,6 +169,32 @@ const PermitDetailsDialog = ({
       setNewComment('');
     }
   }, [permit, form]);
+
+  const handleIssuePermit = async () => {
+    if (!permit || !currentUser?.displayName) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Cannot issue permit.' });
+        return;
+    }
+
+    const updatedPermit: HotWorkPermit = {
+        ...permit,
+        ...form.getValues(),
+        permit_expires: new Date(form.getValues('permit_expires')).toISOString(),
+        status: 'Active',
+        supervisor_signature: { name: currentUser.displayName, date: new Date().toISOString() },
+        comments: [
+            ...(permit.comments || []),
+            {
+                user: 'System Log',
+                comment: `${currentUser.displayName} issued the permit, making it active.`,
+                date: new Date().toISOString(),
+            }
+        ],
+    };
+
+    onUpdate(updatedPermit);
+    toast({ title: 'Permit Issued', description: 'The permit is now active.' });
+  };
 
   const handleSign = async (signatureType: 'employee' | 'final_supervisor') => {
     if (!permit || !currentUser?.displayName) {
@@ -188,8 +245,50 @@ const PermitDetailsDialog = ({
       setNewComment('');
     }
   };
+
+  const onSubmit = async (data: PermitFormValues) => {
+    if (isCreateMode) {
+      if (!user || !user.displayName) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
+        return;
+      }
+      const locationName = findAreaPathById(areas, data.areaId);
+      if (!locationName) {
+        toast({ variant: 'destructive', title: 'Invalid Area', description: 'Could not find the selected area.' });
+        return;
+      }
+
+      const newPermit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'> = {
+        supervisor: data.supervisor,
+        performed_by_type: data.performed_by_type,
+        areaId: data.areaId,
+        work_to_be_performed_by: data.work_to_be_performed_by,
+        permit_expires: new Date(data.permit_expires).toISOString(),
+        special_instructions: data.special_instructions,
+        enclosed_equip_notes: data.enclosed_equip_notes,
+        fire_watch_required: data.fire_watch_required,
+        checklist: data.checklist,
+      };
+
+      await onAdd(newPermit, locationName);
+      toast({ title: 'Draft Permit Created', description: 'The permit has been saved as a draft.' });
+      setOpen(false);
+
+    } else if (permit) {
+      // This is for saving changes to an existing permit (e.g., a draft)
+      const updatedPermit = {
+        ...permit,
+        ...data,
+        permit_expires: new Date(data.permit_expires).toISOString(),
+      };
+      onUpdate(updatedPermit);
+      toast({ title: 'Permit Updated', description: 'Your changes have been saved.' });
+    }
+  };
   
   const isFormLocked = !isCreateMode && permit?.status === 'Closed';
+  const isDraft = !isCreateMode && permit?.status === 'Draft';
+  const isViewMode = isFormLocked || (!isDraft && !isCreateMode);
   
   const getAvatarInitials = (name: string) => {
     if (name === 'System Log') return 'SL';
@@ -198,7 +297,7 @@ const PermitDetailsDialog = ({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSave)} className="space-y-6">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <DialogHeader>
           <DialogTitle>{isCreateMode ? 'Create New Hot Work Permit' : `Hot Work Permit: ${permit.display_id}`}</DialogTitle>
           <DialogDescription>
@@ -218,16 +317,16 @@ const PermitDetailsDialog = ({
                 {/* Left Sub-Column */}
                 <div className="space-y-4">
                     <FormField control={form.control} name="supervisor" render={({ field }) => (
-                        <FormItem><FormLabel>Supervisor</FormLabel><FormControl><Input {...field} disabled={!isCreateMode} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Supervisor</FormLabel><FormControl><Input {...field} disabled={!isCreateMode && !isDraft} /></FormControl><FormMessage /></FormItem>
                     )}/>
                     
                     <FormField control={form.control} name="performed_by_type" render={({ field }) => (
-                        <FormItem><FormLabel>Hot work performed by:</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4" disabled={!isCreateMode}><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="RDT Employee" /></FormControl><FormLabel className="font-normal">RDT Employee</FormLabel></FormItem><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Contractor" /></FormControl><FormLabel className="font-normal">Contractor</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Hot work performed by:</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4" disabled={!isCreateMode && !isDraft}><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="RDT Employee" /></FormControl><FormLabel className="font-normal">RDT Employee</FormLabel></FormItem><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Contractor" /></FormControl><FormLabel className="font-normal">Contractor</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>
                     )}/>
 
                     <FormField control={form.control} name="areaId" render={({ field }) => (
                         <FormItem><FormLabel>Location/bldg./room/floor</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isCreateMode}>
+                            <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!isCreateMode && !isDraft}>
                                 <FormControl><SelectTrigger><SelectValue placeholder="Select an area..." /></SelectTrigger></FormControl>
                                 <SelectContent><AreaSelectOptions areas={areas} /></SelectContent>
                             </Select>
@@ -235,11 +334,11 @@ const PermitDetailsDialog = ({
                     )}/>
 
                     <FormField control={form.control} name="work_to_be_performed_by" render={({ field }) => (
-                        <FormItem><FormLabel>Work to be performed by</FormLabel><FormControl><Input {...field} disabled={!isCreateMode} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Work to be performed by</FormLabel><FormControl><Input {...field} disabled={!isCreateMode && !isDraft} /></FormControl><FormMessage /></FormItem>
                     )}/>
                     
                     {!isCreateMode && permit.supervisor_signature && (
-                        <div><FormLabel>Supervisor Signature</FormLabel><p className="text-sm p-2 border rounded-md bg-muted">{permit.supervisor_signature.name} on {format(new Date(permit.supervisor_signature.date), 'P')}</p></div>
+                        <div><FormLabel>Supervisor Signature</FormLabel><p className="text-sm p-2 border rounded-md bg-muted">{permit.supervisor_signature.name} on {format(new Date(permit.supervisor_signature.date), 'P p')}</p></div>
                     )}
                 </div>
 
@@ -247,35 +346,35 @@ const PermitDetailsDialog = ({
                 <div className="space-y-4 row-span-2">
                     <h3 className="font-bold text-lg">Precaution & safeguard checklist</h3>
                     
-                    <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'precautions')} isViewMode={!isCreateMode} />
+                    <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'precautions')} isViewMode={isViewMode} />
                     
                     <div>
                         <h4 className="font-semibold text-sm mt-4">Requirements within 35 ft. of work:</h4>
-                        <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'requirements')} isViewMode={!isCreateMode} />
+                        <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'requirements')} isViewMode={isViewMode} />
                     </div>
                     
                     <div>
                         <h4 className="font-semibold text-sm mt-4">Work on enclosed/confined equip:</h4>
                         <FormField control={form.control} name="enclosed_equip_notes" render={({ field }) => (
-                            <FormControl><Input placeholder="N/A" {...field} value={field.value ?? ""} className="inline-block w-auto text-sm h-8" disabled={!isCreateMode} /></FormControl>
+                            <FormControl><Input placeholder="N/A" {...field} value={field.value ?? ""} className="inline-block w-auto text-sm h-8" disabled={isViewMode} /></FormControl>
                         )}/>
-                        <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'enclosed')} isViewMode={!isCreateMode} />
+                        <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'enclosed')} isViewMode={isViewMode} />
                     </div>
 
                     <div>
                         <FormField control={form.control} name="fire_watch_required" render={({ field }) => (
-                            <FormItem><FormLabel>Fire watch required?</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4" disabled={!isCreateMode}><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Yes" /></FormControl><FormLabel className="font-normal">Yes</FormLabel></FormItem><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="No" /></FormControl><FormLabel className="font-normal">No</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>Fire watch required?</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4" disabled={isViewMode}><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Yes" /></FormControl><FormLabel className="font-normal">Yes</FormLabel></FormItem><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="No" /></FormControl><FormLabel className="font-normal">No</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>
                         )}/>
-                        <div className="mt-2"><ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'fire_watch')} isViewMode={!isCreateMode} /></div>
+                        <div className="mt-2"><ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'fire_watch')} isViewMode={isViewMode} /></div>
                     </div>
                 </div>
 
                 <FormField control={form.control} name="permit_expires" render={({ field }) => (
-                    <FormItem><FormLabel>Permit Expires</FormLabel><FormControl><Input type="datetime-local" {...field} disabled={!isCreateMode} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Permit Expires</FormLabel><FormControl><Input type="datetime-local" {...field} disabled={isViewMode} /></FormControl><FormMessage /></FormItem>
                 )}/>
 
                 <FormField control={form.control} name="special_instructions" render={({ field }) => (
-                    <FormItem><FormLabel>Special instructions</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={!isCreateMode} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Special instructions</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={isViewMode} /></FormControl><FormMessage /></FormItem>
                 )}/>
                 
                 {!isCreateMode && (
@@ -292,7 +391,7 @@ const PermitDetailsDialog = ({
                             ) : (
                                 <div className="p-4 border rounded-md bg-muted/50 flex items-center justify-between">
                                     <p className="text-sm text-muted-foreground">Employee performing work must sign to confirm completion.</p>
-                                    <Button type="button" onClick={() => handleSign('employee')} disabled={isFormLocked}>
+                                    <Button type="button" onClick={() => handleSign('employee')} disabled={isFormLocked || isDraft}>
                                         <UserCheck className="mr-2 h-4 w-4" /> Sign Work Complete
                                     </Button>
                                 </div>
@@ -352,30 +451,32 @@ const PermitDetailsDialog = ({
             )}
          </div>
         </div>
-        {isCreateMode && (
-            <DialogFooter>
-            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button type="submit">Create & Sign Permit</Button>
-            </DialogFooter>
-        )}
+        <DialogFooter>
+            {isCreateMode && (
+                <>
+                    <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+                    <Button type="submit">Save as Draft</Button>
+                </>
+            )}
+            {!isCreateMode && permit && (
+                <>
+                    {permit.status === 'Draft' && !isFormLocked && (
+                        <>
+                            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+                            <Button type="submit">Save Draft Changes</Button>
+                            <Button type="button" onClick={handleIssuePermit}>Issue &amp; Sign Permit</Button>
+                        </>
+                    )}
+                     {permit.status !== 'Draft' && (
+                        <Button type="button" onClick={() => setOpen(false)}>Close</Button>
+                    )}
+                </>
+            )}
+        </DialogFooter>
       </form>
     </Form>
   )
 }
-
-const ChecklistSection = ({ form, items, isViewMode }: { form: any; items: { id: keyof HotWorkPermitChecklist; label: string }[]; isViewMode: boolean }) => (
-  <div className="space-y-2 mt-2">
-    {items.map((item) => (
-      <FormField key={item.id} control={form.control} name={`checklist.${item.id}`} render={({ field }) => (
-          <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-            <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} disabled={isViewMode} /></FormControl>
-            <FormLabel className="text-sm font-normal">{item.label}</FormLabel>
-          </FormItem>
-        )}/>
-    ))}
-  </div>
-);
-
 
 export default function HotWorkPermitsPage() {
     const { user } = useAuth();
@@ -398,35 +499,8 @@ export default function HotWorkPermitsPage() {
         return '';
     };
 
-    const handleSavePermit = async (data: PermitFormValues) => {
-        if (!user || !user.displayName) {
-            toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.'});
-            return;
-        }
-        const locationName = findAreaPathById(areas, data.areaId);
-        if (!locationName) {
-            toast({ variant: 'destructive', title: 'Invalid Area', description: 'Could not find the selected area.' });
-            return;
-        }
-
-        const newPermit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'> = {
-            supervisor: data.supervisor,
-            performed_by_type: data.performed_by_type,
-            areaId: data.areaId,
-            work_to_be_performed_by: data.work_to_be_performed_by,
-            permit_expires: new Date(data.permit_expires).toISOString(),
-            special_instructions: data.special_instructions,
-            enclosed_equip_notes: data.enclosed_equip_notes,
-            fire_watch_required: data.fire_watch_required,
-            checklist: data.checklist,
-        };
-
-        await addHotWorkPermit(newPermit, data.supervisor, locationName);
-        toast({
-            title: 'Hot Work Permit Created',
-            description: `The permit for "${locationName}" has been successfully created.`,
-        });
-        setDialogOpen(false);
+    const handleAddPermit = async (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, locationName: string) => {
+        await addHotWorkPermit(permit, locationName);
     };
     
     const handleUpdatePermit = async (permit: HotWorkPermit) => {
@@ -442,9 +516,12 @@ export default function HotWorkPermitsPage() {
         setDialogOpen(true);
     }
     
-    const calculateStatus = (permit: HotWorkPermit): { text: HotWorkPermit['status'], variant: 'default' | 'destructive' | 'outline' } => {
+    const calculateStatus = (permit: HotWorkPermit): { text: HotWorkPermit['status'], variant: 'default' | 'destructive' | 'outline' | 'secondary' } => {
         if (permit.status === 'Closed') {
             return { text: 'Closed', variant: 'outline' };
+        }
+        if (permit.status === 'Draft') {
+            return { text: 'Draft', variant: 'secondary' };
         }
         if (new Date(permit.permit_expires) < new Date()) {
             return { text: 'Expired', variant: 'destructive' };
@@ -506,7 +583,7 @@ export default function HotWorkPermitsPage() {
             <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) setSelectedPermit(null); setDialogOpen(open); }}>
                 <DialogContent className="max-w-5xl">
                     <PermitDetailsDialog 
-                        onSave={handleSavePermit} 
+                        onAdd={handleAddPermit} 
                         onUpdate={handleUpdatePermit}
                         addComment={handleAddCommentToPermit}
                         setOpen={setDialogOpen} 

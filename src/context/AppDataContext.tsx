@@ -57,7 +57,7 @@ interface AppDataContextType {
   addJsa: (jsa: Omit<JSA, 'jsa_id' | 'display_id' | 'status' | 'created_by' | 'created_date' | 'signatures'>) => Promise<boolean>;
   updateJsa: (updatedJsa: JSA) => Promise<boolean>;
   hotWorkPermits: HotWorkPermit[];
-  addHotWorkPermit: (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, supervisorName: string, locationName: string) => Promise<void>;
+  addHotWorkPermit: (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, locationName: string) => Promise<void>;
   updateHotWorkPermit: (updatedPermit: HotWorkPermit) => Promise<void>;
   addCommentToHotWorkPermit: (permitId: string, comment: Comment) => Promise<void>;
   brandingSettings: BrandingSettings | null;
@@ -460,14 +460,13 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const addHotWorkPermit = async (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, supervisorName: string, locationName: string) => {
+  const addHotWorkPermit = async (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, locationName: string) => {
     const displayId = `HWP${String(hotWorkPermits.length + 1).padStart(3, '0')}`;
     const newPermitData = {
         ...permit,
         display_id: displayId,
         created_date: new Date().toISOString(),
-        supervisor_signature: { name: supervisorName, date: new Date().toISOString() },
-        status: 'Active' as const,
+        status: 'Draft' as const,
         locationName: locationName,
         comments: [],
     };

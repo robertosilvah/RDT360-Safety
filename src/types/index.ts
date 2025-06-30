@@ -1,6 +1,7 @@
 
 
 
+
 export type Comment = {
   user: string;
   comment: string;
@@ -155,7 +156,7 @@ export type HotWorkPermitChecklist = {
 export type HotWorkPermit = {
   permit_id: string;
   display_id: string;
-  status: 'Active' | 'Expired' | 'Closed';
+  status: 'Active' | 'Expired' | 'Closed' | 'Draft';
   supervisor: string;
   performed_by_type: 'RDT Employee' | 'Contractor';
   areaId: string;
