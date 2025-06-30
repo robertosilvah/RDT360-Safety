@@ -552,11 +552,9 @@ export default function ObservationsPage() {
           description: values.description,
           actions: values.actions,
           unsafe_category: values.unsafe_category,
-          imageUrl: imageUrl,
+          ...(imageUrl && { imageUrl }),
       };
       
-      // In a real app, you would get the new observation ID back from the server
-      // to link the corrective action. For this prototype, we are creating it unlinked.
       const newObservationRef = await addObservation(newObservationData);
 
       if (values.createAction && values.actionDescription && values.actionResponsiblePerson && values.actionDueDate) {
@@ -712,7 +710,7 @@ export default function ObservationsPage() {
                 const displayId = `OBS${String(currentObsCount + importedCount + 1).padStart(3, '0')}`;
                 const newDocRef = doc(obsCollection);
 
-                const newObservation: Omit<Observation, 'observation_id'> = {
+                const baseObservation: Omit<Observation, 'observation_id' | 'imageUrl' | 'safety_walk_id'> = {
                     display_id: displayId,
                     status: 'Open',
                     report_type: obsData.report_type as Observation['report_type'] || 'Safety Concern',
@@ -724,9 +722,14 @@ export default function ObservationsPage() {
                     description: obsData.description,
                     actions: obsData.actions || 'No immediate actions logged.',
                     unsafe_category: obsData.unsafe_category as Observation['unsafe_category'] || 'N/A',
-                    imageUrl: obsData.imageUrl || undefined,
-                    safety_walk_id: obsData.safety_walk_id || undefined
                 };
+                
+                const newObservation = {
+                    ...baseObservation,
+                    ...(obsData.imageUrl && { imageUrl: obsData.imageUrl }),
+                    ...(obsData.safety_walk_id && { safety_walk_id: obsData.safety_walk_id }),
+                }
+
                 batch.set(newDocRef, newObservation as any);
                 importedCount++;
             }
