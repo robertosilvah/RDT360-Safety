@@ -24,6 +24,8 @@ import { useAuth } from '@/context/AuthContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Label } from '@/components/ui/label';
+
 
 const checklistStatusEnum = z.enum(['Yes', 'No', 'N/A'], { required_error: "This check is required." });
 
@@ -133,6 +135,60 @@ const ChecklistItem = ({ name, label, control, isViewMode, disabled = false, hid
     />
 );
 
+const DenyPermitDialog = ({
+    open,
+    onOpenChange,
+    onConfirm,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onConfirm: (reason: string) => void;
+}) => {
+    const [reason, setReason] = React.useState('');
+    const { toast } = useToast();
+
+    const handleConfirmClick = () => {
+        if (!reason.trim()) {
+            toast({
+                variant: 'destructive',
+                title: 'Reason Required',
+                description: 'Please provide a reason for denying the permit.',
+            });
+            return;
+        }
+        onConfirm(reason);
+        setReason('');
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Deny Hot Work Permit?</DialogTitle>
+                    <DialogDescription>
+                        Please provide a reason for denying this permit. This will be added to the comment log and the action cannot be undone.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2 py-2">
+                    <Label htmlFor="deny-reason" className="sr-only">Denial Reason</Label>
+                    <Textarea
+                        id="deny-reason"
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        placeholder="e.g., Required safety precautions are not in place..."
+                    />
+                </div>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button variant="destructive" onClick={handleConfirmClick} disabled={!reason.trim()}>
+                        Confirm Denial
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
 
 const PermitDetailsDialog = ({
     permit,
@@ -152,6 +208,7 @@ const PermitDetailsDialog = ({
   const { user: currentUser } = useAuth();
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
+  const [isDenyDialogOpen, setDenyDialogOpen] = useState(false);
   const isCreateMode = !permit;
 
   const form = useForm<PermitFormValues>({
@@ -182,6 +239,7 @@ const PermitDetailsDialog = ({
         permit_expires: format(new Date(permit.permit_expires), "yyyy-MM-dd'T'HH:mm"),
       });
       setNewComment('');
+      setDenyDialogOpen(false);
     } else {
       // Reset for create mode
       form.reset({
@@ -234,11 +292,12 @@ const PermitDetailsDialog = ({
     }
   };
 
-  const handleDenyPermit = async () => {
+  const handleDenyPermit = async (reason: string) => {
       if (!permit || !currentUser?.displayName) {
           toast({ variant: 'destructive', title: 'Error', description: 'Cannot deny permit.' });
           return;
       }
+      
       const updatedPermit: HotWorkPermit = {
           ...permit,
           status: 'Denied',
@@ -246,7 +305,7 @@ const PermitDetailsDialog = ({
               ...(permit.comments || []),
               {
                   user: 'System Log',
-                  comment: `${currentUser.displayName} denied the permit.`,
+                  comment: `${currentUser.displayName} denied the permit. Reason: ${reason}`,
                   date: new Date().toISOString(),
               }
           ],
@@ -254,6 +313,7 @@ const PermitDetailsDialog = ({
       const success = await onUpdate(updatedPermit);
       if (success) {
           toast({ title: 'Permit Denied', description: 'The permit has been marked as denied.', variant: 'destructive' });
+          setDenyDialogOpen(false);
           setOpen(false);
       }
   };
@@ -540,23 +600,9 @@ const PermitDetailsDialog = ({
                 <>
                     {permit.status === 'Draft' && !isFormLocked && (
                         <div className="flex justify-between w-full">
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button type="button" variant="destructive">Deny Permit</Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Are you sure you want to deny this permit?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            This action cannot be undone. The permit will be permanently marked as denied.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction onClick={handleDenyPermit}>Deny Permit</AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
+                            <Button type="button" variant="destructive" onClick={() => setDenyDialogOpen(true)}>
+                                Deny Permit
+                            </Button>
                             <div className="flex gap-2">
                                 <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
                                 <Button type="submit">Save Draft Changes</Button>
@@ -571,6 +617,11 @@ const PermitDetailsDialog = ({
             )}
         </DialogFooter>
       </form>
+       <DenyPermitDialog
+        open={isDenyDialogOpen}
+        onOpenChange={setDenyDialogOpen}
+        onConfirm={handleDenyPermit}
+      />
     </Form>
   )
 }
