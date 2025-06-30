@@ -96,34 +96,41 @@ const JsaFormDialog = ({
   const form = useForm<JsaFormValues>({
     resolver: zodResolver(jsaFormSchema),
     defaultValues: {
-      title: '', job_description: '', required_ppe: [], other_ppe: '', areaId: '', steps: [{ step_description: '', hazards: '', controls: '' }],
+      title: '', job_description: '', required_ppe: [], other_ppe: '', areaId: '', steps: [{ step_description: '', hazards: '', controls: '' }], valid_from: '', valid_to: ''
     },
   });
 
   useEffect(() => {
-    if (jsa) {
-        form.reset({
-            title: jsa.title,
-            job_description: jsa.job_description,
-            areaId: jsa.areaId,
-            required_ppe: jsa.required_ppe.filter(ppe => PREDEFINED_PPE.some(p => p.label === ppe)),
-            other_ppe: jsa.required_ppe.filter(ppe => !PREDEFINED_PPE.some(p => p.label === ppe)).join(', '),
-            steps: jsa.steps.map(s => ({...s, hazards: s.hazards.join(', '), controls: s.controls.join(', ')})),
-            valid_from: mode === 'copy' ? '' : format(new Date(jsa.valid_from), "yyyy-MM-dd'T'HH:mm"),
-            valid_to: mode === 'copy' ? '' : format(new Date(jsa.valid_to), "yyyy-MM-dd'T'HH:mm"),
-        });
-    } else {
-        form.reset({
-          title: '', job_description: '', required_ppe: [], other_ppe: '', areaId: '', steps: [{ step_description: '', hazards: '', controls: '' }],
-        });
+    if (isOpen) {
+        if (jsa) {
+            form.reset({
+                title: jsa.title,
+                job_description: jsa.job_description,
+                areaId: jsa.areaId,
+                required_ppe: jsa.required_ppe.filter(ppe => PREDEFINED_PPE.some(p => p.label === ppe)),
+                other_ppe: jsa.required_ppe.filter(ppe => !PREDEFINED_PPE.some(p => p.label === ppe)).join(', '),
+                steps: jsa.steps.map(s => ({...s, hazards: s.hazards.join(', '), controls: s.controls.join(', ')})),
+                valid_from: mode === 'copy' ? '' : format(new Date(jsa.valid_from), "yyyy-MM-dd'T'HH:mm"),
+                valid_to: mode === 'copy' ? '' : format(new Date(jsa.valid_to), "yyyy-MM-dd'T'HH:mm"),
+            });
+        } else {
+            form.reset({
+              title: '', job_description: '', required_ppe: [], other_ppe: '', areaId: '', steps: [{ step_description: '', hazards: '', controls: '' }], valid_from: '', valid_to: ''
+            });
+        }
     }
   }, [jsa, mode, form, isOpen]);
 
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'steps' });
 
   const onSubmit = async (data: JsaFormValues) => {
-    await onSave(data, mode === 'edit' ? jsa?.jsa_id : undefined);
-    onOpenChange(false);
+    try {
+        await onSave(data, mode === 'edit' ? jsa?.jsa_id : undefined);
+        onOpenChange(false);
+    } catch (error) {
+        console.error("Failed to save JSA:", error);
+        toast({ variant: 'destructive', title: 'Save Failed', description: 'There was an error saving the JSA.' });
+    }
   };
 
   const dialogTitle = mode === 'edit' ? 'Edit JSA' : mode === 'copy' ? 'Copy JSA' : 'Create a New JSA';
@@ -180,7 +187,7 @@ const JsaFormDialog = ({
                 </FormItem>
             )}/>
             <FormField name="other_ppe" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Other PPE (comma-separated)</FormLabel><FormControl><Input placeholder="e.g., Face shield, Respirator" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel>Other PPE (comma-separated)</FormLabel><FormControl><Input placeholder="e.g., Face shield, Respirator" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
             )}/>
             <Separator />
             <div>
@@ -394,6 +401,8 @@ export default function JsaPage() {
         if (jsaId && selectedJsa) { // Editing
             const updatedJsa: JSA = {
                 ...selectedJsa, ...data, required_ppe: allPpe,
+                valid_from: new Date(data.valid_from).toISOString(),
+                valid_to: new Date(data.valid_to).toISOString(),
                 steps: data.steps.map(step => ({...step, hazards: step.hazards.split(','), controls: step.controls.split(',')})),
             };
             await updateJsa(updatedJsa);
