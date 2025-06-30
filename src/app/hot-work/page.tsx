@@ -87,6 +87,20 @@ const AreaSelectOptions = ({ areas, level = 0 }: { areas: Area[]; level?: number
   );
 };
 
+const findAreaPathById = (areasToSearch: Area[], id: string, path: string[] = []): string => {
+    for (const area of areasToSearch) {
+        const newPath = [...path, area.name];
+        if (area.area_id === id) {
+            return newPath.join(' / ');
+        }
+        if (area.children) {
+            const foundPath = findAreaPathById(area.children, id, newPath);
+            if (foundPath) return foundPath;
+        }
+    }
+    return '';
+};
+
 const ChecklistSection = ({ form, items, isViewMode }: { form: any; items: { id: keyof HotWorkPermitChecklist; label: string }[]; isViewMode: boolean }) => {
   const confinedSpacePermitSelected = form.watch('checklist.confined_space_permit');
   const isConditionalItem = (id: string) => ['adequate_ventilation', 'atmosphere_checked', 'vapors_purged'].includes(id);
@@ -480,25 +494,11 @@ const PermitDetailsDialog = ({
 }
 
 export default function HotWorkPermitsPage() {
-    const { user } = useAuth();
+    const { user: currentUser } = useAuth();
     const { hotWorkPermits, addHotWorkPermit, updateHotWorkPermit, addCommentToHotWorkPermit, areas } = useAppData();
     const { toast } = useToast();
     const [isDialogOpen, setDialogOpen] = useState(false);
     const [selectedPermit, setSelectedPermit] = useState<HotWorkPermit | null>(null);
-
-    const findAreaPathById = (areasToSearch: Area[], id: string, path: string[] = []): string => {
-        for (const area of areasToSearch) {
-            const newPath = [...path, area.name];
-            if (area.area_id === id) {
-                return newPath.join(' / ');
-            }
-            if (area.children) {
-                const foundPath = findAreaPathById(area.children, id, newPath);
-                if (foundPath) return foundPath;
-            }
-        }
-        return '';
-    };
 
     const handleAddPermit = async (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, locationName: string) => {
         await addHotWorkPermit(permit, locationName);
