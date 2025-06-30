@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -18,7 +19,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { mockAreas } from '@/lib/mockDataLocal';
 import type { Observation, Area, CorrectiveAction } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -160,10 +160,12 @@ const EditObservationDialog = ({
   observation,
   isOpen,
   onOpenChange,
+  areas,
 }: {
   observation: Observation | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  areas: Area[];
 }) => {
   const { updateObservation } = useAppData();
   const { toast } = useToast();
@@ -262,7 +264,7 @@ const EditObservationDialog = ({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <AreaSelectOptions areas={mockAreas} />
+                        <AreaSelectOptions areas={areas} />
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -364,14 +366,16 @@ const ObservationDetailsDialog = ({
   observation,
   isOpen,
   onOpenChange,
+  areas,
 }: {
   observation: Observation | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  areas: Area[];
 }) => {
   if (!observation) return null;
 
-  const areaPath = findAreaPathById(mockAreas, observation.areaId);
+  const areaPath = findAreaPathById(areas, observation.areaId);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -458,7 +462,7 @@ const ObservationDetailsDialog = ({
 };
 
 export default function ObservationsPage() {
-  const { observations, addObservation, deleteObservation, addCorrectiveAction, users, updateObservation, uploadSettings } = useAppData();
+  const { observations, addObservation, deleteObservation, addCorrectiveAction, users, updateObservation, uploadSettings, areas } = useAppData();
   const { user: authUser } = useAuth();
   const [selectedObservation, setSelectedObservation] = useState<Observation | null>(null);
   const [editingObservation, setEditingObservation] = useState<Observation | null>(null);
@@ -799,7 +803,7 @@ export default function ObservationsPage() {
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <AreaSelectOptions areas={mockAreas} />
+                              <AreaSelectOptions areas={areas} />
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -1217,11 +1221,13 @@ export default function ObservationsPage() {
           observation={selectedObservation}
           isOpen={isDetailsOpen}
           onOpenChange={setDetailsOpen}
+          areas={areas}
         />
         <EditObservationDialog
           observation={editingObservation}
           isOpen={!!editingObservation}
           onOpenChange={(open) => !open && setEditingObservation(null)}
+          areas={areas}
         />
       </div>
     </AppShell>
