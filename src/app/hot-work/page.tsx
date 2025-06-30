@@ -1,3 +1,4 @@
+
 'use client';
 
 import { AppShell } from '@/components/AppShell';
@@ -248,7 +249,7 @@ const PermitDetailsDialog = ({
 
   const onSubmit = async (data: PermitFormValues) => {
     if (isCreateMode) {
-      if (!user || !user.displayName) {
+      if (!currentUser || !currentUser.displayName) {
         toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
         return;
       }
@@ -516,7 +517,7 @@ export default function HotWorkPermitsPage() {
         setDialogOpen(true);
     }
     
-    const calculateStatus = (permit: HotWorkPermit): { text: HotWorkPermit['status'], variant: 'default' | 'destructive' | 'outline' | 'secondary' } => {
+    const calculateStatus = (permit: HotWorkPermit): { text: HotWorkPermit['status'] | 'Expired', variant: 'default' | 'destructive' | 'outline' | 'secondary' } => {
         if (permit.status === 'Closed') {
             return { text: 'Closed', variant: 'outline' };
         }
