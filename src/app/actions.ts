@@ -52,14 +52,14 @@ export async function fetchAndUploadImageAction(imageUrlOrId: string): Promise<s
     }
 
     const contentType = response.headers.get('content-type');
-    if (!contentType || !contentType.startsWith('image/')) {
-      const responseBody = await response.text();
-      console.error(`URL did not return an image. Content-Type: ${contentType}`);
-      console.error(`Response body: ${responseBody}`);
-      throw new Error(`URL did not return an image. The server returned content type '${contentType}'. See server console for response body.`);
-    }
-
     const imageBuffer = await response.arrayBuffer();
+
+    if (!contentType || !contentType.startsWith('image/')) {
+        // Decode the first part of the buffer to see what we got
+        const responseBodyPreview = Buffer.from(imageBuffer.slice(0, 500)).toString('utf-8');
+        console.error(`URL did not return an image. Content-Type: ${contentType}. Body preview: ${responseBodyPreview}`);
+        throw new Error(`URL did not return an image. The server received '${contentType}'. The content starts with: "${responseBodyPreview.substring(0, 200)}..."`);
+    }
 
     if (imageBuffer.byteLength === 0) {
       console.error(`Fetched empty image buffer from ${effectiveUrl}.`);
