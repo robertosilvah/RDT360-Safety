@@ -6,18 +6,17 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import type { HotWorkPermit, HotWorkPermitChecklist, Area, Comment } from '@/types';
+import type { HotWorkPermit, HotWorkPermitChecklist, Area, Comment, ChecklistStatus } from '@/types';
 import { PlusCircle, Users, FileSignature, Flame, Clock, CheckSquare, Trash2, UserCheck, Edit, MessageSquare, FilePenLine } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { useForm } from 'react-hook-form';
+import { useForm, useController, Control, FieldPath } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useAppData } from '@/context/AppDataContext';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -26,20 +25,22 @@ import { useAuth } from '@/context/AuthContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
+const checklistStatusEnum = z.enum(['Yes', 'No', 'N/A'], { required_error: "This check is required." });
+
 const checklistSchema = z.object({
-  fire_extinguisher: z.boolean().default(false),
-  equipment_good_repair: z.boolean().default(false),
-  energy_locked_out: z.boolean().default(false),
-  flammables_removed: z.boolean().default(false),
-  floors_swept: z.boolean().default(false),
-  fire_resistive_covers: z.boolean().default(false),
-  openings_covered: z.boolean().default(false),
-  walls_ceilings_protected: z.boolean().default(false),
-  adequate_ventilation: z.boolean().default(false),
-  atmosphere_checked: z.boolean().default(false),
-  vapors_purged: z.boolean().default(false),
-  confined_space_permit: z.boolean().default(false),
-  fire_watch_provided: z.boolean().default(false),
+  fire_extinguisher: checklistStatusEnum,
+  equipment_good_repair: checklistStatusEnum,
+  energy_locked_out: checklistStatusEnum,
+  flammables_removed: checklistStatusEnum,
+  floors_swept: checklistStatusEnum,
+  fire_resistive_covers: checklistStatusEnum,
+  openings_covered: checklistStatusEnum,
+  walls_ceilings_protected: checklistStatusEnum,
+  adequate_ventilation: checklistStatusEnum,
+  atmosphere_checked: checklistStatusEnum,
+  vapors_purged: checklistStatusEnum,
+  confined_space_permit: checklistStatusEnum,
+  fire_watch_provided: checklistStatusEnum,
 });
 
 const permitFormSchema = z.object({
@@ -49,7 +50,6 @@ const permitFormSchema = z.object({
   work_to_be_performed_by: z.string().min(1, "Personnel details are required."),
   permit_expires: z.string().refine((val) => val && !isNaN(Date.parse(val)), { message: "Permit Expiry is required." }),
   special_instructions: z.string().optional(),
-  enclosed_equip_notes: z.string().optional(),
   fire_watch_required: z.enum(['Yes', 'No'], { required_error: "You must select if fire watch is required."}),
   checklist: checklistSchema,
 });
@@ -72,8 +72,8 @@ const CHECKLIST_ITEMS: { id: keyof HotWorkPermitChecklist; label: string; group:
     { id: 'fire_watch_provided', label: 'Trained and equipped Fire Watch provided during operations and at least 30 minutes after.', group: 'fire_watch' },
 ];
 
-const findAreaPathById = (areasToSearch: Area[], id: string, path: string[] = []): string => {
-    for (const area of areasToSearch) {
+const findAreaPathById = (areas: Area[], id: string, path: string[] = []): string => {
+    for (const area of areas) {
         const newPath = [...path, area.name];
         if (area.area_id === id) {
             return newPath.join(' / ');
@@ -101,34 +101,37 @@ const AreaSelectOptions = ({ areas, level = 0 }: { areas: Area[]; level?: number
   );
 };
 
-const ChecklistSection = ({ form, items, isViewMode }: { form: any; items: { id: keyof HotWorkPermitChecklist; label: string }[]; isViewMode: boolean }) => {
-  const confinedSpacePermitSelected = form.watch('checklist.confined_space_permit');
-  const isConditionalItem = (id: string) => ['adequate_ventilation', 'atmosphere_checked', 'vapors_purged'].includes(id);
-
-  return (
-    <div className="space-y-2 mt-2">
-      {items.map((item) => (
-        <FormField
-          key={item.id}
-          control={form.control}
-          name={`checklist.${item.id}`}
-          render={({ field }) => (
-            <FormItem className="flex flex-row items-center space-x-3 space-y-0">
-              <FormControl>
-                <Checkbox
-                  checked={field.value}
-                  onCheckedChange={field.onChange}
-                  disabled={isViewMode || (isConditionalItem(item.id) && !confinedSpacePermitSelected)}
-                />
-              </FormControl>
-              <FormLabel className="font-normal text-sm">{item.label}</FormLabel>
+const ChecklistItem = ({ name, label, control, isViewMode, disabled = false, hideNA = false }: {
+    name: FieldPath<PermitFormValues>;
+    label: string;
+    control: Control<PermitFormValues>;
+    isViewMode: boolean;
+    disabled?: boolean;
+    hideNA?: boolean;
+}) => (
+    <FormField
+        control={control}
+        name={name}
+        render={({ field }) => (
+            <FormItem className="flex flex-col sm:flex-row items-start sm:items-center justify-between py-2 border-b last:border-b-0">
+                <FormLabel className="font-normal text-sm flex-1 pr-4 mb-2 sm:mb-0">{label}</FormLabel>
+                <FormControl>
+                    <RadioGroup
+                        onValueChange={field.onChange}
+                        value={field.value}
+                        className="flex gap-4"
+                        disabled={isViewMode || disabled}
+                    >
+                        <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Yes" /></FormControl><FormLabel className="font-normal">Yes</FormLabel></FormItem>
+                        <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="No" /></FormControl><FormLabel className="font-normal">No</FormLabel></FormItem>
+                        {!hideNA && <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="N/A" /></FormControl><FormLabel className="font-normal">N/A</FormLabel></FormItem>}
+                    </RadioGroup>
+                </FormControl>
+                <FormMessage className="sm:ml-4" />
             </FormItem>
-          )}
-        />
-      ))}
-    </div>
-  );
-};
+        )}
+    />
+);
 
 
 const PermitDetailsDialog = ({
@@ -153,39 +156,66 @@ const PermitDetailsDialog = ({
 
   const form = useForm<PermitFormValues>({
     resolver: zodResolver(permitFormSchema),
-    defaultValues: isCreateMode ? {
+    defaultValues: {
         supervisor: currentUser?.displayName || '',
         performed_by_type: 'RDT Employee',
         areaId: '',
         work_to_be_performed_by: '',
         permit_expires: '',
         special_instructions: '',
-        enclosed_equip_notes: '',
         fire_watch_required: 'No',
         checklist: {
-            fire_extinguisher: false, equipment_good_repair: false, energy_locked_out: false,
-            flammables_removed: false, floors_swept: false, fire_resistive_covers: false,
-            openings_covered: false, walls_ceilings_protected: false,
-            adequate_ventilation: false, atmosphere_checked: false, vapors_purged: false,
-            confined_space_permit: false, fire_watch_provided: false,
+            fire_extinguisher: 'No', equipment_good_repair: 'No', energy_locked_out: 'No',
+            flammables_removed: 'No', floors_swept: 'No', fire_resistive_covers: 'No',
+            openings_covered: 'No', walls_ceilings_protected: 'No',
+            adequate_ventilation: 'No', atmosphere_checked: 'No', vapors_purged: 'No',
+            confined_space_permit: 'No', fire_watch_provided: 'No',
         },
-    } : {
-        ...permit,
-        areaId: permit.areaId,
-        permit_expires: format(new Date(permit.permit_expires), "yyyy-MM-dd'T'HH:mm"),
     },
   });
 
    useEffect(() => {
     if (permit) {
+      // Data migration for older boolean-based checklists
+      const migratedChecklist: HotWorkPermitChecklist = {} as any;
+      for (const key in permit.checklist) {
+          const value = (permit.checklist as any)[key];
+          if (typeof value === 'boolean') {
+              migratedChecklist[key as keyof HotWorkPermitChecklist] = value ? 'Yes' : 'No';
+          } else {
+              migratedChecklist[key as keyof HotWorkPermitChecklist] = value || 'No';
+          }
+      }
+
       form.reset({
         ...permit,
-        areaId: permit.areaId,
+        checklist: migratedChecklist,
         permit_expires: format(new Date(permit.permit_expires), "yyyy-MM-dd'T'HH:mm"),
       });
       setNewComment('');
+    } else {
+      // Reset for create mode
+      form.reset({
+        supervisor: currentUser?.displayName || '',
+        performed_by_type: 'RDT Employee',
+        areaId: '',
+        work_to_be_performed_by: '',
+        permit_expires: '',
+        special_instructions: '',
+        fire_watch_required: 'No',
+        checklist: {
+            fire_extinguisher: 'No', equipment_good_repair: 'No', energy_locked_out: 'No',
+            flammables_removed: 'No', floors_swept: 'No', fire_resistive_covers: 'No',
+            openings_covered: 'No', walls_ceilings_protected: 'No',
+            adequate_ventilation: 'No', atmosphere_checked: 'No', vapors_purged: 'No',
+            confined_space_permit: 'No', fire_watch_provided: 'No',
+        },
+      });
     }
-  }, [permit, form]);
+  }, [permit, form, currentUser]);
+
+  const confinedSpacePermit = form.watch('checklist.confined_space_permit');
+  const fireWatchRequired = form.watch('fire_watch_required');
 
   const handleIssuePermit = async () => {
     if (!permit || !currentUser?.displayName) {
@@ -286,7 +316,6 @@ const PermitDetailsDialog = ({
         work_to_be_performed_by: data.work_to_be_performed_by,
         permit_expires: new Date(data.permit_expires).toISOString(),
         special_instructions: data.special_instructions,
-        enclosed_equip_notes: data.enclosed_equip_notes,
         fire_watch_required: data.fire_watch_required,
         checklist: data.checklist,
       };
@@ -369,44 +398,54 @@ const PermitDetailsDialog = ({
                 </div>
 
                 {/* Right Sub-Column (Checklist) */}
-                <div className="space-y-4 row-span-2">
+                <div className="space-y-4 row-span-2 md:col-span-2">
                     <h3 className="font-bold text-lg">Precaution & safeguard checklist</h3>
-
-                    <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'precautions')} isViewMode={isViewMode} />
+                    
+                    {CHECKLIST_ITEMS.filter(i => i.group === 'precautions').map(item => (
+                        <ChecklistItem key={item.id} name={`checklist.${item.id}`} label={item.label} control={form.control} isViewMode={isViewMode} />
+                    ))}
 
                     <div>
                         <h4 className="font-semibold text-sm mt-4">Requirements within 35 ft. of work:</h4>
-                        <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'requirements')} isViewMode={isViewMode} />
+                        {CHECKLIST_ITEMS.filter(i => i.group === 'requirements').map(item => (
+                            <ChecklistItem key={item.id} name={`checklist.${item.id}`} label={item.label} control={form.control} isViewMode={isViewMode} />
+                        ))}
                     </div>
 
                     <div>
                         <h4 className="font-semibold text-sm mt-4">Work on enclosed/confined equip:</h4>
-                        <FormField control={form.control} name="enclosed_equip_notes" render={({ field }) => (
-                            <FormControl><Input placeholder="N/A" {...field} value={field.value ?? ""} className="inline-block w-auto text-sm h-8" disabled={isViewMode} /></FormControl>
-                        )}/>
-                        <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'enclosed')} isViewMode={isViewMode} />
+                        <ChecklistItem name="checklist.confined_space_permit" label="Confined Space Permit obtained, if required." control={form.control} isViewMode={isViewMode} />
+                        {CHECKLIST_ITEMS.filter(i => ['adequate_ventilation', 'atmosphere_checked', 'vapors_purged'].includes(i.id)).map(item => (
+                            <ChecklistItem key={item.id} name={`checklist.${item.id}`} label={item.label} control={form.control} isViewMode={isViewMode} disabled={confinedSpacePermit !== 'Yes'} />
+                        ))}
                     </div>
 
-                    <div>
+                    <div className="!mt-6">
                         <FormField control={form.control} name="fire_watch_required" render={({ field }) => (
                             <FormItem><FormLabel>Fire watch required?</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4" disabled={isViewMode}><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Yes" /></FormControl><FormLabel className="font-normal">Yes</FormLabel></FormItem><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="No" /></FormControl><FormLabel className="font-normal">No</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>
                         )}/>
-                        <div className="mt-2"><ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'fire_watch')} isViewMode={isViewMode} /></div>
+                         <div className="mt-2">
+                            <ChecklistItem name="checklist.fire_watch_provided" label="Trained and equipped Fire Watch provided during operations and at least 30 minutes after." control={form.control} isViewMode={isViewMode} disabled={fireWatchRequired !== 'Yes'} hideNA={true} />
+                        </div>
                     </div>
                 </div>
 
-                <FormField control={form.control} name="permit_expires" render={({ field }) => (
-                    <FormItem><FormLabel>Permit Expires</FormLabel><FormControl><Input type="datetime-local" {...field} disabled={isViewMode} /></FormControl><FormMessage /></FormItem>
-                )}/>
+                <div className="md:col-span-1">
+                  <FormField control={form.control} name="permit_expires" render={({ field }) => (
+                      <FormItem><FormLabel>Permit Expires</FormLabel><FormControl><Input type="datetime-local" {...field} disabled={isViewMode} /></FormControl><FormMessage /></FormItem>
+                  )}/>
+                </div>
 
-                <FormField control={form.control} name="special_instructions" render={({ field }) => (
-                    <FormItem><FormLabel>Special instructions</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={isViewMode} /></FormControl><FormMessage /></FormItem>
-                )}/>
+                <div className="md:col-span-2">
+                  <FormField control={form.control} name="special_instructions" render={({ field }) => (
+                      <FormItem><FormLabel>Special instructions</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={isViewMode} /></FormControl><FormMessage /></FormItem>
+                  )}/>
+                </div>
 
                 {!isCreateMode && (
                     <>
-                    <Separator />
-                    <div className="space-y-4">
+                    <div className="md:col-span-2"><Separator /></div>
+                    <div className="md:col-span-2 space-y-4">
                         <h3 className="font-bold text-lg">Work Completion & Final Check</h3>
 
                         {/* Employee Signature */}

@@ -2,6 +2,7 @@
 
 
 
+
 export type Comment = {
   user: string;
   comment: string;
@@ -137,20 +138,22 @@ export type JSA = {
   signatures: { employee_name: string; sign_date: string }[];
 };
 
+export type ChecklistStatus = 'Yes' | 'No' | 'N/A';
+
 export type HotWorkPermitChecklist = {
-  fire_extinguisher: boolean;
-  equipment_good_repair: boolean;
-  energy_locked_out: boolean;
-  flammables_removed: boolean;
-  floors_swept: boolean;
-  fire_resistive_covers: boolean;
-  openings_covered: boolean;
-  walls_ceilings_protected: boolean;
-  adequate_ventilation: boolean;
-  atmosphere_checked: boolean;
-  vapors_purged: boolean;
-  confined_space_permit: boolean;
-  fire_watch_provided: boolean;
+  fire_extinguisher: ChecklistStatus;
+  equipment_good_repair: ChecklistStatus;
+  energy_locked_out: ChecklistStatus;
+  flammables_removed: ChecklistStatus;
+  floors_swept: ChecklistStatus;
+  fire_resistive_covers: ChecklistStatus;
+  openings_covered: ChecklistStatus;
+  walls_ceilings_protected: ChecklistStatus;
+  adequate_ventilation: ChecklistStatus;
+  atmosphere_checked: ChecklistStatus;
+  vapors_purged: ChecklistStatus;
+  confined_space_permit: ChecklistStatus;
+  fire_watch_provided: ChecklistStatus;
 };
 
 export type HotWorkPermit = {
@@ -166,7 +169,6 @@ export type HotWorkPermit = {
   work_complete?: string; 
   final_check?: string; 
   special_instructions?: string;
-  enclosed_equip_notes?: string;
   fire_watch_required: 'Yes' | 'No';
   checklist: HotWorkPermitChecklist;
   created_date: string;
