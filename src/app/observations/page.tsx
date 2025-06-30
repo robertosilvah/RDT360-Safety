@@ -24,7 +24,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
-import { Camera, Eye, Siren, User, Users, FileText, ClipboardCheck, Upload, Download, Trash2, Edit } from 'lucide-react';
+import { Camera, Eye, Siren, User, Users, FileText, ClipboardCheck, Upload, Download, Trash2, Edit, Wrench } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -77,6 +77,7 @@ import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { fetchAndUploadImageAction } from '@/app/actions';
+import { Label } from '@/components/ui/label';
 
 
 const baseObservationSchema = z.object({
@@ -480,15 +481,71 @@ const parseCsvRow = (row: string): string[] => {
       }
     } else if (char === ',' && !inQuotes) {
       // If it's a comma and we're not in quotes, it's a field separator
-      values.push(currentVal);
+      values.push(currentVal.trim());
       currentVal = '';
     } else {
       // Any other character is part of the current value
       currentVal += char;
     }
   }
-  values.push(currentVal); // Add the last value
+  values.push(currentVal.trim()); // Add the last value
   return values;
+};
+
+const TempImageUploader = () => {
+    const [url, setUrl] = useState('');
+    const [result, setResult] = useState('');
+    const [isUploading, setIsUploading] = useState(false);
+    const { toast } = useToast();
+
+    const handleUpload = async () => {
+        if (!url) {
+            toast({ variant: 'destructive', title: 'URL required' });
+            return;
+        }
+        setIsUploading(true);
+        setResult('');
+        try {
+            const uploadedUrl = await fetchAndUploadImageAction(url);
+            if (uploadedUrl) {
+                setResult(`Success! New URL: ${uploadedUrl}`);
+                toast({ title: 'Upload Successful' });
+            } else {
+                setResult('Upload failed. Check server console for details.');
+                toast({ variant: 'destructive', title: 'Upload Failed' });
+            }
+        } catch (error) {
+            console.error(error);
+            setResult('An error occurred. Check browser and server console.');
+            toast({ variant: 'destructive', title: 'Upload Error' });
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
+    return (
+        <Card className="mb-6 bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><Wrench className="h-5 w-5" /> Temporary URL Uploader Tool</CardTitle>
+                <CardDescription>Paste an image URL to test the server-side upload action directly. This tool is for debugging and can be removed later.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="image-url-test">Image URL to Upload</Label>
+                    <Input id="image-url-test" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://images.unsplash.com/photo-1518020382113-a7e8fc38eac9" />
+                </div>
+                <Button onClick={handleUpload} disabled={isUploading}>
+                    {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                    Test Upload
+                </Button>
+                {result && (
+                    <div className="p-4 border rounded-md bg-background">
+                        <p className="text-sm font-mono break-all">{result}</p>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
 };
 
 export default function ObservationsPage() {
@@ -570,7 +627,7 @@ export default function ObservationsPage() {
         imageUrl = await getDownloadURL(storageRef);
       }
 
-      const newObservationData: Omit<Observation, 'observation_id' | 'display_id' | 'status'> = {
+      const newObservationData: Omit<Observation, 'observation_id' | 'display_id' | 'status' | 'imageUrl'> = {
           report_type: values.report_type,
           submitted_by: values.submitted_by,
           date: new Date(values.date).toISOString(),
@@ -580,10 +637,10 @@ export default function ObservationsPage() {
           description: values.description,
           actions: values.actions,
           unsafe_category: values.unsafe_category,
-          ...(imageUrl && { imageUrl }),
       };
       
-      const newObservationRef = await addObservation(newObservationData);
+      const observationWithImage = imageUrl ? { ...newObservationData, imageUrl } : newObservationData;
+      const newObservationRef = await addObservation(observationWithImage);
 
       if (values.createAction && values.actionDescription && values.actionResponsiblePerson && values.actionDueDate) {
           const newActionData: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'> = {
@@ -715,7 +772,8 @@ export default function ObservationsPage() {
             
             const obsCollection = collection(db, 'observations');
             const currentObsCount = observations.length;
-            const observationsToCommit: Omit<Observation, 'observation_id'>[] = [];
+            const observationsToCommit: Omit<Observation, 'observation_id' | 'imageUrl' | 'safety_walk_id'>[] = [];
+            const imageUrlsToProcess: { index: number, url: string }[] = [];
 
             for (let i = 1; i < rows.length; i++) {
                 const values = parseCsvRow(rows[i]);
@@ -734,24 +792,9 @@ export default function ObservationsPage() {
                     continue;
                 }
                 
-                let finalImageUrl: string | undefined = undefined;
-                if (obsData.imageUrl) {
-                    const uploadedUrl = await fetchAndUploadImageAction(obsData.imageUrl);
-                    if (uploadedUrl) {
-                        finalImageUrl = uploadedUrl;
-                    } else {
-                        toast({
-                            variant: 'destructive',
-                            title: 'Image Upload Failed',
-                            description: `Could not upload image for row ${i + 1}. The observation will be created without it.`,
-                            duration: 5000,
-                        });
-                    }
-                }
-
                 const displayId = `OBS${String(currentObsCount + observationsToCommit.length + 1).padStart(3, '0')}`;
                 
-                const newObservation: Omit<Observation, 'observation_id'> = {
+                const newObservation: Omit<Observation, 'observation_id' | 'imageUrl' | 'safety_walk_id'> = {
                     display_id: displayId,
                     status: 'Open',
                     report_type: obsData.report_type as Observation['report_type'] || 'Safety Concern',
@@ -763,20 +806,37 @@ export default function ObservationsPage() {
                     description: obsData.description,
                     actions: obsData.actions || 'No immediate actions logged.',
                     unsafe_category: obsData.unsafe_category as Observation['unsafe_category'] || 'N/A',
-                    ...(finalImageUrl && { imageUrl: finalImageUrl }),
-                    ...(obsData.safety_walk_id && { safety_walk_id: obsData.safety_walk_id }),
                 };
                 observationsToCommit.push(newObservation);
+                if (obsData.imageUrl) {
+                    imageUrlsToProcess.push({ index: observationsToCommit.length - 1, url: obsData.imageUrl });
+                }
+            }
+            
+            const enrichedObservations = [...observationsToCommit] as Omit<Observation, 'observation_id'>[];
+            for (const { index, url } of imageUrlsToProcess) {
+                const uploadedUrl = await fetchAndUploadImageAction(url);
+                if (uploadedUrl) {
+                    (enrichedObservations[index] as any).imageUrl = uploadedUrl;
+                } else {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Image Upload Failed',
+                        description: `Could not upload image for row ${index + 2}. The observation will be created without it.`,
+                        duration: 5000,
+                    });
+                }
             }
 
-            if (observationsToCommit.length > 0) {
+
+            if (enrichedObservations.length > 0) {
               const batch = writeBatch(db);
-              observationsToCommit.forEach(obs => {
+              enrichedObservations.forEach(obs => {
                   const newDocRef = doc(obsCollection);
                   batch.set(newDocRef, obs);
               });
               await batch.commit();
-              toast({ title: 'Import Successful', description: `${observationsToCommit.length} new observations imported.` });
+              toast({ title: 'Import Successful', description: `${enrichedObservations.length} new observations imported.` });
             } else {
               toast({ title: 'Import Complete', description: 'No new valid observations to import.' });
             }
@@ -796,6 +856,8 @@ export default function ObservationsPage() {
     <AppShell>
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <h2 className="text-3xl font-bold tracking-tight">Safety Observations</h2>
+
+        <TempImageUploader />
 
         <div className="grid gap-6 lg:grid-cols-5">
           <div className="lg:col-span-2">
