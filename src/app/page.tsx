@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -36,47 +37,38 @@ import { Skeleton } from '@/components/ui/skeleton';
 export default function DashboardPage() {
   const { incidents, correctiveActions, observations, investigations } = useAppData();
   const [date, setDate] = useState<DateRange | undefined>();
-  const [isClient, setIsClient] = useState(false);
+
+  const [daysSinceLastAccident, setDaysSinceLastAccident] = useState<{value: React.ReactNode, description: React.ReactNode}>({
+    value: <Skeleton className="h-8 w-16" />,
+    description: <Skeleton className="h-4 w-32" />,
+  });
+
+  const [daysSinceLastIncident, setDaysSinceLastIncident] = useState<{value: React.ReactNode, description: React.ReactNode}>({
+    value: <Skeleton className="h-8 w-16" />,
+    description: <Skeleton className="h-4 w-32" />,
+  });
 
   useEffect(() => {
-    setIsClient(true);
-  }, []);
-
-  const daysSinceLastAccident = useMemo(() => {
-    if (!isClient) {
-      return {
-        value: <Skeleton className="h-8 w-16" />,
-        description: <div className="h-4 w-32"><Skeleton className="h-full w-full" /></div>,
-      };
-    }
+    // For last accident
     const accidents = incidents.filter(i => i.type === 'Accident');
     if (accidents.length === 0) {
-      return { value: 'N/A', description: 'No accidents recorded yet.' };
+      setDaysSinceLastAccident({ value: 'N/A', description: 'No accidents recorded yet.' });
+    } else {
+      const lastAccidentDate = accidents.reduce((max, incident) => new Date(incident.date) > new Date(max.date) ? incident : max).date;
+      const days = differenceInDays(new Date(), new Date(lastAccidentDate));
+      setDaysSinceLastAccident({ value: days.toString(), description: 'All areas included' });
     }
-    const lastAccidentDate = accidents.reduce((max, incident) =>
-      new Date(incident.date) > new Date(max.date) ? incident : max
-    ).date;
-    const days = differenceInDays(new Date(), new Date(lastAccidentDate));
-    return { value: days.toString(), description: 'All areas included' };
-  }, [incidents, isClient]);
-  
-  const daysSinceLastIncident = useMemo(() => {
-    if (!isClient) {
-      return {
-        value: <Skeleton className="h-8 w-16" />,
-        description: <div className="h-4 w-32"><Skeleton className="h-full w-full" /></div>,
-      };
-    }
+
+    // For last incident
     const allIncidents = incidents.filter(i => i.type === 'Incident');
     if (allIncidents.length === 0) {
-        return { value: 'N/A', description: 'No incidents recorded yet.' };
+        setDaysSinceLastIncident({ value: 'N/A', description: 'No incidents recorded yet.' });
+    } else {
+        const lastIncidentDate = allIncidents.reduce((max, incident) => new Date(incident.date) > new Date(max.date) ? incident : max).date;
+        const days = differenceInDays(new Date(), new Date(lastIncidentDate));
+        setDaysSinceLastIncident({ value: days.toString(), description: 'All areas included' });
     }
-    const lastIncidentDate = allIncidents.reduce((max, incident) =>
-      new Date(incident.date) > new Date(max.date) ? incident : max
-    ).date;
-    const days = differenceInDays(new Date(), new Date(lastIncidentDate));
-    return { value: days.toString(), description: 'All areas included' };
-  }, [incidents, isClient]);
+  }, [incidents]);
 
   const pendingActions = useMemo(() => {
     return correctiveActions.filter(
@@ -272,7 +264,7 @@ export default function DashboardPage() {
                         {incident.severity}
                       </TableCell>
                       <TableCell>
-                        {isClient ? format(new Date(incident.date), 'P') : <Skeleton className="h-4 w-20" />}
+                        {format(new Date(incident.date), 'P')}
                       </TableCell>
                     </TableRow>
                   ))}
