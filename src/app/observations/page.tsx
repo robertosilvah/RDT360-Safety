@@ -1152,70 +1152,78 @@ export default function ObservationsPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {observations.map((obs) => {
-                          const canEdit = isAdmin || (authUser && authUser.displayName === obs.submitted_by);
-                          return (
-                            <TableRow key={obs.observation_id} onClick={() => handleRowClick(obs)} className="cursor-pointer">
-                              <TableCell className="font-medium">{obs.display_id}</TableCell>
-                              <TableCell>{new Date(obs.date).toLocaleDateString()}</TableCell>
-                              <TableCell>{obs.report_type}</TableCell>
-                              <TableCell>
-                                <Badge variant={riskVariant[obs.risk_level]}>
-                                  {riskLabels[obs.risk_level]}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="max-w-xs truncate">{obs.description}</TableCell>
-                              <TableCell>
-                                <Badge variant={statusVariant[obs.status]}>{obs.status}</Badge>
-                              </TableCell>
-                              <TableCell>
-                                {obs.imageUrl ? (
-                                  <div className="w-16 h-12 relative">
-                                    <Image
-                                      src={obs.imageUrl}
-                                      alt={`Observation ${obs.observation_id}`}
-                                      fill
-                                      className="rounded-md object-cover"
-                                      data-ai-hint="safety observation"
-                                    />
-                                  </div>
-                                ) : (
-                                  <div className="w-16 h-12 flex items-center justify-center bg-muted rounded-md">
-                                    <Camera className="h-6 w-6 text-muted-foreground" />
-                                  </div>
-                                )}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                  {canEdit && (
-                                    <Button variant="ghost" size="icon" onClick={(e) => handleEditClick(e, obs)}>
-                                      <Edit className="h-4 w-4" />
-                                    </Button>
+                        {observations.length > 0 ? (
+                          observations.map((obs) => {
+                            const canEdit = isAdmin || (authUser && authUser.displayName === obs.submitted_by);
+                            return (
+                              <TableRow key={obs.observation_id} onClick={() => handleRowClick(obs)} className="cursor-pointer">
+                                <TableCell className="font-medium">{obs.display_id}</TableCell>
+                                <TableCell>{new Date(obs.date).toLocaleDateString()}</TableCell>
+                                <TableCell>{obs.report_type}</TableCell>
+                                <TableCell>
+                                  <Badge variant={riskVariant[obs.risk_level]}>
+                                    {riskLabels[obs.risk_level]}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="max-w-xs truncate">{obs.description}</TableCell>
+                                <TableCell>
+                                  <Badge variant={statusVariant[obs.status]}>{obs.status}</Badge>
+                                </TableCell>
+                                <TableCell>
+                                  {obs.imageUrl ? (
+                                    <div className="w-16 h-12 relative">
+                                      <Image
+                                        src={obs.imageUrl}
+                                        alt={`Observation ${obs.observation_id}`}
+                                        fill
+                                        className="rounded-md object-cover"
+                                        data-ai-hint="safety observation"
+                                      />
+                                    </div>
+                                  ) : (
+                                    <div className="w-16 h-12 flex items-center justify-center bg-muted rounded-md">
+                                      <Camera className="h-6 w-6 text-muted-foreground" />
+                                    </div>
                                   )}
-                                  {isAdmin && (
-                                      <AlertDialog>
-                                          <AlertDialogTrigger asChild>
-                                              <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
-                                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                              </Button>
-                                          </AlertDialogTrigger>
-                                          <AlertDialogContent>
-                                              <AlertDialogHeader>
-                                                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                  <AlertDialogDescription>
-                                                      This will permanently delete observation <span className="font-mono">{obs.display_id}</span>. This action cannot be undone.
-                                                  </AlertDialogDescription>
-                                              </AlertDialogHeader>
-                                              <AlertDialogFooter>
-                                                  <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
-                                                  <AlertDialogAction onClick={(e) => handleDelete(e, obs.observation_id)}>Delete</AlertDialogAction>
-                                              </AlertDialogFooter>
-                                          </AlertDialogContent>
-                                      </AlertDialog>
-                                  )}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    {canEdit && (
+                                      <Button variant="ghost" size="icon" onClick={(e) => handleEditClick(e, obs)}>
+                                        <Edit className="h-4 w-4" />
+                                      </Button>
+                                    )}
+                                    {isAdmin && (
+                                        <AlertDialog>
+                                            <AlertDialogTrigger asChild>
+                                                <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                </Button>
+                                            </AlertDialogTrigger>
+                                            <AlertDialogContent>
+                                                <AlertDialogHeader>
+                                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                                    <AlertDialogDescription>
+                                                        This will permanently delete observation <span className="font-mono">{obs.display_id}</span>. This action cannot be undone.
+                                                    </AlertDialogDescription>
+                                                </AlertDialogHeader>
+                                                <AlertDialogFooter>
+                                                    <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
+                                                    <AlertDialogAction onClick={(e) => handleDelete(e, obs.observation_id)}>Delete</AlertDialogAction>
+                                                </AlertDialogFooter>
+                                            </AlertDialogContent>
+                                        </AlertDialog>
+                                    )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={8} className="h-24 text-center">
+                              No observations have been recorded yet.
+                            </TableCell>
+                          </TableRow>
+                        )}
                       </TableBody>
                     </Table>
                   </CardContent>
