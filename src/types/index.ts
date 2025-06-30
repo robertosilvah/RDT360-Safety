@@ -3,6 +3,7 @@
 
 
 
+
 export type Comment = {
   user: string;
   comment: string;
@@ -153,13 +154,13 @@ export type HotWorkPermitChecklist = {
   atmosphere_checked: ChecklistStatus;
   vapors_purged: ChecklistStatus;
   confined_space_permit: ChecklistStatus;
-  fire_watch_provided: ChecklistStatus;
+  fire_watch_provided: 'Yes' | 'No';
 };
 
 export type HotWorkPermit = {
   permit_id: string;
   display_id: string;
-  status: 'Active' | 'Expired' | 'Closed' | 'Draft';
+  status: 'Active' | 'Expired' | 'Closed' | 'Draft' | 'Denied';
   supervisor: string;
   performed_by_type: 'RDT Employee' | 'Contractor';
   areaId: string;

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { AppShell } from '@/components/AppShell';
@@ -12,7 +11,7 @@ import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
-import { useForm, useController, Control, FieldPath } from 'react-hook-form';
+import { useFieldArray, useForm, useController, Control, FieldPath } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -24,6 +23,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useAuth } from '@/context/AuthContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 const checklistStatusEnum = z.enum(['Yes', 'No', 'N/A'], { required_error: "This check is required." });
 
@@ -40,7 +40,7 @@ const checklistSchema = z.object({
   atmosphere_checked: checklistStatusEnum,
   vapors_purged: checklistStatusEnum,
   confined_space_permit: checklistStatusEnum,
-  fire_watch_provided: checklistStatusEnum,
+  fire_watch_provided: z.enum(['Yes', 'No'], { required_error: "This check is required."}),
 });
 
 const permitFormSchema = z.object({
@@ -176,20 +176,9 @@ const PermitDetailsDialog = ({
 
    useEffect(() => {
     if (permit) {
-      // Data migration for older boolean-based checklists
-      const migratedChecklist: HotWorkPermitChecklist = {} as any;
-      for (const key in permit.checklist) {
-          const value = (permit.checklist as any)[key];
-          if (typeof value === 'boolean') {
-              migratedChecklist[key as keyof HotWorkPermitChecklist] = value ? 'Yes' : 'No';
-          } else {
-              migratedChecklist[key as keyof HotWorkPermitChecklist] = value || 'No';
-          }
-      }
-
       form.reset({
         ...permit,
-        checklist: migratedChecklist,
+        checklist: permit.checklist,
         permit_expires: format(new Date(permit.permit_expires), "yyyy-MM-dd'T'HH:mm"),
       });
       setNewComment('');
@@ -243,6 +232,30 @@ const PermitDetailsDialog = ({
     if(success) {
       toast({ title: 'Permit Issued', description: 'The permit is now active.' });
     }
+  };
+
+  const handleDenyPermit = async () => {
+      if (!permit || !currentUser?.displayName) {
+          toast({ variant: 'destructive', title: 'Error', description: 'Cannot deny permit.' });
+          return;
+      }
+      const updatedPermit: HotWorkPermit = {
+          ...permit,
+          status: 'Denied',
+          comments: [
+              ...(permit.comments || []),
+              {
+                  user: 'System Log',
+                  comment: `${currentUser.displayName} denied the permit.`,
+                  date: new Date().toISOString(),
+              }
+          ],
+      };
+      const success = await onUpdate(updatedPermit);
+      if (success) {
+          toast({ title: 'Permit Denied', description: 'The permit has been marked as denied.', variant: 'destructive' });
+          setOpen(false);
+      }
   };
 
   const handleSign = async (signatureType: 'employee' | 'final_supervisor') => {
@@ -341,7 +354,7 @@ const PermitDetailsDialog = ({
     }
   };
 
-  const isFormLocked = !isCreateMode && permit?.status === 'Closed';
+  const isFormLocked = !isCreateMode && (permit?.status === 'Closed' || permit?.status === 'Denied');
   const isDraft = !isCreateMode && permit?.status === 'Draft';
   const isViewMode = isFormLocked || (!isDraft && !isCreateMode);
 
@@ -402,13 +415,13 @@ const PermitDetailsDialog = ({
                     <h3 className="font-bold text-lg">Precaution & safeguard checklist</h3>
                     
                     {CHECKLIST_ITEMS.filter(i => i.group === 'precautions').map(item => (
-                        <ChecklistItem key={item.id} name={`checklist.${item.id}`} label={item.label} control={form.control} isViewMode={isViewMode} />
+                        <ChecklistItem key={item.id} name={`checklist.${item.id as keyof PermitFormValues['checklist']}`} label={item.label} control={form.control} isViewMode={isViewMode} />
                     ))}
 
                     <div>
                         <h4 className="font-semibold text-sm mt-4">Requirements within 35 ft. of work:</h4>
                         {CHECKLIST_ITEMS.filter(i => i.group === 'requirements').map(item => (
-                            <ChecklistItem key={item.id} name={`checklist.${item.id}`} label={item.label} control={form.control} isViewMode={isViewMode} />
+                            <ChecklistItem key={item.id} name={`checklist.${item.id as keyof PermitFormValues['checklist']}`} label={item.label} control={form.control} isViewMode={isViewMode} />
                         ))}
                     </div>
 
@@ -416,7 +429,7 @@ const PermitDetailsDialog = ({
                         <h4 className="font-semibold text-sm mt-4">Work on enclosed/confined equip:</h4>
                         <ChecklistItem name="checklist.confined_space_permit" label="Confined Space Permit obtained, if required." control={form.control} isViewMode={isViewMode} />
                         {CHECKLIST_ITEMS.filter(i => ['adequate_ventilation', 'atmosphere_checked', 'vapors_purged'].includes(i.id)).map(item => (
-                            <ChecklistItem key={item.id} name={`checklist.${item.id}`} label={item.label} control={form.control} isViewMode={isViewMode} disabled={confinedSpacePermit !== 'Yes'} />
+                            <ChecklistItem key={item.id} name={`checklist.${item.id as keyof PermitFormValues['checklist']}`} label={item.label} control={form.control} isViewMode={isViewMode} disabled={confinedSpacePermit !== 'Yes'} />
                         ))}
                     </div>
 
@@ -526,11 +539,30 @@ const PermitDetailsDialog = ({
             {!isCreateMode && permit && (
                 <>
                     {permit.status === 'Draft' && !isFormLocked && (
-                        <>
-                            <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-                            <Button type="submit">Save Draft Changes</Button>
-                            <Button type="button" onClick={handleIssuePermit}>Issue &amp; Sign Permit</Button>
-                        </>
+                        <div className="flex justify-between w-full">
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button type="button" variant="destructive">Deny Permit</Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you sure you want to deny this permit?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This action cannot be undone. The permit will be permanently marked as denied.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={handleDenyPermit}>Deny Permit</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                            <div className="flex gap-2">
+                                <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+                                <Button type="submit">Save Draft Changes</Button>
+                                <Button type="button" onClick={handleIssuePermit}>Issue &amp; Sign Permit</Button>
+                            </div>
+                        </div>
                     )}
                      {permit.status !== 'Draft' && (
                         <Button type="button" onClick={() => setOpen(false)}>Close</Button>
@@ -591,6 +623,9 @@ export default function HotWorkPermitsPage() {
     }
 
     const calculateStatus = (permit: HotWorkPermit): { text: HotWorkPermit['status'] | 'Expired', variant: 'default' | 'destructive' | 'outline' | 'secondary' } => {
+        if (permit.status === 'Denied') {
+            return { text: 'Denied', variant: 'destructive' };
+        }
         if (permit.status === 'Closed') {
             return { text: 'Closed', variant: 'outline' };
         }
