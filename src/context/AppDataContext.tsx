@@ -18,6 +18,7 @@ interface AppDataContextType {
   addCommentToAction: (actionId: string, comment: Comment) => Promise<void>;
   incidents: Incident[];
   addIncident: (incidentData: IncidentData) => Promise<void>;
+  deleteIncident: (incidentId: string) => Promise<void>;
   createInvestigationForIncident: (incident: Incident) => Promise<string | undefined>;
   updateIncident: (updatedIncident: Incident) => Promise<void>;
   addCommentToIncident: (incidentId: string, comment: Comment) => Promise<void>;
@@ -261,6 +262,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         comments: [],
     };
     await addDoc(collection(db, 'incidents'), newIncidentForDb);
+  };
+
+  const deleteIncident = async (incidentId: string) => {
+    await deleteDoc(doc(db, 'incidents', incidentId));
   };
 
   const createInvestigationForIncident = async (incident: Incident) => {
@@ -530,7 +535,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     <AppDataContext.Provider value={{
       observations, addObservation, updateObservation, deleteObservation,
       correctiveActions, addCorrectiveAction, updateCorrectiveAction, addCommentToAction,
-      incidents, updateIncident, addCommentToIncident, addIncident, createInvestigationForIncident,
+      incidents, updateIncident, addCommentToIncident, addIncident, createInvestigationForIncident, deleteIncident,
       safetyWalks, addSafetyWalk, updateSafetyWalk, addCommentToSafetyWalk,
       forkliftInspections, addForkliftInspection,
       forklifts, addForklift, updateForklift, removeForklift,

@@ -14,7 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { Incident, Comment, Investigation } from '@/types';
-import { FilePlus2, Download, MessageSquare, User, Clock, FileSearch, Loader2 } from 'lucide-react';
+import { FilePlus2, Download, MessageSquare, User, Clock, FileSearch, Loader2, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { useForm } from 'react-hook-form';
@@ -32,6 +32,17 @@ import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const incidentFormSchema = z.object({
   description: z.string().min(10, "Description must be at least 10 characters."),
@@ -227,7 +238,6 @@ const IncidentDetailsDialog = ({
     const updatedIncident = { ...incident, ...values, assigned_to: values.assigned_to || undefined };
     updateIncident(updatedIncident);
     toast({ title: 'Incident Updated', description: `Incident ${incident.display_id} has been updated.` });
-    onOpenChange(false);
   };
 
   const handleAddComment = () => {
@@ -397,10 +407,18 @@ const IncidentDetailsDialog = ({
 
 
 export default function IncidentsPage() {
-  const { incidents } = useAppData();
+  const { incidents, deleteIncident, users } = useAppData();
+  const { user: authUser } = useAuth();
   const [selectedIncident, setSelectedIncident] = useState<Incident | null>(null);
   const [isDetailsDialogOpen, setDetailsDialogOpen] = useState(false);
   const [isNewIncidentOpen, setNewIncidentOpen] = useState(false);
+  const { toast } = useToast();
+
+  const userRole = authUser?.uid === 'admin-user-id-001' 
+    ? 'Administrator' 
+    : users.find(u => u.id === authUser?.uid)?.role;
+  
+  const isAdmin = userRole === 'Administrator';
     
   const typeVariant: { [key in Incident['type']]: 'destructive' | 'secondary' } = {
     'Accident': 'destructive',
@@ -424,6 +442,16 @@ export default function IncidentsPage() {
     setSelectedIncident(currentIncidentState || incident);
     setDetailsDialogOpen(true);
   }
+
+  const handleDelete = (e: React.MouseEvent, incidentId: string) => {
+    e.stopPropagation();
+    deleteIncident(incidentId);
+    toast({
+        title: 'Incident Deleted',
+        description: 'The incident has been permanently removed.',
+        variant: 'destructive',
+    });
+  };
 
   return (
     <AppShell>
@@ -460,6 +488,7 @@ export default function IncidentsPage() {
                   <TableHead>Status</TableHead>
                   <TableHead>Assigned To</TableHead>
                   <TableHead>Docs</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -485,6 +514,29 @@ export default function IncidentsPage() {
                                 <Download className="h-4 w-4" />
                                 <span className="sr-only">Download Document</span>
                             </Button>
+                        )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                        {isAdmin && (
+                            <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This will permanently delete incident <span className="font-mono">{incident.display_id}</span>. This action cannot be undone.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={(e) => handleDelete(e, incident.incident_id)}>Delete</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
                         )}
                     </TableCell>
                   </TableRow>
