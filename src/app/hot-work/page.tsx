@@ -1,4 +1,3 @@
-
 'use client';
 
 import { AppShell } from '@/components/AppShell';
@@ -72,6 +71,20 @@ const CHECKLIST_ITEMS: { id: keyof HotWorkPermitChecklist; label: string; group:
     { id: 'fire_watch_provided', label: 'Trained and equipped Fire Watch provided during operations and at least 30 minutes after.', group: 'fire_watch' },
 ];
 
+const findAreaPathById = (areasToSearch: Area[], id: string, path: string[] = []): string => {
+    for (const area of areasToSearch) {
+        const newPath = [...path, area.name];
+        if (area.area_id === id) {
+            return newPath.join(' / ');
+        }
+        if (area.children) {
+            const foundPath = findAreaPathById(area.children, id, newPath);
+            if (foundPath) return foundPath;
+        }
+    }
+    return '';
+};
+
 const AreaSelectOptions = ({ areas, level = 0 }: { areas: Area[]; level?: number }) => {
   return (
     <>
@@ -85,20 +98,6 @@ const AreaSelectOptions = ({ areas, level = 0 }: { areas: Area[]; level?: number
       ))}
     </>
   );
-};
-
-const findAreaPathById = (areasToSearch: Area[], id: string, path: string[] = []): string => {
-    for (const area of areasToSearch) {
-        const newPath = [...path, area.name];
-        if (area.area_id === id) {
-            return newPath.join(' / ');
-        }
-        if (area.children) {
-            const foundPath = findAreaPathById(area.children, id, newPath);
-            if (foundPath) return foundPath;
-        }
-    }
-    return '';
 };
 
 const ChecklistSection = ({ form, items, isViewMode }: { form: any; items: { id: keyof HotWorkPermitChecklist; label: string }[]; isViewMode: boolean }) => {
@@ -131,17 +130,17 @@ const ChecklistSection = ({ form, items, isViewMode }: { form: any; items: { id:
 };
 
 
-const PermitDetailsDialog = ({ 
+const PermitDetailsDialog = ({
     permit,
-    onAdd, 
+    onAdd,
     onUpdate,
     addComment,
     setOpen,
     areas,
-}: { 
-    permit?: HotWorkPermit | null; 
-    onAdd: (data: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, locationName: string) => Promise<void>;
-    onUpdate: (data: HotWorkPermit) => void;
+}: {
+    permit?: HotWorkPermit | null;
+    onAdd: (data: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, locationName: string) => Promise<boolean>;
+    onUpdate: (data: HotWorkPermit) => Promise<boolean>;
     addComment: (permitId: string, comment: Comment) => void;
     setOpen: (open: boolean) => void;
     areas: Area[];
@@ -207,8 +206,10 @@ const PermitDetailsDialog = ({
         ],
     };
 
-    onUpdate(updatedPermit);
-    toast({ title: 'Permit Issued', description: 'The permit is now active.' });
+    const success = await onUpdate(updatedPermit);
+    if(success) {
+      toast({ title: 'Permit Issued', description: 'The permit is now active.' });
+    }
   };
 
   const handleSign = async (signatureType: 'employee' | 'final_supervisor') => {
@@ -216,7 +217,7 @@ const PermitDetailsDialog = ({
         toast({ variant: 'destructive', title: 'Error', description: 'Cannot sign permit.' });
         return;
     }
-    
+
     let updatedPermit = { ...permit };
     const signature = { name: currentUser.displayName, date: new Date().toISOString() };
     let commentLog: Comment | null = null;
@@ -241,15 +242,17 @@ const PermitDetailsDialog = ({
     } else {
         return; // Already signed
     }
-    
+
     if (commentLog) {
       updatedPermit.comments = [...(updatedPermit.comments || []), commentLog];
     }
 
-    onUpdate(updatedPermit);
-    toast({ title: 'Permit Signed', description: 'The permit has been successfully signed.' });
+    const success = await onUpdate(updatedPermit);
+    if(success) {
+      toast({ title: 'Permit Signed', description: 'The permit has been successfully signed.' });
+    }
   };
-  
+
   const handleAddComment = () => {
     if (newComment.trim() && permit && currentUser) {
       addComment(permit.permit_id, {
@@ -285,9 +288,11 @@ const PermitDetailsDialog = ({
         checklist: data.checklist,
       };
 
-      await onAdd(newPermit, locationName);
-      toast({ title: 'Draft Permit Created', description: 'The permit has been saved as a draft.' });
-      setOpen(false);
+      const success = await onAdd(newPermit, locationName);
+      if (success) {
+        toast({ title: 'Draft Permit Created', description: 'The permit has been saved as a draft.' });
+        setOpen(false);
+      }
 
     } else if (permit) {
       // This is for saving changes to an existing permit (e.g., a draft)
@@ -296,15 +301,18 @@ const PermitDetailsDialog = ({
         ...data,
         permit_expires: new Date(data.permit_expires).toISOString(),
       };
-      onUpdate(updatedPermit);
-      toast({ title: 'Permit Updated', description: 'Your changes have been saved.' });
+      const success = await onUpdate(updatedPermit);
+      if(success) {
+        toast({ title: 'Permit Updated', description: 'Your changes have been saved.' });
+        setOpen(false);
+      }
     }
   };
-  
+
   const isFormLocked = !isCreateMode && permit?.status === 'Closed';
   const isDraft = !isCreateMode && permit?.status === 'Draft';
   const isViewMode = isFormLocked || (!isDraft && !isCreateMode);
-  
+
   const getAvatarInitials = (name: string) => {
     if (name === 'System Log') return 'SL';
     return name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
@@ -334,7 +342,7 @@ const PermitDetailsDialog = ({
                     <FormField control={form.control} name="supervisor" render={({ field }) => (
                         <FormItem><FormLabel>Supervisor</FormLabel><FormControl><Input {...field} disabled={!isCreateMode && !isDraft} /></FormControl><FormMessage /></FormItem>
                     )}/>
-                    
+
                     <FormField control={form.control} name="performed_by_type" render={({ field }) => (
                         <FormItem><FormLabel>Hot work performed by:</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} defaultValue={field.value} className="flex gap-4" disabled={!isCreateMode && !isDraft}><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="RDT Employee" /></FormControl><FormLabel className="font-normal">RDT Employee</FormLabel></FormItem><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Contractor" /></FormControl><FormLabel className="font-normal">Contractor</FormLabel></FormItem></RadioGroup></FormControl><FormMessage /></FormItem>
                     )}/>
@@ -351,7 +359,7 @@ const PermitDetailsDialog = ({
                     <FormField control={form.control} name="work_to_be_performed_by" render={({ field }) => (
                         <FormItem><FormLabel>Work to be performed by</FormLabel><FormControl><Input {...field} disabled={!isCreateMode && !isDraft} /></FormControl><FormMessage /></FormItem>
                     )}/>
-                    
+
                     {!isCreateMode && permit.supervisor_signature && (
                         <div><FormLabel>Supervisor Signature</FormLabel><p className="text-sm p-2 border rounded-md bg-muted">{permit.supervisor_signature.name} on {format(new Date(permit.supervisor_signature.date), 'P p')}</p></div>
                     )}
@@ -360,14 +368,14 @@ const PermitDetailsDialog = ({
                 {/* Right Sub-Column (Checklist) */}
                 <div className="space-y-4 row-span-2">
                     <h3 className="font-bold text-lg">Precaution & safeguard checklist</h3>
-                    
+
                     <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'precautions')} isViewMode={isViewMode} />
-                    
+
                     <div>
                         <h4 className="font-semibold text-sm mt-4">Requirements within 35 ft. of work:</h4>
                         <ChecklistSection form={form} items={CHECKLIST_ITEMS.filter(i => i.group === 'requirements')} isViewMode={isViewMode} />
                     </div>
-                    
+
                     <div>
                         <h4 className="font-semibold text-sm mt-4">Work on enclosed/confined equip:</h4>
                         <FormField control={form.control} name="enclosed_equip_notes" render={({ field }) => (
@@ -391,13 +399,13 @@ const PermitDetailsDialog = ({
                 <FormField control={form.control} name="special_instructions" render={({ field }) => (
                     <FormItem><FormLabel>Special instructions</FormLabel><FormControl><Textarea {...field} value={field.value ?? ""} disabled={isViewMode} /></FormControl><FormMessage /></FormItem>
                 )}/>
-                
+
                 {!isCreateMode && (
                     <>
                     <Separator />
                     <div className="space-y-4">
                         <h3 className="font-bold text-lg">Work Completion & Final Check</h3>
-                        
+
                         {/* Employee Signature */}
                         <div>
                             <FormLabel>Employee Acknowledgement</FormLabel>
@@ -500,12 +508,26 @@ export default function HotWorkPermitsPage() {
     const [isDialogOpen, setDialogOpen] = useState(false);
     const [selectedPermit, setSelectedPermit] = useState<HotWorkPermit | null>(null);
 
-    const handleAddPermit = async (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, locationName: string) => {
-        await addHotWorkPermit(permit, locationName);
+    const handleAddPermit = async (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, locationName: string): Promise<boolean> => {
+        try {
+            await addHotWorkPermit(permit, locationName);
+            return true;
+        } catch (error) {
+            console.error("Failed to add Hot Work Permit:", error);
+            toast({ variant: 'destructive', title: 'Save Failed', description: 'There was an error saving the permit.' });
+            return false;
+        }
     };
-    
-    const handleUpdatePermit = async (permit: HotWorkPermit) => {
-        await updateHotWorkPermit(permit);
+
+    const handleUpdatePermit = async (permit: HotWorkPermit): Promise<boolean> => {
+        try {
+            await updateHotWorkPermit(permit);
+            return true;
+        } catch (error) {
+            console.error("Failed to update Hot Work Permit:", error);
+            toast({ variant: 'destructive', title: 'Update Failed', description: 'There was an error updating the permit.' });
+            return false;
+        }
     };
 
     const handleAddCommentToPermit = async (permitId: string, comment: Comment) => {
@@ -516,7 +538,7 @@ export default function HotWorkPermitsPage() {
         setSelectedPermit(permit || null);
         setDialogOpen(true);
     }
-    
+
     const calculateStatus = (permit: HotWorkPermit): { text: HotWorkPermit['status'] | 'Expired', variant: 'default' | 'destructive' | 'outline' | 'secondary' } => {
         if (permit.status === 'Closed') {
             return { text: 'Closed', variant: 'outline' };
@@ -583,11 +605,11 @@ export default function HotWorkPermitsPage() {
             </div>
             <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) setSelectedPermit(null); setDialogOpen(open); }}>
                 <DialogContent className="max-w-5xl">
-                    <PermitDetailsDialog 
-                        onAdd={handleAddPermit} 
+                    <PermitDetailsDialog
+                        onAdd={handleAddPermit}
                         onUpdate={handleUpdatePermit}
                         addComment={handleAddCommentToPermit}
-                        setOpen={setDialogOpen} 
+                        setOpen={setDialogOpen}
                         permit={selectedPermit}
                         areas={areas}
                     />
