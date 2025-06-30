@@ -463,6 +463,34 @@ const ObservationDetailsDialog = ({
   );
 };
 
+// Helper function to parse a single CSV row, handling quoted fields.
+const parseCsvRow = (row: string): string[] => {
+  const values: string[] = [];
+  let currentVal = '';
+  let inQuotes = false;
+  for (let i = 0; i < row.length; i++) {
+    const char = row[i];
+    if (char === '"') {
+      // If we're in quotes and the next character is also a quote, it's an escaped quote
+      if (inQuotes && i + 1 < row.length && row[i + 1] === '"') {
+        currentVal += '"';
+        i++; // Skip the next character
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      // If it's a comma and we're not in quotes, it's a field separator
+      values.push(currentVal);
+      currentVal = '';
+    } else {
+      // Any other character is part of the current value
+      currentVal += char;
+    }
+  }
+  values.push(currentVal); // Add the last value
+  return values;
+};
+
 export default function ObservationsPage() {
   const { observations, addObservation, deleteObservation, addCorrectiveAction, users, updateObservation, uploadSettings, areas } = useAppData();
   const { user: authUser } = useAuth();
@@ -690,19 +718,15 @@ export default function ObservationsPage() {
             const observationsToCommit: Omit<Observation, 'observation_id'>[] = [];
 
             for (let i = 1; i < rows.length; i++) {
-                const values = rows[i].split(',');
+                const values = parseCsvRow(rows[i]);
                 if (values.length !== headers.length) {
-                    console.warn(`Skipping malformed row ${i + 1}: Check column count.`);
+                    console.warn(`Skipping malformed row ${i + 1}: Check column count. Expected ${headers.length}, got ${values.length}.`);
                     continue;
                 }
                 
                 const obsData: { [key: string]: string } = {};
                 headers.forEach((header, index) => {
-                    let value = values[index]?.trim();
-                    if (value?.startsWith('"') && value.endsWith('"')) {
-                        value = value.substring(1, value.length - 1).replace(/""/g, '"');
-                    }
-                    obsData[header] = value;
+                    obsData[header] = values[index];
                 });
 
                 if (!obsData.report_type || !obsData.submitted_by || !obsData.areaId || !obsData.description) {
