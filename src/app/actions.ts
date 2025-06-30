@@ -58,7 +58,6 @@ export async function fetchAndUploadImageAction(imageUrl: string): Promise<strin
 
   // Check for Google Drive link and transform it into a direct download link
   if (imageUrl.includes('drive.google.com')) {
-    // Regex to find file ID from common Google Drive share URL formats
     const regex = /(?:drive\.google\.com\/(?:file\/d\/|open\?id=))([a-zA-Z0-9_-]+)/;
     const match = imageUrl.match(regex);
     if (match && match[1]) {
@@ -89,7 +88,14 @@ export async function fetchAndUploadImageAction(imageUrl: string): Promise<strin
       return null;
     }
     
-    const contentType = response.headers.get('content-type') || 'image/jpeg';
+    const contentType = response.headers.get('content-type');
+    
+    // Final check: Is the returned content actually an image?
+    if (!contentType || !contentType.startsWith('image/')) {
+        console.error(`URL did not return an image. It returned Content-Type: ${contentType}. This can happen if the link requires a login or shows a confirmation page.`);
+        return null;
+    }
+
     const imageBuffer = await response.arrayBuffer();
     
     if (imageBuffer.byteLength === 0) {

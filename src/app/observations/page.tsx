@@ -511,7 +511,7 @@ const TempImageUploader = () => {
                 setResult(`Success! New URL: ${uploadedUrl}`);
                 toast({ title: 'Upload Successful' });
             } else {
-                setResult('Upload failed. Check server console for details.');
+                setResult('Upload failed. The URL may not be a direct link to an image, or the remote server blocked the request. Please check the server console for details.');
                 toast({ variant: 'destructive', title: 'Upload Failed' });
             }
         } catch (error) {
@@ -527,7 +527,7 @@ const TempImageUploader = () => {
         <Card className="mb-6 bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800">
             <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Wrench className="h-5 w-5" /> Temporary URL Uploader Tool</CardTitle>
-                <CardDescription>Paste an image URL to test the server-side upload action directly. This tool is for debugging and can be removed later.</CardDescription>
+                <CardDescription>Paste a public image URL to test the server-side upload action. This tool is for debugging and can be removed later.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -628,7 +628,7 @@ export default function ObservationsPage() {
         imageUrl = await getDownloadURL(storageRef);
       }
 
-      const newObservationData: Omit<Observation, 'observation_id' | 'display_id' | 'status' | 'imageUrl' | 'safety_walk_id'> = {
+      const newObservationData: Omit<Observation, 'observation_id' | 'display_id' | 'status' | 'safety_walk_id'> = {
           report_type: values.report_type,
           submitted_by: values.submitted_by,
           date: new Date(values.date).toISOString(),
@@ -640,7 +640,7 @@ export default function ObservationsPage() {
           unsafe_category: values.unsafe_category,
       };
       
-      const observationWithImage = imageUrl ? { ...newObservationData, imageUrl } : newObservationData;
+      const observationWithImage = { ...newObservationData, ...(imageUrl && { imageUrl }) };
       const newObservationRef = await addObservation(observationWithImage);
 
       if (values.createAction && values.actionDescription && values.actionResponsiblePerson && values.actionDueDate) {
@@ -773,7 +773,7 @@ export default function ObservationsPage() {
             
             const obsCollection = collection(db, 'observations');
             const currentObsCount = observations.length;
-            const observationsToCommit: Omit<Observation, 'observation_id' | 'imageUrl' | 'safety_walk_id'>[] = [];
+            const observationsToCommit: Omit<Observation, 'observation_id'>[] = [];
             const imageUrlsToProcess: { index: number, url: string }[] = [];
 
             for (let i = 1; i < rows.length; i++) {
@@ -795,7 +795,7 @@ export default function ObservationsPage() {
                 
                 const displayId = `OBS${String(currentObsCount + observationsToCommit.length + 1).padStart(3, '0')}`;
                 
-                const newObservation: Omit<Observation, 'observation_id' | 'imageUrl' | 'safety_walk_id'> = {
+                const newObservation: Omit<Observation, 'observation_id'> = {
                     display_id: displayId,
                     status: 'Open',
                     report_type: obsData.report_type as Observation['report_type'] || 'Safety Concern',
