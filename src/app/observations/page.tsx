@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -460,7 +458,7 @@ const ObservationDetailsDialog = ({
 };
 
 export default function ObservationsPage() {
-  const { observations, addObservation, deleteObservation, addCorrectiveAction, users, updateObservation } = useAppData();
+  const { observations, addObservation, deleteObservation, addCorrectiveAction, users, updateObservation, uploadSettings } = useAppData();
   const { user: authUser } = useAuth();
   const [selectedObservation, setSelectedObservation] = useState<Observation | null>(null);
   const [editingObservation, setEditingObservation] = useState<Observation | null>(null);
@@ -508,6 +506,17 @@ export default function ObservationsPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const maxSizeMB = uploadSettings?.imageMaxSizeMB || 5; // Default to 5MB
+      const maxSizeInBytes = maxSizeMB * 1024 * 1024;
+      if (file.size > maxSizeInBytes) {
+        toast({
+          variant: 'destructive',
+          title: 'File too large',
+          description: `The image must be smaller than ${maxSizeMB}MB.`,
+        });
+        if (e.target) e.target.value = ''; // Clear the input
+        return;
+      }
       setSelectedFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -568,6 +577,7 @@ export default function ObservationsPage() {
       form.reset();
       setImagePreview(null);
       setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = '';
     } catch (error) {
         console.error("Failed to submit observation:", error);
         toast({
@@ -891,7 +901,7 @@ export default function ObservationsPage() {
                     />
                     <div className="space-y-2">
                       <FormLabel htmlFor="photo">Picture</FormLabel>
-                      <Input id="photo" type="file" accept="image/*" onChange={handleFileChange} />
+                      <Input id="photo" type="file" accept="image/*" onChange={handleFileChange} ref={fileInputRef} />
                     </div>
                     {imagePreview && (
                       <div className="mt-4 relative w-full aspect-video">

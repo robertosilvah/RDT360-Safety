@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Truck, ListChecks, FolderTree, Paintbrush } from 'lucide-react';
+import { Users, Truck, ListChecks, FolderTree, Paintbrush, Upload } from 'lucide-react';
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
     const pathname = usePathname();
@@ -15,6 +15,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
         : pathname.includes('/checklist') ? 'checklist' 
         : pathname.includes('/areas') ? 'areas'
         : pathname.includes('/branding') ? 'branding'
+        : pathname.includes('/uploads') ? 'uploads'
         : '';
 
     return (
@@ -28,7 +29,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
                 </div>
 
                 <Tabs value={activeTab} className="space-y-4">
-                    <TabsList>
+                    <TabsList className="overflow-x-auto h-auto py-1">
                         <TabsTrigger value="users" asChild>
                            <Link href="/settings/users">
                                <Users className="mr-2 h-4 w-4" /> Users
@@ -52,6 +53,11 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
                         <TabsTrigger value="branding" asChild>
                            <Link href="/settings/branding">
                                <Paintbrush className="mr-2 h-4 w-4" /> Branding
+                           </Link>
+                        </TabsTrigger>
+                         <TabsTrigger value="uploads" asChild>
+                           <Link href="/settings/uploads">
+                               <Upload className="mr-2 h-4 w-4" /> File Uploads
                            </Link>
                         </TabsTrigger>
                     </TabsList>

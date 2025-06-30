@@ -181,3 +181,8 @@ export type PredefinedChecklistItem = {
 export type BrandingSettings = {
   logoUrl: string;
 };
+
+export type UploadSettings = {
+  imageMaxSizeMB: number;
+  docMaxSizeMB: number;
+};

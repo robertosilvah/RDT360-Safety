@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -85,7 +84,7 @@ const NewActionForm = ({ investigationId, onActionAdded }: { investigationId: st
 };
 
 const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { investigation: Investigation | null; isOpen: boolean; onOpenChange: (open: boolean) => void; }) => {
-  const { incidents, updateInvestigation, addCommentToInvestigation, addDocumentToInvestigation, correctiveActions } = useAppData();
+  const { incidents, updateInvestigation, addCommentToInvestigation, addDocumentToInvestigation, correctiveActions, uploadSettings } = useAppData();
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -169,10 +168,24 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0] && investigation) {
         const file = e.target.files[0];
+        const maxSizeMB = uploadSettings?.docMaxSizeMB || 10;
+        const maxSizeInBytes = maxSizeMB * 1024 * 1024;
+
+        if (file.size > maxSizeInBytes) {
+          toast({
+            variant: 'destructive',
+            title: 'File too large',
+            description: `The document must be smaller than ${maxSizeMB}MB.`,
+          });
+          if (e.target) e.target.value = '';
+          return;
+        }
+
         // Mocking the upload process
         const newDocument = { name: file.name, url: `/docs/mock/${file.name}`};
         addDocumentToInvestigation(investigation.investigation_id, newDocument);
         toast({ title: "Document Uploaded", description: `${file.name} has been attached.`});
+        if (e.target) e.target.value = '';
     }
   }
 

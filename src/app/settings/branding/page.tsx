@@ -12,7 +12,7 @@ import { Loader2, Upload } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 
 export default function BrandingSettingsPage() {
-  const { brandingSettings, updateBrandingSettings } = useAppData();
+  const { brandingSettings, updateBrandingSettings, uploadSettings } = useAppData();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -21,6 +21,18 @@ export default function BrandingSettingsPage() {
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      const maxSizeMB = uploadSettings?.imageMaxSizeMB || 2; // Default to 2MB for logos
+      const maxSizeInBytes = maxSizeMB * 1024 * 1024;
+      if (file.size > maxSizeInBytes) {
+        toast({
+          variant: 'destructive',
+          title: 'File too large',
+          description: `The logo image must be smaller than ${maxSizeMB}MB.`,
+        });
+        if (event.target) event.target.value = '';
+        return;
+      }
+
       setSelectedFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {

@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -35,7 +34,7 @@ const docFormSchema = z.object({
 type DocFormValues = z.infer<typeof docFormSchema>;
 
 const DocumentUploadForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
-  const { addSafetyDoc } = useAppData();
+  const { addSafetyDoc, uploadSettings } = useAppData();
   const { toast } = useToast();
   const [file, setFile] = useState<File | null>(null);
   const [fileName, setFileName] = useState('');
@@ -48,6 +47,17 @@ const DocumentUploadForm = ({ setOpen }: { setOpen: (open: boolean) => void }) =
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const selectedFile = e.target.files[0];
+      const maxSizeMB = uploadSettings?.docMaxSizeMB || 10;
+      const maxSizeInBytes = maxSizeMB * 1024 * 1024;
+      if (selectedFile.size > maxSizeInBytes) {
+        toast({
+          variant: 'destructive',
+          title: 'File too large',
+          description: `The document must be smaller than ${maxSizeMB}MB.`,
+        });
+        if (e.target) e.target.value = '';
+        return;
+      }
       setFile(selectedFile);
       setFileName(selectedFile.name);
     }

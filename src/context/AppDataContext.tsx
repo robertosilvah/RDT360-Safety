@@ -1,9 +1,7 @@
-
-
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, IncidentData } from '@/types';
+import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, IncidentData } from '@/types';
 import { db, storage } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, writeBatch, DocumentReference } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -62,6 +60,8 @@ interface AppDataContextType {
   updateHotWorkPermit: (updatedPermit: HotWorkPermit) => Promise<void>;
   brandingSettings: BrandingSettings | null;
   updateBrandingSettings: (logoFile: File) => Promise<void>;
+  uploadSettings: UploadSettings | null;
+  updateUploadSettings: (settings: UploadSettings) => Promise<void>;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -89,6 +89,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [jsas, setJsas] = useState<JSA[]>([]);
   const [hotWorkPermits, setHotWorkPermits] = useState<HotWorkPermit[]>([]);
   const [brandingSettings, setBrandingSettings] = useState<BrandingSettings | null>(null);
+  const [uploadSettings, setUploadSettings] = useState<UploadSettings | null>(null);
 
   useEffect(() => {
     const unsubscribers = [
@@ -152,6 +153,14 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
           setBrandingSettings(doc.data() as BrandingSettings);
         } else {
           setBrandingSettings(null); // No branding settings yet
+        }
+      }),
+      onSnapshot(doc(db, 'settings', 'uploads'), (doc) => {
+        if (doc.exists()) {
+          setUploadSettings(doc.data() as UploadSettings);
+        } else {
+          // Set default settings if none exist
+          setUploadSettings({ imageMaxSizeMB: 5, docMaxSizeMB: 10 });
         }
       }),
     ];
@@ -370,6 +379,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     const logoUrl = await getDownloadURL(storageRef);
     await setDoc(doc(db, 'settings', 'branding'), { logoUrl });
   };
+  
+  const updateUploadSettings = async (settings: UploadSettings) => {
+    await setDoc(doc(db, 'settings', 'uploads'), settings);
+  };
 
   return (
     <AppDataContext.Provider value={{
@@ -388,6 +401,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       jsas, addJsa, updateJsa,
       hotWorkPermits, addHotWorkPermit, updateHotWorkPermit,
       brandingSettings, updateBrandingSettings,
+      uploadSettings, updateUploadSettings,
     }}>
       {children}
     </AppDataContext.Provider>
