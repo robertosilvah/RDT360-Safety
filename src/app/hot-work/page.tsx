@@ -155,11 +155,13 @@ const PermitDetailsDialog = ({
     resolver: zodResolver(permitFormSchema),
     defaultValues: isCreateMode ? {
         supervisor: currentUser?.displayName || '',
+        performed_by_type: 'RDT Employee',
         areaId: '',
         work_to_be_performed_by: '',
         permit_expires: '',
         special_instructions: '',
         enclosed_equip_notes: '',
+        fire_watch_required: 'No',
         checklist: {
             fire_extinguisher: false, equipment_good_repair: false, energy_locked_out: false,
             flammables_removed: false, floors_swept: false, fire_resistive_covers: false,
