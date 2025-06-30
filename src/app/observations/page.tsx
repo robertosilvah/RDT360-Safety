@@ -462,6 +462,30 @@ const ObservationDetailsDialog = ({
   );
 };
 
+const uploadImageFromUrl = async (url: string): Promise<string | null> => {
+  if (!url || !url.startsWith('http')) {
+    return null;
+  }
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error(`Failed to fetch image from ${url}. Status: ${response.status}`);
+      return null;
+    }
+    const blob = await response.blob();
+    
+    const fileName = url.substring(url.lastIndexOf('/') + 1) || 'imported-image';
+    const storageRef = ref(storage, `observations/imported/${Date.now()}_${fileName}`);
+    
+    await uploadBytes(storageRef, blob);
+    const downloadUrl = await getDownloadURL(storageRef);
+    return downloadUrl;
+  } catch (error) {
+    console.error(`Error uploading image from URL ${url}:`, error);
+    return null;
+  }
+};
+
 export default function ObservationsPage() {
   const { observations, addObservation, deleteObservation, addCorrectiveAction, users, updateObservation, uploadSettings, areas } = useAppData();
   const { user: authUser } = useAuth();
@@ -472,7 +496,6 @@ export default function ObservationsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Determine user role, special handling for mock admin user
   const userRole = authUser?.uid === 'admin-user-id-001' 
     ? 'Administrator' 
     : users.find(u => u.id === authUser?.uid)?.role;
@@ -511,7 +534,7 @@ export default function ObservationsPage() {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const maxSizeMB = uploadSettings?.imageMaxSizeMB || 5; // Default to 5MB
+      const maxSizeMB = uploadSettings?.imageMaxSizeMB || 5; 
       const maxSizeInBytes = maxSizeMB * 1024 * 1024;
       if (file.size > maxSizeInBytes) {
         toast({
@@ -519,7 +542,7 @@ export default function ObservationsPage() {
           title: 'File too large',
           description: `The image must be smaller than ${maxSizeMB}MB.`,
         });
-        if (e.target) e.target.value = ''; // Clear the input
+        if (e.target) e.target.value = ''; 
         return;
       }
       setSelectedFile(file);
@@ -659,9 +682,11 @@ export default function ObservationsPage() {
 
     const reader = new FileReader();
     reader.onload = async (event) => {
+        setIsSubmitting(true);
         const text = event.target?.result as string;
         if (!text) {
             toast({ variant: 'destructive', title: 'Import Failed', description: 'Could not read file.' });
+            setIsSubmitting(false);
             return;
         }
 
@@ -681,10 +706,9 @@ export default function ObservationsPage() {
                 }
             }
             
-            const batch = writeBatch(db);
-            let importedCount = 0;
             const obsCollection = collection(db, 'observations');
             const currentObsCount = observations.length;
+            const observationsToCommit: Omit<Observation, 'observation_id'>[] = [];
 
             for (let i = 1; i < rows.length; i++) {
                 const values = rows[i].split(',');
@@ -697,7 +721,7 @@ export default function ObservationsPage() {
                 headers.forEach((header, index) => {
                     let value = values[index]?.trim();
                     if (value?.startsWith('"') && value.endsWith('"')) {
-                        value = value.substring(1, value.length - 1);
+                        value = value.substring(1, value.length - 1).replace(/""/g, '"');
                     }
                     obsData[header] = value;
                 });
@@ -706,11 +730,25 @@ export default function ObservationsPage() {
                     console.warn(`Skipping row ${i+1} due to missing required data.`);
                     continue;
                 }
+                
+                let finalImageUrl: string | undefined = undefined;
+                if (obsData.imageUrl) {
+                    const uploadedUrl = await uploadImageFromUrl(obsData.imageUrl);
+                    if (uploadedUrl) {
+                        finalImageUrl = uploadedUrl;
+                    } else {
+                        toast({
+                            variant: 'destructive',
+                            title: 'Image Upload Failed',
+                            description: `Could not upload image for row ${i + 1}. The observation will be created without it.`,
+                            duration: 5000,
+                        });
+                    }
+                }
 
-                const displayId = `OBS${String(currentObsCount + importedCount + 1).padStart(3, '0')}`;
-                const newDocRef = doc(obsCollection);
-
-                const baseObservation: Omit<Observation, 'observation_id' | 'imageUrl' | 'safety_walk_id'> = {
+                const displayId = `OBS${String(currentObsCount + observationsToCommit.length + 1).padStart(3, '0')}`;
+                
+                const newObservation: Omit<Observation, 'observation_id'> = {
                     display_id: displayId,
                     status: 'Open',
                     report_type: obsData.report_type as Observation['report_type'] || 'Safety Concern',
@@ -722,29 +760,29 @@ export default function ObservationsPage() {
                     description: obsData.description,
                     actions: obsData.actions || 'No immediate actions logged.',
                     unsafe_category: obsData.unsafe_category as Observation['unsafe_category'] || 'N/A',
-                };
-                
-                const newObservation = {
-                    ...baseObservation,
-                    ...(obsData.imageUrl && { imageUrl: obsData.imageUrl }),
+                    ...(finalImageUrl && { imageUrl: finalImageUrl }),
                     ...(obsData.safety_walk_id && { safety_walk_id: obsData.safety_walk_id }),
-                }
-
-                batch.set(newDocRef, newObservation as any);
-                importedCount++;
+                };
+                observationsToCommit.push(newObservation);
             }
 
-            if (importedCount > 0) {
+            if (observationsToCommit.length > 0) {
+              const batch = writeBatch(db);
+              observationsToCommit.forEach(obs => {
+                  const newDocRef = doc(obsCollection);
+                  batch.set(newDocRef, obs);
+              });
               await batch.commit();
-              toast({ title: 'Import Successful', description: `${importedCount} new observations imported.` });
+              toast({ title: 'Import Successful', description: `${observationsToCommit.length} new observations imported.` });
             } else {
-              toast({ title: 'Import Complete', description: 'No new observations to import, or all rows were malformed.' });
+              toast({ title: 'Import Complete', description: 'No new valid observations to import.' });
             }
 
         } catch (error) {
             console.error('Import error:', error);
             toast({ variant: 'destructive', title: 'Import Failed', description: 'There was an error parsing the CSV file.' });
         } finally {
+            setIsSubmitting(false);
             if (e.target) e.target.value = '';
         }
     };
@@ -1047,8 +1085,9 @@ export default function ObservationsPage() {
                                         accept=".csv"
                                         onChange={handleFileImport}
                                     />
-                                    <Button variant="outline" size="sm" onClick={handleImportClick}>
-                                        <Upload className="mr-2 h-4 w-4" /> Import
+                                    <Button variant="outline" size="sm" onClick={handleImportClick} disabled={isSubmitting}>
+                                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                                        Import
                                     </Button>
                                 </>
                             )}
