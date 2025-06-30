@@ -1,3 +1,4 @@
+
 'use client';
 
 import { AppShell } from '@/components/AppShell';
@@ -7,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Separator } from '@/components/ui/separator';
 import type { JSA, Area } from '@/types';
 import { PlusCircle, Users, Shield, FileSignature, Edit, UserCheck, Trash2, MapPin, Share2, Printer, Wand2, Loader2, Clock, MoreVertical, Copy } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -342,7 +343,41 @@ const JsaSummaryCard = ({ jsa, areaPath, onViewDetails, onEdit, onCopy }: { jsa:
     );
 }
 
-export default function JsaPage() {
+const PageSkeleton = () => (
+    <AppShell>
+        <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+            <div className="flex items-center justify-between space-y-2">
+                <Skeleton className="h-10 w-1/3" />
+                <Skeleton className="h-10 w-28" />
+            </div>
+             <Skeleton className="h-4 w-2/3" />
+            <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+                {[...Array(3)].map((_, i) => (
+                    <Card key={i}>
+                        <CardHeader>
+                            <Skeleton className="h-6 w-3/4" />
+                            <Skeleton className="h-4 w-full mt-2" />
+                            <Skeleton className="h-4 w-1/2 mt-1" />
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                             <div className="flex justify-between text-sm">
+                                <Skeleton className="h-6 w-20" />
+                                <Skeleton className="h-6 w-20" />
+                            </div>
+                            <Skeleton className="h-5 w-1/2" />
+                            <Skeleton className="h-5 w-1/3" />
+                        </CardContent>
+                        <CardFooter className="mt-auto border-t pt-4">
+                            <Skeleton className="h-10 w-full" />
+                        </CardFooter>
+                    </Card>
+                ))}
+            </div>
+        </div>
+    </AppShell>
+);
+
+const JsaPageContent = () => {
     const MOCKED_CURRENT_USER = "Sarah Miller";
     const { jsas, addJsa, updateJsa, areas } = useAppData();
     const { toast } = useToast();
@@ -482,4 +517,12 @@ export default function JsaPage() {
             />
         </AppShell>
     );
+}
+
+export default function JsaPage() {
+    return (
+        <Suspense fallback={<PageSkeleton />}>
+            <JsaPageContent />
+        </Suspense>
+    )
 }
