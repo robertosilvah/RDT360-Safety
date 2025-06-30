@@ -4,6 +4,7 @@
 
 
 
+
 export type Comment = {
   user: string;
   comment: string;
@@ -175,6 +176,40 @@ export type HotWorkPermit = {
   created_date: string;
   supervisor_signature?: { name: string; date: string };
   employee_signature?: { name: string; date: string };
+  final_supervisor_signature?: { name: string; date: string };
+  comments: Comment[];
+};
+
+export type ConfinedSpacePermitChecklist = {
+  isolation_and_blinding_complete: ChecklistStatus;
+  cleaning_and_purging_complete: ChecklistStatus;
+  ventilation_adequate: ChecklistStatus;
+  standby_person_present: ChecklistStatus;
+  rescue_equipment_ready: ChecklistStatus;
+  communication_established: ChecklistStatus;
+  atmospheric_testing_ok: 'Yes' | 'No';
+  oxygen_level: string; // e.g., "20.9%"
+  combustible_gases_level: string; // e.g., "<10% LEL"
+  toxic_gases_level: string; // e.g., "0 ppm H2S"
+};
+
+export type ConfinedSpacePermit = {
+  permit_id: string;
+  display_id: string;
+  status: 'Active' | 'Expired' | 'Closed' | 'Draft' | 'Denied';
+  supervisor: string;
+  entrants: string; // Comma-separated
+  areaId: string;
+  locationName: string;
+  work_description: string;
+  permit_expires: string;
+  work_complete?: string;
+  final_check?: string;
+  special_instructions?: string;
+  checklist: ConfinedSpacePermitChecklist;
+  created_date: string;
+  supervisor_signature?: { name: string; date: string };
+  entrant_signature?: { name: string; date: string };
   final_supervisor_signature?: { name: string; date: string };
   comments: Comment[];
 };

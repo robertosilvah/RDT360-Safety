@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -34,6 +35,7 @@ import {
   FileSearch,
   FileEdit,
   ChevronRight,
+  Box,
 } from 'lucide-react';
 import { Header } from './Header';
 import { Button } from './ui/button';
@@ -53,9 +55,10 @@ const menuItems = [
   { 
     label: 'Permits', 
     icon: FileEdit,
-    subPath: ['/hot-work'],
+    subPath: ['/hot-work', '/confined-space'],
     items: [
       { href: '/hot-work', label: 'Hot Work Permits', icon: Flame },
+      { href: '/confined-space', label: 'Confined Space', icon: Box },
     ]
   },
   {

@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, IncidentData } from '@/types';
+import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, IncidentData, ConfinedSpacePermit } from '@/types';
 import { db, storage } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, writeBatch, DocumentReference } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -60,6 +60,10 @@ interface AppDataContextType {
   addHotWorkPermit: (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, locationName: string) => Promise<void>;
   updateHotWorkPermit: (updatedPermit: HotWorkPermit) => Promise<void>;
   addCommentToHotWorkPermit: (permitId: string, comment: Comment) => Promise<void>;
+  confinedSpacePermits: ConfinedSpacePermit[];
+  addConfinedSpacePermit: (permit: Omit<ConfinedSpacePermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, locationName: string) => Promise<void>;
+  updateConfinedSpacePermit: (updatedPermit: ConfinedSpacePermit) => Promise<void>;
+  addCommentToConfinedSpacePermit: (permitId: string, comment: Comment) => Promise<void>;
   brandingSettings: BrandingSettings | null;
   updateBrandingSettings: (logoFile: File) => Promise<void>;
   uploadSettings: UploadSettings | null;
@@ -91,6 +95,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [investigations, setInvestigations] = useState<Investigation[]>([]);
   const [jsas, setJsas] = useState<JSA[]>([]);
   const [hotWorkPermits, setHotWorkPermits] = useState<HotWorkPermit[]>([]);
+  const [confinedSpacePermits, setConfinedSpacePermits] = useState<ConfinedSpacePermit[]>([]);
   const [brandingSettings, setBrandingSettings] = useState<BrandingSettings | null>(null);
   const [uploadSettings, setUploadSettings] = useState<UploadSettings | null>(null);
 
@@ -194,6 +199,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         setJsas(processedJsas);
       }),
       onSnapshot(collection(db, 'hotWorkPermits'), (snapshot) => setHotWorkPermits(mapFromSnapshot(snapshot, 'permit_id'))),
+      onSnapshot(collection(db, 'confinedSpacePermits'), (snapshot) => setConfinedSpacePermits(mapFromSnapshot(snapshot, 'permit_id'))),
       onSnapshot(doc(db, 'settings', 'branding'), (doc) => {
         if (doc.exists()) {
           setBrandingSettings(doc.data() as BrandingSettings);
@@ -483,6 +489,30 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       await updateDoc(doc(db, 'hotWorkPermits', permitId), { comments: updatedComments });
     }
   };
+
+  const addConfinedSpacePermit = async (permit: Omit<ConfinedSpacePermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, locationName: string) => {
+    const displayId = `CSP${String(confinedSpacePermits.length + 1).padStart(3, '0')}`;
+    const newPermitData = {
+        ...permit,
+        display_id: displayId,
+        created_date: new Date().toISOString(),
+        status: 'Draft' as const,
+        locationName: locationName,
+        comments: [],
+    };
+    await addDoc(collection(db, 'confinedSpacePermits'), newPermitData);
+  };
+  const updateConfinedSpacePermit = async (updatedPermit: ConfinedSpacePermit) => {
+    const { permit_id, ...data } = updatedPermit;
+    await updateDoc(doc(db, 'confinedSpacePermits', permit_id), data);
+  };
+  const addCommentToConfinedSpacePermit = async (permitId: string, comment: Comment) => {
+    const permit = confinedSpacePermits.find(p => p.permit_id === permitId);
+    if (permit) {
+      const updatedComments = [...(permit.comments || []), comment];
+      await updateDoc(doc(db, 'confinedSpacePermits', permitId), { comments: updatedComments });
+    }
+  };
   
   const updateBrandingSettings = async (logoFile: File) => {
     if (!logoFile) return;
@@ -512,6 +542,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       investigations, updateInvestigation, addCommentToInvestigation, addDocumentToInvestigation,
       jsas, addJsa, updateJsa,
       hotWorkPermits, addHotWorkPermit, updateHotWorkPermit, addCommentToHotWorkPermit,
+      confinedSpacePermits, addConfinedSpacePermit, updateConfinedSpacePermit, addCommentToConfinedSpacePermit,
       brandingSettings, updateBrandingSettings,
       uploadSettings, updateUploadSettings,
     }}>
