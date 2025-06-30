@@ -492,92 +492,6 @@ const parseCsvRow = (row: string): string[] => {
   return values;
 };
 
-const TempImageUploader = () => {
-    const [url, setUrl] = useState('');
-    const [result, setResult] = useState('');
-    const [isUploading, setIsUploading] = useState(false);
-    const [validationError, setValidationError] = useState('');
-    const { toast } = useToast();
-
-    const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const newUrl = e.target.value;
-        setUrl(newUrl);
-
-        if (!newUrl) {
-            setValidationError('');
-            return;
-        }
-
-        const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.svg', '.webp'];
-        const hasValidExtension = validExtensions.some(ext => newUrl.toLowerCase().split('?')[0].endsWith(ext));
-
-        if (!newUrl.toLowerCase().startsWith('http')) {
-             setValidationError('Please enter a full URL starting with http:// or https://');
-        } else if (!newUrl.includes('drive.google.com') && !hasValidExtension) {
-             setValidationError('Warning: URL may not be a direct image link. Common extensions are .jpg, .png, .svg, etc.');
-        } else {
-            setValidationError('');
-        }
-    };
-
-
-    const handleUpload = async () => {
-        if (!url || validationError) {
-            toast({ variant: 'destructive', title: 'Invalid URL', description: validationError || 'A valid URL is required.' });
-            return;
-        }
-        setIsUploading(true);
-        setResult('');
-        try {
-            const uploadedUrl = await fetchAndUploadImageAction(url);
-            if (uploadedUrl) {
-                setResult(`Success! New URL: ${uploadedUrl}`);
-                toast({ title: 'Upload Successful' });
-            } else {
-                setResult('Upload failed. The URL may not be a direct link to an image, or the remote server blocked the request. Please check the server console for details.');
-                toast({ variant: 'destructive', title: 'Upload Failed' });
-            }
-        } catch (error) {
-            console.error(error);
-            setResult('An error occurred. Check browser and server console.');
-            toast({ variant: 'destructive', title: 'Upload Error' });
-        } finally {
-            setIsUploading(false);
-        }
-    };
-
-    return (
-        <Card className="mb-6 bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2"><Wrench className="h-5 w-5" /> Temporary URL Uploader Tool</CardTitle>
-                <CardDescription>Paste a public image URL to test the server-side upload action. This tool is for debugging and can be removed later.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="image-url-test">Image URL to Upload</Label>
-                    <Input 
-                      id="image-url-test" 
-                      value={url} 
-                      onChange={handleUrlChange} 
-                      placeholder="e.g., https://example.com/image.jpg"
-                    />
-                    {validationError && <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">{validationError}</p>}
-                    <p className="text-sm text-muted-foreground">Note: This only works with public web URLs (http://...). It cannot access local computer addresses (C:\...).</p>
-                </div>
-                <Button onClick={handleUpload} disabled={isUploading || !!validationError}>
-                    {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                    Test Upload
-                </Button>
-                {result && (
-                    <div className="p-4 border rounded-md bg-background">
-                        <p className="text-sm font-mono break-all">{result}</p>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
-    );
-};
-
 export default function ObservationsPage() {
   const { observations, addObservation, deleteObservation, addCorrectiveAction, users, updateObservation, uploadSettings, areas } = useAppData();
   const { user: authUser } = useAuth();
@@ -890,8 +804,6 @@ export default function ObservationsPage() {
     <AppShell>
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <h2 className="text-3xl font-bold tracking-tight">Safety Observations</h2>
-
-        <TempImageUploader />
 
         <div className="grid gap-6 lg:grid-cols-5">
           <div className="lg:col-span-2">
