@@ -87,12 +87,11 @@ const JsaFormDialog = ({
 } : {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
-    onSave: (data: JsaFormValues, jsaId?: string) => Promise<void>;
+    onSave: (data: JsaFormValues, jsaId?: string) => Promise<boolean>;
     jsa: JSA | null;
     mode: 'create' | 'edit' | 'copy';
     areas: Area[];
 }) => {
-  const { toast } = useToast();
   const form = useForm<JsaFormValues>({
     resolver: zodResolver(jsaFormSchema),
     defaultValues: {
@@ -124,12 +123,9 @@ const JsaFormDialog = ({
   const { fields, append, remove } = useFieldArray({ control: form.control, name: 'steps' });
 
   const onSubmit = async (data: JsaFormValues) => {
-    try {
-        await onSave(data, mode === 'edit' ? jsa?.jsa_id : undefined);
-        onOpenChange(false);
-    } catch (error) {
-        console.error("Failed to save JSA:", error);
-        toast({ variant: 'destructive', title: 'Save Failed', description: 'There was an error saving the JSA.' });
+    const success = await onSave(data, mode === 'edit' ? jsa?.jsa_id : undefined);
+    if (success) {
+      onOpenChange(false);
     }
   };
 
@@ -394,41 +390,48 @@ export default function JsaPage() {
         toast({ title: "JSA Signed", description: `Thank you for signing.` });
     };
 
-    const handleSaveJsa = async (data: JsaFormValues, jsaId?: string) => {
-        const otherPpeItems = data.other_ppe ? data.other_ppe.split(',').map(s => s.trim()).filter(Boolean) : [];
-        const allPpe = [...(data.required_ppe || []), ...otherPpeItems];
+    const handleSaveJsa = async (data: JsaFormValues, jsaId?: string): Promise<boolean> => {
+        try {
+            const otherPpeItems = data.other_ppe?.split(',').map(s => s.trim()).filter(Boolean) || [];
+            const allPpe = [...(data.required_ppe || []), ...otherPpeItems];
 
-        const transformedSteps = data.steps.map(step => ({
-            step_description: step.step_description,
-            hazards: step.hazards.split(',').map(s => s.trim()).filter(Boolean),
-            controls: step.controls.split(',').map(s => s.trim()).filter(Boolean),
-        }));
+            const transformedSteps = data.steps.map(step => ({
+                step_description: step.step_description,
+                hazards: step.hazards.split(',').map(s => s.trim()).filter(Boolean),
+                controls: step.controls.split(',').map(s => s.trim()).filter(Boolean),
+            }));
 
-        if (jsaId && selectedJsa) { // Editing
-            const updatedJsa: JSA = {
-                ...selectedJsa,
-                title: data.title,
-                job_description: data.job_description,
-                areaId: data.areaId,
-                required_ppe: allPpe,
-                steps: transformedSteps,
-                valid_from: new Date(data.valid_from).toISOString(),
-                valid_to: new Date(data.valid_to).toISOString(),
-            };
-            await updateJsa(updatedJsa);
-            toast({ title: "JSA Updated", description: "The JSA has been successfully updated." });
-        } else { // Creating or Copying
-            const newJsaData: Omit<JSA, 'jsa_id' | 'display_id' | 'status' | 'created_by' | 'created_date' | 'signatures'> = {
-                title: data.title,
-                job_description: data.job_description,
-                areaId: data.areaId,
-                required_ppe: allPpe,
-                steps: transformedSteps,
-                valid_from: data.valid_from,
-                valid_to: data.valid_to,
-            };
-            await addJsa(newJsaData);
-            toast({ title: "JSA Created", description: `The JSA "${data.title}" has been successfully created.` });
+            if (jsaId && selectedJsa) { // Editing
+                const updatedJsaData: JSA = {
+                    ...selectedJsa,
+                    title: data.title,
+                    job_description: data.job_description,
+                    areaId: data.areaId,
+                    required_ppe: allPpe,
+                    steps: transformedSteps,
+                    valid_from: new Date(data.valid_from).toISOString(),
+                    valid_to: new Date(data.valid_to).toISOString(),
+                };
+                await updateJsa(updatedJsaData);
+                toast({ title: "JSA Updated", description: "The JSA has been successfully updated." });
+            } else { // Creating or Copying
+                const newJsaData: Omit<JSA, 'jsa_id' | 'display_id' | 'status' | 'created_by' | 'created_date' | 'signatures'> = {
+                    title: data.title,
+                    job_description: data.job_description,
+                    areaId: data.areaId,
+                    required_ppe: allPpe,
+                    steps: transformedSteps,
+                    valid_from: data.valid_from,
+                    valid_to: data.valid_to,
+                };
+                await addJsa(newJsaData);
+                toast({ title: "JSA Created", description: `The JSA "${data.title}" has been successfully created.` });
+            }
+            return true;
+        } catch (error) {
+            console.error("Failed to save JSA:", error);
+            toast({ variant: 'destructive', title: 'Save Failed', description: 'There was an error saving the JSA.' });
+            return false;
         }
     };
     
