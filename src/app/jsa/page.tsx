@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Separator } from '@/components/ui/separator';
 import { mockAreas } from '@/lib/mockDataLocal';
 import type { JSA, Area } from '@/types';
-import { PlusCircle, Users, Shield, FileSignature, Edit, UserCheck, Trash2, MapPin, Share2, Printer } from 'lucide-react';
+import { PlusCircle, Users, Shield, FileSignature, Edit, UserCheck, Trash2, MapPin, Share2, Printer, Wand2, Loader2 } from 'lucide-react';
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useSearchParams } from 'next/navigation';
 import { useAppData } from '@/context/AppDataContext';
 import { Checkbox } from '@/components/ui/checkbox';
+import { getJsaAnalysisAction } from '@/app/actions';
 
 const jsaStepSchema = z.object({
   step_description: z.string().min(1, { message: 'Step description cannot be empty.' }),
@@ -308,8 +309,17 @@ const findAreaPathById = (areas: Area[], id: string, path: string[] = []): strin
 };
 
 const JsaCard = ({ jsa, onSign, currentUser, areaPath, isOpen, onOpenChange, onShare }: { jsa: JSA, onSign: (updatedJsa: JSA) => Promise<void>, currentUser: string, areaPath: string, isOpen: boolean, onOpenChange: (open: boolean) => void, onShare: () => void }) => {
+    const { toast } = useToast();
     const [signatureName, setSignatureName] = useState(currentUser);
     const hasSigned = jsa.signatures.some(s => s.employee_name === currentUser);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+
+    React.useEffect(() => {
+      if (isOpen) {
+        setAnalysisResult(null); // Reset analysis on open
+      }
+    }, [isOpen]);
 
     const handleSign = () => {
         if (signatureName.trim() && !hasSigned) {
@@ -323,6 +333,36 @@ const JsaCard = ({ jsa, onSign, currentUser, areaPath, isOpen, onOpenChange, onS
     
     const handlePrint = () => {
         window.print();
+    };
+
+    const handleAiAnalysis = async () => {
+        setIsAnalyzing(true);
+        setAnalysisResult(null);
+        try {
+            const input = {
+                title: jsa.title,
+                jobDescription: jsa.job_description,
+                requiredPpe: jsa.required_ppe.join(', '),
+                steps: jsa.steps.map(step => ({
+                    step_description: step.step_description,
+                    hazards: step.hazards.join(', '),
+                    controls: step.controls.join(', '),
+                })),
+            };
+
+            const result = await getJsaAnalysisAction(input);
+
+            if (result.analysis) {
+                setAnalysisResult(result.analysis);
+            } else {
+                toast({ variant: "destructive", title: "Analysis Failed", description: "The AI analysis returned no result." });
+            }
+        } catch (error) {
+            console.error(error);
+            toast({ variant: "destructive", title: "Analysis Error", description: "An unexpected error occurred during AI analysis." });
+        } finally {
+            setIsAnalyzing(false);
+        }
     };
 
     return (
@@ -382,6 +422,33 @@ const JsaCard = ({ jsa, onSign, currentUser, areaPath, isOpen, onOpenChange, onS
                         <div className="flex flex-wrap gap-2">
                             {jsa.required_ppe.map((item, index) => <Badge key={index} variant="secondary">{item}</Badge>)}
                         </div>
+                    </div>
+                    <Separator />
+                    <div>
+                        <div className="flex items-center justify-between mb-2">
+                            <h3 className="font-semibold flex items-center gap-2"><Wand2 /> AI Analysis</h3>
+                            <Button size="sm" onClick={handleAiAnalysis} disabled={isAnalyzing}>
+                                {isAnalyzing ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : (
+                                    <Wand2 className="mr-2 h-4 w-4" />
+                                )}
+                                Analyze JSA
+                            </Button>
+                        </div>
+                        {isAnalyzing && (
+                        <div className="p-4 bg-muted/50 rounded-lg border flex items-center justify-center min-h-[100px]">
+                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                            <p className="ml-2 text-sm text-muted-foreground">AI is reviewing the JSA...</p>
+                        </div>
+                        )}
+                        {analysisResult && (
+                            <Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
+                                <CardContent className="p-4">
+                                    <p className="text-sm whitespace-pre-wrap">{analysisResult}</p>
+                                </CardContent>
+                            </Card>
+                        )}
                     </div>
                     <Separator />
                     <div>

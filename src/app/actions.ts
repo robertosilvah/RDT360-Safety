@@ -2,6 +2,7 @@
 
 import { generateKpiSummary, GenerateKpiSummaryInput, GenerateKpiSummaryOutput } from '@/ai/flows/kpi-summarization';
 import { analyzeInvestigation, InvestigationAnalysisInput, InvestigationAnalysisOutput } from '@/ai/flows/investigation-analysis-flow';
+import { analyzeJsa, JsaAnalysisInput, JsaAnalysisOutput } from '@/ai/flows/jsa-analysis-flow';
 
 export async function getKpiSummaryAction(input: GenerateKpiSummaryInput): Promise<GenerateKpiSummaryOutput> {
   try {
@@ -27,6 +28,18 @@ export async function getInvestigationAnalysisAction(input: InvestigationAnalysi
         eventsHistory: 'Could not generate events history.',
         lessonsLearned: 'Could not generate lessons learned.',
         actionPlan: 'Could not generate action plan.'
+    };
+  }
+}
+
+export async function getJsaAnalysisAction(input: JsaAnalysisInput): Promise<JsaAnalysisOutput> {
+  try {
+    const output = await analyzeJsa(input);
+    return output;
+  } catch (error) {
+    console.error('Error in getJsaAnalysisAction:', error);
+    return { 
+        analysis: 'An error occurred during AI analysis. Please check the system logs.'
     };
   }
 }
