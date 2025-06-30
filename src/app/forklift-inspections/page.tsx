@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -97,6 +96,7 @@ const ActionCreateDialog = ({
         defaultValues: {
             description: `Forklift ${forkliftId}: Fix issue with "${checklistItem.question}"`,
             responsible_person: 'Maintenance',
+            due_date: '',
         },
     });
 

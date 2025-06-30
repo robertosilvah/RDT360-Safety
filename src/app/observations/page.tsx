@@ -174,6 +174,17 @@ const EditObservationDialog = ({
   const { toast } = useToast();
   const form = useForm<EditObservationFormValues>({
     resolver: zodResolver(editObservationFormSchema),
+    defaultValues: {
+      report_type: 'Safety Concern',
+      submitted_by: '',
+      date: '',
+      areaId: '',
+      person_involved: '',
+      risk_level: 1,
+      description: '',
+      actions: '',
+      unsafe_category: 'N/A',
+    },
   });
 
   useEffect(() => {
@@ -529,6 +540,7 @@ export default function ObservationsPage() {
     resolver: zodResolver(observationFormSchema),
     defaultValues: {
       submitted_by: authUser?.displayName || '',
+      date: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
       description: '',
       actions: '',
       person_involved: '',

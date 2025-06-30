@@ -58,6 +58,7 @@ const CreateWalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
     resolver: zodResolver(walkFormSchema),
     defaultValues: {
       walker: '',
+      date: '',
       people_involved: '',
       safety_feeling_scale: 3,
       checklist_items: defaultItems,
@@ -214,7 +215,12 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
     const form = useForm<{
         status: SafetyWalk['status'];
         checklist_items: SafetyWalkChecklistItem[];
-    }>();
+    }>({
+        defaultValues: {
+            status: 'Scheduled',
+            checklist_items: [],
+        },
+    });
     
     useEffect(() => {
         if (walk) {
