@@ -220,14 +220,7 @@ export default function ReportingPage() {
                         <TabsTrigger value="asset-health" disabled>Incidents</TabsTrigger>
                         <TabsTrigger value="reporting-details" disabled>Observations</TabsTrigger>
                     </TabsList>
-                     <div className="flex items-center gap-2 py-4">
-                        <Button variant="outline" size="sm"><Users className="mr-2 h-4 w-4" />Assigned To</Button>
-                        <Button variant="outline" size="sm"><Clock className="mr-2 h-4 w-4" />Due Date</Button>
-                        <Button variant="outline" size="sm"><MapPin className="mr-2 h-4 w-4" />Location</Button>
-                        <Button variant="outline" size="sm"><AlertCircle className="mr-2 h-4 w-4" />Severity</Button>
-                        <Button variant="ghost" size="sm"><Plus className="mr-2 h-4 w-4" />Add Filter</Button>
-                    </div>
-                    <TabsContent value="work-orders">
+                    <TabsContent value="work-orders" className="pt-4">
                         <WorkOrdersView actions={correctiveActions} dateRange={dateRange} />
                     </TabsContent>
                 </Tabs>
