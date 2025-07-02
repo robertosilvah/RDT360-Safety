@@ -91,17 +91,15 @@
     visibility: visible;
   }
   .printable-area {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;
-    height: auto !important;
-    max-height: none !important;
-    padding: 2rem !important;
-    border: none !important;
-    box-shadow: none !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: auto;
+    padding: 1rem;
+    color: black;
   }
   .no-print {
-    display: none !important;
+    display: none;
   }
 }
