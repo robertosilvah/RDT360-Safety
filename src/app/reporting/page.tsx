@@ -14,7 +14,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from 'recharts';
-import type { CorrectiveAction } from '@/types';
+import type { CorrectiveAction, Incident, Observation } from '@/types';
 
 const KpiCard = ({ title, value, description }: { title: string; value: string | number; description?: string }) => (
     <div className="flex flex-col items-center justify-center p-4 text-center">
@@ -84,6 +84,60 @@ const StatusDonutChart = ({ data }: { data: any[] }) => {
                 <Pie data={data} innerRadius={60} outerRadius={80} dataKey="value" nameKey="name" paddingAngle={5}>
                     {data.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[entry.name as keyof typeof COLORS]} />
+                    ))}
+                </Pie>
+            </PieChart>
+        </ResponsiveContainer>
+    );
+};
+
+const SeverityDonutChart = ({ data }: { data: any[] }) => {
+    const COLORS = {
+        Low: 'hsl(var(--chart-2))',
+        Medium: 'hsl(var(--chart-4))',
+        High: 'hsl(var(--destructive))',
+    };
+    return (
+        <ResponsiveContainer width="100%" height={250}>
+            <PieChart>
+                <Tooltip
+                    contentStyle={{
+                        backgroundColor: 'hsl(var(--background))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: 'var(--radius)',
+                    }}
+                />
+                <Legend iconType="circle" iconSize={8} />
+                <Pie data={data} innerRadius={60} outerRadius={80} dataKey="value" nameKey="name" paddingAngle={5}>
+                    {data.map((entry) => (
+                        <Cell key={`cell-${entry.name}`} fill={COLORS[entry.name as keyof typeof COLORS]} />
+                    ))}
+                </Pie>
+            </PieChart>
+        </ResponsiveContainer>
+    );
+};
+
+const ObservationTypeDonutChart = ({ data }: { data: any[] }) => {
+    const COLORS = {
+        'Safety Concern': 'hsl(var(--chart-1))',
+        'Positive Observation': 'hsl(var(--chart-2))',
+        'Near Miss': 'hsl(var(--chart-3))',
+    };
+    return (
+        <ResponsiveContainer width="100%" height={250}>
+            <PieChart>
+                <Tooltip
+                    contentStyle={{
+                        backgroundColor: 'hsl(var(--background))',
+                        border: '1px solid hsl(var(--border))',
+                        borderRadius: 'var(--radius)',
+                    }}
+                />
+                <Legend iconType="circle" iconSize={8} />
+                <Pie data={data} innerRadius={60} outerRadius={80} dataKey="value" nameKey="name" paddingAngle={5}>
+                    {data.map((entry) => (
+                        <Cell key={`cell-${entry.name}`} fill={COLORS[entry.name as keyof typeof COLORS]} />
                     ))}
                 </Pie>
             </PieChart>
@@ -186,8 +240,101 @@ const WorkOrdersView = ({ actions, dateRange }: { actions: CorrectiveAction[], d
     );
 };
 
+const IncidentsView = ({ incidents, dateRange }: { incidents: Incident[], dateRange?: DateRange }) => {
+    const filteredIncidents = useMemo(() => {
+        return incidents.filter(incident => {
+            if (!dateRange?.from) return true;
+            const toDate = dateRange.to ?? dateRange.from;
+            try {
+                return isWithinInterval(new Date(incident.date), { start: dateRange.from, end: toDate });
+            } catch (e) { return false; }
+        });
+    }, [incidents, dateRange]);
+
+    const kpiData = useMemo(() => {
+        const total = filteredIncidents.length;
+        const accidents = filteredIncidents.filter(i => i.type === 'Accident').length;
+        const highSeverity = filteredIncidents.filter(i => i.severity === 'High').length;
+        return { total, accidents, highSeverity };
+    }, [filteredIncidents]);
+
+    const bySeverityData = useMemo(() => {
+        const counts = filteredIncidents.reduce((acc, incident) => {
+            acc[incident.severity] = (acc[incident.severity] || 0) + 1;
+            return acc;
+        }, {} as Record<Incident['severity'], number>);
+        return Object.entries(counts).map(([name, value]) => ({ name, value }));
+    }, [filteredIncidents]);
+
+    return (
+        <div className="space-y-6">
+            <Card>
+                <CardHeader><CardTitle>Incident KPIs</CardTitle></CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x">
+                    <KpiCard title="Total Incidents" value={kpiData.total} />
+                    <KpiCard title="Accidents" value={kpiData.accidents} />
+                    <KpiCard title="High Severity" value={kpiData.highSeverity} />
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader><CardTitle>Incidents by Severity</CardTitle></CardHeader>
+                <CardContent>
+                   <SeverityDonutChart data={bySeverityData} />
+                </CardContent>
+            </Card>
+        </div>
+    );
+};
+
+const ObservationsView = ({ observations, dateRange }: { observations: Observation[], dateRange?: DateRange }) => {
+    const filteredObservations = useMemo(() => {
+        return observations.filter(obs => {
+            if (!dateRange?.from) return true;
+            const toDate = dateRange.to ?? dateRange.from;
+            try {
+                return isWithinInterval(new Date(obs.date), { start: dateRange.from, end: toDate });
+            } catch (e) { return false; }
+        });
+    }, [observations, dateRange]);
+
+    const kpiData = useMemo(() => {
+        const total = filteredObservations.length;
+        const positive = filteredObservations.filter(o => o.report_type === 'Positive Observation').length;
+        const nearMiss = filteredObservations.filter(o => o.report_type === 'Near Miss').length;
+        return { total, positive, nearMiss };
+    }, [filteredObservations]);
+
+    const byTypeData = useMemo(() => {
+        const counts = filteredObservations.reduce((acc, obs) => {
+            acc[obs.report_type] = (acc[obs.report_type] || 0) + 1;
+            return acc;
+        }, {} as Record<Observation['report_type'], number>);
+        return Object.entries(counts).map(([name, value]) => ({ name, value }));
+    }, [filteredObservations]);
+    
+    return (
+        <div className="space-y-6">
+            <Card>
+                <CardHeader><CardTitle>Observation KPIs</CardTitle></CardHeader>
+                <CardContent className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x">
+                    <KpiCard title="Total Observations" value={kpiData.total} />
+                    <KpiCard title="Positive Observations" value={kpiData.positive} />
+                    <KpiCard title="Near Misses" value={kpiData.nearMiss} />
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader><CardTitle>Observations by Type</CardTitle></CardHeader>
+                <CardContent>
+                   <ObservationTypeDonutChart data={byTypeData} />
+                </CardContent>
+            </Card>
+        </div>
+    );
+};
+
+
 export default function ReportingPage() {
-    const { correctiveActions } = useAppData();
+    const { correctiveActions, incidents, observations } = useAppData();
     const [dateRange, setDateRange] = useState<DateRange | undefined>({
         from: startOfMonth(new Date()),
         to: endOfMonth(new Date()),
@@ -217,11 +364,17 @@ export default function ReportingPage() {
                 <Tabs defaultValue="work-orders">
                     <TabsList>
                         <TabsTrigger value="work-orders">Corrective Actions</TabsTrigger>
-                        <TabsTrigger value="asset-health" disabled>Incidents</TabsTrigger>
-                        <TabsTrigger value="reporting-details" disabled>Observations</TabsTrigger>
+                        <TabsTrigger value="incidents">Incidents</TabsTrigger>
+                        <TabsTrigger value="observations">Observations</TabsTrigger>
                     </TabsList>
                     <TabsContent value="work-orders" className="pt-4">
                         <WorkOrdersView actions={correctiveActions} dateRange={dateRange} />
+                    </TabsContent>
+                    <TabsContent value="incidents" className="pt-4">
+                        <IncidentsView incidents={incidents} dateRange={dateRange} />
+                    </TabsContent>
+                     <TabsContent value="observations" className="pt-4">
+                        <ObservationsView observations={observations} dateRange={dateRange} />
                     </TabsContent>
                 </Tabs>
             </div>
