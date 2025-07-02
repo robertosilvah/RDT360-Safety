@@ -33,10 +33,12 @@ import { Calendar } from '@/components/ui/calendar';
 import type { DateRange } from 'react-day-picker';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
+import { SubmissionsByTypeChart } from '@/components/dashboard/SubmissionsByTypeChart';
 
 export default function DashboardPage() {
   const { incidents, correctiveActions, observations, investigations } = useAppData();
   const [date, setDate] = useState<DateRange | undefined>();
+  const [submissionsTypeDate, setSubmissionsTypeDate] = useState<DateRange | undefined>();
 
   const [daysSinceLastAccident, setDaysSinceLastAccident] = useState<{value: React.ReactNode, description: React.ReactNode}>({
     value: <Skeleton className="h-8 w-16" />,
@@ -179,6 +181,43 @@ export default function DashboardPage() {
     ];
   }, [observations]);
 
+  const submissionsByTypeData = useMemo(() => {
+    const typeCounts: Record<string, number> = {
+      'Incident': 0,
+      'Accident': 0,
+      'Safety Concern': 0,
+      'Positive Observation': 0,
+      'Near Miss': 0,
+    };
+
+    const filterByDate = (itemDate: string) => {
+      if (!submissionsTypeDate?.from) return true;
+      const toDate = submissionsTypeDate.to ?? new Date();
+      try {
+        return isWithinInterval(new Date(itemDate), { start: submissionsTypeDate.from, end: toDate });
+      } catch (e) {
+        return false;
+      }
+    };
+    
+    incidents.filter(inc => filterByDate(inc.date)).forEach(inc => {
+      if (typeCounts[inc.type] !== undefined) {
+        typeCounts[inc.type]++;
+      }
+    });
+
+    observations.filter(obs => filterByDate(obs.date)).forEach(obs => {
+      if (typeCounts[obs.report_type] !== undefined) {
+        typeCounts[obs.report_type]++;
+      }
+    });
+
+    return Object.entries(typeCounts)
+      .map(([name, count]) => ({ name, count }))
+      .filter(item => item.count > 0)
+      .sort((a, b) => b.count - a.count);
+  }, [incidents, observations, submissionsTypeDate]);
+
 
   return (
     <AppShell>
@@ -233,7 +272,7 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
-        <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+        <div className="grid gap-4 grid-cols-1">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-base font-medium">
@@ -275,6 +314,57 @@ export default function DashboardPage() {
                 </TableBody>
               </Table>
             </CardContent>
+          </Card>
+        </div>
+        <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+           <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                  <div>
+                      <CardTitle>Submissions by Type</CardTitle>
+                      <CardDescription>
+                      Total safety reports by category.
+                      </CardDescription>
+                  </div>
+                  <Popover>
+                      <PopoverTrigger asChild>
+                          <Button
+                              id="submissionsTypeDate"
+                              variant={"outline"}
+                              className={cn(
+                              "w-[260px] justify-start text-left font-normal",
+                              !submissionsTypeDate && "text-muted-foreground"
+                              )}
+                          >
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {submissionsTypeDate?.from ? (
+                              submissionsTypeDate.to ? (
+                                  <>
+                                  {format(submissionsTypeDate.from, "LLL dd, y")} -{" "}
+                                  {format(submissionsTypeDate.to, "LLL dd, y")}
+                                  </>
+                              ) : (
+                                  format(submissionsTypeDate.from, "LLL dd, y")
+                              )
+                              ) : (
+                              <span>Pick a date range</span>
+                              )}
+                          </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="end">
+                      <Calendar
+                          initialFocus
+                          mode="range"
+                          defaultMonth={submissionsTypeDate?.from}
+                          selected={submissionsTypeDate}
+                          onSelect={setSubmissionsTypeDate}
+                          numberOfMonths={2}
+                      />
+                      </PopoverContent>
+                  </Popover>
+              </CardHeader>
+              <CardContent>
+                  <SubmissionsByTypeChart data={submissionsByTypeData} />
+              </CardContent>
           </Card>
           <SafetyQuoteCard />
         </div>
