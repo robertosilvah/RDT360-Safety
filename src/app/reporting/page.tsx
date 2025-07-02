@@ -146,29 +146,38 @@ const ObservationTypeDonutChart = ({ data }: { data: any[] }) => {
     );
 };
 
-const WorkOrdersView = ({ actions }: { actions: CorrectiveAction[] }) => {
+const WorkOrdersView = ({ actions, dateRange }: { actions: CorrectiveAction[]; dateRange?: DateRange }) => {
+
+    const inRange = (date: string) => {
+        if (!dateRange?.from) return true;
+        const toDate = dateRange.to ?? dateRange.from;
+        try { return isWithinInterval(new Date(date), { start: dateRange.from, end: toDate }); } catch (e) { return false; }
+    }
+
+    const createdInPeriod = useMemo(() => actions.filter(a => a.created_date && inRange(a.created_date)), [actions, dateRange]);
+    const completedInPeriod = useMemo(() => actions.filter(a => a.completion_date && inRange(a.completion_date)), [actions, dateRange]);
+
     const kpiData = useMemo(() => {
-        const created = actions.length;
-        const completed = actions.filter(a => a.status === 'Completed').length;
+        const created = createdInPeriod.length;
+        const completed = completedInPeriod.length;
         const percentCompleted = created > 0 ? ((completed / created) * 100).toFixed(1) : '0.0';
         return { created, completed, percentCompleted };
-    }, [actions]);
+    }, [createdInPeriod, completedInPeriod]);
 
     const chartData = useMemo(() => {
         const months: { [key: string]: { created: number; completed: number } } = {};
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-        actions.forEach(action => {
-            if (!action.created_date) return;
+        createdInPeriod.forEach(action => {
             const createdMonth = format(new Date(action.created_date), 'MMM');
             if (!months[createdMonth]) months[createdMonth] = { created: 0, completed: 0 };
             months[createdMonth].created++;
+        });
 
-            if (action.completion_date) {
-                const completedMonth = format(new Date(action.completion_date), 'MMM');
-                if (!months[completedMonth]) months[completedMonth] = { created: 0, completed: 0 };
-                months[completedMonth].completed++;
-            }
+        completedInPeriod.forEach(action => {
+            const completedMonth = format(new Date(action.completion_date!), 'MMM');
+            if (!months[completedMonth]) months[completedMonth] = { created: 0, completed: 0 };
+            months[completedMonth].completed++;
         });
 
         return monthNames.map(name => ({
@@ -176,24 +185,24 @@ const WorkOrdersView = ({ actions }: { actions: CorrectiveAction[] }) => {
             created: months[name]?.created || 0,
             completed: months[name]?.completed || 0,
         }));
-    }, [actions]);
+    }, [createdInPeriod, completedInPeriod]);
 
     const byTypeData = useMemo(() => {
-        const counts = actions.reduce((acc, action) => {
+        const counts = createdInPeriod.reduce((acc, action) => {
             const type = action.type || 'Other';
             acc[type] = (acc[type] || 0) + 1;
             return acc;
         }, {} as Record<CorrectiveAction['type'], number>);
         return Object.entries(counts).map(([name, count]) => ({ name, count }));
-    }, [actions]);
+    }, [createdInPeriod]);
     
     const byStatusData = useMemo(() => {
-        const counts = actions.reduce((acc, action) => {
+        const counts = createdInPeriod.reduce((acc, action) => {
             acc[action.status] = (acc[action.status] || 0) + 1;
             return acc;
         }, {} as Record<CorrectiveAction['status'], number>);
         return Object.entries(counts).map(([name, value]) => ({ name, value }));
-    }, [actions]);
+    }, [createdInPeriod]);
 
     return (
         <div className="space-y-6">
@@ -229,21 +238,29 @@ const WorkOrdersView = ({ actions }: { actions: CorrectiveAction[] }) => {
     );
 };
 
-const IncidentsView = ({ incidents }: { incidents: Incident[] }) => {
+const IncidentsView = ({ incidents, dateRange }: { incidents: Incident[], dateRange?: DateRange }) => {
+
+    const filteredIncidents = useMemo(() => {
+        if (!dateRange?.from) return incidents;
+        const toDate = dateRange.to ?? dateRange.from;
+        const range = { start: dateRange.from, end: toDate };
+        return incidents.filter(incident => incident.date && isWithinInterval(new Date(incident.date), range));
+    }, [incidents, dateRange]);
+
     const kpiData = useMemo(() => {
-        const total = incidents.length;
-        const accidents = incidents.filter(i => i.type === 'Accident').length;
-        const highSeverity = incidents.filter(i => i.severity === 'High').length;
+        const total = filteredIncidents.length;
+        const accidents = filteredIncidents.filter(i => i.type === 'Accident').length;
+        const highSeverity = filteredIncidents.filter(i => i.severity === 'High').length;
         return { total, accidents, highSeverity };
-    }, [incidents]);
+    }, [filteredIncidents]);
 
     const bySeverityData = useMemo(() => {
-        const counts = incidents.reduce((acc, incident) => {
+        const counts = filteredIncidents.reduce((acc, incident) => {
             acc[incident.severity] = (acc[incident.severity] || 0) + 1;
             return acc;
         }, {} as Record<Incident['severity'], number>);
         return Object.entries(counts).map(([name, value]) => ({ name, value }));
-    }, [incidents]);
+    }, [filteredIncidents]);
 
     return (
         <div className="space-y-6">
@@ -265,21 +282,29 @@ const IncidentsView = ({ incidents }: { incidents: Incident[] }) => {
     );
 };
 
-const ObservationsView = ({ observations }: { observations: Observation[] }) => {
+const ObservationsView = ({ observations, dateRange }: { observations: Observation[], dateRange?: DateRange }) => {
+
+    const filteredObservations = useMemo(() => {
+        if (!dateRange?.from) return observations;
+        const toDate = dateRange.to ?? dateRange.from;
+        const range = { start: dateRange.from, end: toDate };
+        return observations.filter(obs => obs.date && isWithinInterval(new Date(obs.date), range));
+    }, [observations, dateRange]);
+
     const kpiData = useMemo(() => {
-        const total = observations.length;
-        const positive = observations.filter(o => o.report_type === 'Positive Observation').length;
-        const nearMiss = observations.filter(o => o.report_type === 'Near Miss').length;
+        const total = filteredObservations.length;
+        const positive = filteredObservations.filter(o => o.report_type === 'Positive Observation').length;
+        const nearMiss = filteredObservations.filter(o => o.report_type === 'Near Miss').length;
         return { total, positive, nearMiss };
-    }, [observations]);
+    }, [filteredObservations]);
 
     const byTypeData = useMemo(() => {
-        const counts = observations.reduce((acc, obs) => {
+        const counts = filteredObservations.reduce((acc, obs) => {
             acc[obs.report_type] = (acc[obs.report_type] || 0) + 1;
             return acc;
         }, {} as Record<Observation['report_type'], number>);
         return Object.entries(counts).map(([name, value]) => ({ name, value }));
-    }, [observations]);
+    }, [filteredObservations]);
     
     return (
         <div className="space-y-6">
@@ -310,35 +335,16 @@ export default function ReportingPage() {
         to: endOfMonth(new Date()),
     });
 
-    const filteredActions = useMemo(() => {
-        return correctiveActions.filter(action => {
-            if (!dateRange?.from) return true;
-            if (!action.created_date) return false;
-            const toDate = dateRange.to ?? dateRange.from;
-            try { return isWithinInterval(new Date(action.created_date), { start: dateRange.from, end: toDate }); } catch (e) { return false; }
-        });
-    }, [correctiveActions, dateRange]);
-
-    const filteredIncidents = useMemo(() => {
-        return incidents.filter(incident => {
-            if (!dateRange?.from) return true;
-            const toDate = dateRange.to ?? dateRange.from;
-            try { return isWithinInterval(new Date(incident.date), { start: dateRange.from, end: toDate }); } catch (e) { return false; }
-        });
-    }, [incidents, dateRange]);
-
-    const filteredObservations = useMemo(() => {
-        return observations.filter(obs => {
-            if (!dateRange?.from) return true;
-            const toDate = dateRange.to ?? dateRange.from;
-            try { return isWithinInterval(new Date(obs.date), { start: dateRange.from, end: toDate }); } catch (e) { return false; }
-        });
-    }, [observations, dateRange]);
-
     const handleExport = () => {
         let data: any[] = [];
         let headers: string[] = [];
         let filename = 'report.csv';
+
+        const inRange = (date: string) => {
+            if (!dateRange?.from) return true;
+            const toDate = dateRange.to ?? dateRange.from;
+            try { return isWithinInterval(new Date(date), { start: dateRange.from, end: toDate }); } catch (e) { return false; }
+        }
 
         const escapeCsvCell = (cell: any): string => {
             const value = String(cell ?? '');
@@ -350,17 +356,17 @@ export default function ReportingPage() {
 
         switch (activeTab) {
             case 'work-orders':
-                data = filteredActions;
+                data = correctiveActions.filter(a => a.created_date && inRange(a.created_date));
                 headers = ['display_id', 'description', 'status', 'responsible_person', 'due_date', 'created_date', 'completion_date', 'type'];
                 filename = 'corrective_actions_export.csv';
                 break;
             case 'incidents':
-                data = filteredIncidents;
+                data = incidents.filter(i => i.date && inRange(i.date));
                 headers = ['display_id', 'date', 'area', 'type', 'description', 'severity', 'status'];
                 filename = 'incidents_export.csv';
                 break;
             case 'observations':
-                data = filteredObservations;
+                data = observations.filter(o => o.date && inRange(o.date));
                 headers = ['display_id', 'report_type', 'submitted_by', 'date', 'risk_level', 'description', 'status'];
                 filename = 'observations_export.csv';
                 break;
@@ -425,13 +431,13 @@ export default function ReportingPage() {
                         <TabsTrigger value="observations">Observations</TabsTrigger>
                     </TabsList>
                     <TabsContent value="work-orders" className="pt-4">
-                        <WorkOrdersView actions={filteredActions} />
+                        <WorkOrdersView actions={correctiveActions} dateRange={dateRange} />
                     </TabsContent>
                     <TabsContent value="incidents" className="pt-4">
-                        <IncidentsView incidents={filteredIncidents} />
+                        <IncidentsView incidents={incidents} dateRange={dateRange} />
                     </TabsContent>
                      <TabsContent value="observations" className="pt-4">
-                        <ObservationsView observations={filteredObservations} />
+                        <ObservationsView observations={observations} dateRange={dateRange} />
                     </TabsContent>
                 </Tabs>
             </div>
