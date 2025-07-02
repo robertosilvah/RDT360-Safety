@@ -208,6 +208,22 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     ];
     return () => unsubscribers.forEach(unsub => unsub());
   }, []);
+  
+  useEffect(() => {
+    // Mock: ensure at least one 'Administrator' user exists
+    if (users.length > 0 && !users.some(u => u.id === 'admin-user-id-001')) {
+      const adminUser: User = {
+        id: 'admin-user-id-001',
+        name: 'Admin User',
+        email: 'admin@example.com',
+        role: 'Administrator',
+        status: 'Active',
+      };
+      // This is a simplified add; in a real scenario, you'd check for existence before adding
+      setDoc(doc(db, "users", adminUser.id), adminUser);
+    }
+  }, [users]);
+
 
   const addObservation = async (observation: Omit<Observation, 'observation_id' | 'display_id' | 'status'>) => {
     const displayId = `OBS${String(observations.length + 1).padStart(3, '0')}`;

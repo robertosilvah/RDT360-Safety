@@ -1,3 +1,4 @@
+
 'use client';
 
 import React from 'react';
@@ -11,17 +12,10 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   React.useEffect(() => {
-    if (loading) {
-      return; // Wait until loading is complete
-    }
-
-    // If not logged in and trying to access a protected page
-    if (!user && pathname !== '/login') {
-      router.push('/login');
-    }
-    
-    // If logged in and on the login page
-    if (user && pathname === '/login') {
+    // Since we're using a mock user, we don't need complex logic.
+    // If you switch to real auth, you'll want to check if `user` is null
+    // and redirect to '/login' if they are on a protected route.
+    if (!loading && user && pathname === '/login') {
       router.push('/');
     }
   }, [user, loading, pathname, router]);
@@ -54,11 +48,11 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  
-  // If we are redirecting, we can return null or a loader
-  if ((!user && pathname !== '/login') || (user && pathname === '/login')) {
-    return null; 
-  }
 
+  // If using real auth and redirecting, you might return null here.
+  // if (!user && pathname !== '/login') {
+  //   return null; 
+  // }
+  
   return <>{children}</>;
 }
