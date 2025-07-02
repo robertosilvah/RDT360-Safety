@@ -36,6 +36,7 @@ import {
   FileEdit,
   ChevronRight,
   Box,
+  BookCopy,
 } from 'lucide-react';
 import { Header } from './Header';
 import { Button } from './ui/button';
@@ -73,6 +74,7 @@ const menuItems = [
   { href: '/documents', label: 'Documents', icon: FileText },
   { href: '/areas', label: 'Areas', icon: Map },
   { href: '/compliance', label: 'Compliance', icon: BadgeCheck },
+  { href: '/reporting', label: 'Reporting', icon: BookCopy },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {
