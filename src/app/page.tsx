@@ -94,17 +94,15 @@ export default function DashboardPage() {
     Low: 'text-green-500',
   };
 
-  const submissionsByPersonData = useMemo(() => {
-    const contributions: { person: string; date: string }[] = [];
+  const submissionsByTypeData = useMemo(() => {
+    const contributions: { type: string; date: string }[] = [];
 
     observations.forEach(obs => {
-        contributions.push({ person: obs.submitted_by, date: obs.date });
+        contributions.push({ type: obs.report_type, date: obs.date });
     });
 
     incidents.forEach(inc => {
-        if (inc.reported_by) {
-            contributions.push({ person: inc.reported_by, date: inc.date });
-        }
+        contributions.push({ type: inc.type, date: inc.date });
     });
 
     const filteredContributions = contributions.filter(item => {
@@ -117,13 +115,13 @@ export default function DashboardPage() {
         }
     });
 
-    const contributionsByPerson = filteredContributions.reduce((acc: Record<string, number>, item) => {
-        acc[item.person] = (acc[item.person] || 0) + 1;
+    const contributionsByType = filteredContributions.reduce((acc: Record<string, number>, item) => {
+        acc[item.type] = (acc[item.type] || 0) + 1;
         return acc;
     }, {});
 
-    return Object.entries(contributionsByPerson)
-        .map(([person, count]) => ({ person, count }))
+    return Object.entries(contributionsByType)
+        .map(([type, count]) => ({ type, count }))
         .sort((a, b) => b.count - a.count);
   }, [observations, incidents, date]);
 
@@ -278,9 +276,9 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="flex-row items-center justify-between space-y-0">
               <div>
-                <CardTitle>Submissions by Person</CardTitle>
+                <CardTitle>Submissions by Type</CardTitle>
                 <CardDescription>
-                  Top contributors for safety observations and incidents.
+                  Count of observations and incidents by type.
                 </CardDescription>
               </div>
               <Popover>
@@ -324,15 +322,15 @@ export default function DashboardPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Person</TableHead>
-                    <TableHead className="text-right">Submissions</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead className="text-right">Count</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {submissionsByPersonData.map((item) => (
-                    <TableRow key={item.person}>
+                  {submissionsByTypeData.map((item) => (
+                    <TableRow key={item.type}>
                       <TableCell className="font-medium">
-                        {item.person}
+                        {item.type}
                       </TableCell>
                       <TableCell className="text-right">{item.count}</TableCell>
                     </TableRow>
