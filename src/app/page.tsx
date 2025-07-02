@@ -272,50 +272,6 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
-        <div className="grid gap-4 grid-cols-1">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-base font-medium">
-                Recent Incidents
-              </CardTitle>
-              <Button asChild variant="ghost" className="h-8">
-                <Link href="/incidents">
-                  View All <ArrowUpRight className="h-4 w-4 ml-2" />
-                </Link>
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Description</TableHead>
-                    <TableHead>Area</TableHead>
-                    <TableHead>Severity</TableHead>
-                    <TableHead>Date</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {recentIncidents.map((incident: Incident) => (
-                    <TableRow key={incident.incident_id}>
-                      <TableCell className="font-medium truncate max-w-xs">
-                        {incident.description}
-                      </TableCell>
-                      <TableCell>{incident.area}</TableCell>
-                      <TableCell
-                        className={severityClasses[incident.severity]}
-                      >
-                        {incident.severity}
-                      </TableCell>
-                      <TableCell>
-                        {format(new Date(incident.date), 'P')}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </div>
         <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
            <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
@@ -459,6 +415,50 @@ export default function DashboardPage() {
                         {item.person}
                       </TableCell>
                       <TableCell className="text-right">{item.count}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </div>
+        <div className="grid gap-4 grid-cols-1">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-base font-medium">
+                Recent Incidents
+              </CardTitle>
+              <Button asChild variant="ghost" className="h-8">
+                <Link href="/incidents">
+                  View All <ArrowUpRight className="h-4 w-4 ml-2" />
+                </Link>
+              </Button>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Area</TableHead>
+                    <TableHead>Severity</TableHead>
+                    <TableHead>Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recentIncidents.map((incident: Incident) => (
+                    <TableRow key={incident.incident_id}>
+                      <TableCell className="font-medium truncate max-w-xs">
+                        {incident.description}
+                      </TableCell>
+                      <TableCell>{incident.area}</TableCell>
+                      <TableCell
+                        className={severityClasses[incident.severity]}
+                      >
+                        {incident.severity}
+                      </TableCell>
+                      <TableCell>
+                        {format(new Date(incident.date), 'P')}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
