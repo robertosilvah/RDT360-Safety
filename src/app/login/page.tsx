@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -34,7 +33,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Siren } from 'lucide-react';
+import { Siren, Quote } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const signUpSchema = z.object({
@@ -237,6 +236,21 @@ export default function LoginPage() {
             </Card>
           </TabsContent>
         </Tabs>
+        
+        <Card className="w-full mt-6 bg-muted/50 border-dashed">
+            <CardHeader className="pb-2 pt-4">
+                <CardTitle className="text-base flex items-center gap-2">
+                    <Quote className="h-4 w-4" />
+                    Safety Quote of the Week
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="pb-4">
+                <blockquote className="text-sm italic text-muted-foreground">
+                    "The safe way is the only way."
+                    <footer className="text-xs not-italic mt-1">- Unknown</footer>
+                </blockquote>
+            </CardContent>
+        </Card>
       </div>
     </div>
   );
