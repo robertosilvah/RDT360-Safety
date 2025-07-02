@@ -244,129 +244,126 @@ const IncidentDetailsDialog = ({
     if (newComment.trim()) {
       addCommentToIncident(incident.incident_id, { user: 'Safety Manager', comment: newComment.trim(), date: new Date().toISOString() });
       setNewComment('');
-      toast({ title: 'Comment Added' });
     }
   };
 
-
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-4xl">
         <DialogHeader>
           <DialogTitle>Incident Details: {incident.display_id}</DialogTitle>
            <DialogDescription>
             Reported on {format(new Date(incident.date), 'PPP')} in {incident.area}
           </DialogDescription>
         </DialogHeader>
-        <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-6">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                 <FormField
-                    control={form.control}
-                    name="type"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                <SelectItem value="Incident">Incident</SelectItem>
-                                <SelectItem value="Accident">Accident</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                 <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                <SelectItem value="Open">Open</SelectItem>
-                                <SelectItem value="Under Investigation">Under Investigation</SelectItem>
-                                <SelectItem value="Closed">Closed</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                 <FormField
-                    control={form.control}
-                    name="severity"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Severity</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                            <SelectContent>
-                                <SelectItem value="Low">Low</SelectItem>
-                                <SelectItem value="Medium">Medium</SelectItem>
-                                <SelectItem value="High">High</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-              </div>
-               <FormField
-                  control={form.control}
-                  name="assigned_to"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Assigned To</FormLabel>
-                      <FormControl><Input placeholder="e.g., Safety Manager" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl><Textarea rows={4} {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter className="!justify-between">
-                <div>
-                  {incident.investigation_id ? (
-                    <Button type="button" variant="outline" asChild>
-                      <Link href={`/investigations?id=${incident.investigation_id}`}>View Investigation</Link>
-                    </Button>
-                  ) : (
-                    <Button type="button" variant="outline" onClick={handleStartInvestigation} disabled={isCreatingInvestigation}>
-                      {isCreatingInvestigation ? (
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      ) : (
-                        <FileSearch className="mr-2 h-4 w-4" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-h-[70vh]">
+          <div className="md:col-span-2 overflow-y-auto pr-4 space-y-6">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6 flex flex-col h-full">
+                <div className="space-y-6 flex-1">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                       <FormField
+                          control={form.control}
+                          name="type"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Type</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                  <SelectContent>
+                                      <SelectItem value="Incident">Incident</SelectItem>
+                                      <SelectItem value="Accident">Accident</SelectItem>
+                                  </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                       <FormField
+                          control={form.control}
+                          name="status"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Status</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                  <SelectContent>
+                                      <SelectItem value="Open">Open</SelectItem>
+                                      <SelectItem value="Under Investigation">Under Investigation</SelectItem>
+                                      <SelectItem value="Closed">Closed</SelectItem>
+                                  </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                       <FormField
+                          control={form.control}
+                          name="severity"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Severity</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                                  <SelectContent>
+                                      <SelectItem value="Low">Low</SelectItem>
+                                      <SelectItem value="Medium">Medium</SelectItem>
+                                      <SelectItem value="High">High</SelectItem>
+                                  </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                    </div>
+                     <FormField
+                        control={form.control}
+                        name="assigned_to"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Assigned To</FormLabel>
+                            <FormControl><Input placeholder="e.g., Safety Manager" {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl><Textarea rows={4} {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
                       )}
-                      Start Investigation
-                    </Button>
-                  )}
+                    />
                 </div>
-                <Button type="submit">Save Changes</Button>
-              </DialogFooter>
-            </form>
-          </Form>
-
-          <Separator />
-          
-          <div>
-            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" /> Comments ({incident.comments.length})
-            </h3>
-            <div className="space-y-4">
+                <DialogFooter className="!justify-between pt-4 mt-auto border-t">
+                  <div>
+                    {incident.investigation_id ? (
+                      <Button type="button" variant="outline" asChild>
+                        <Link href={`/investigations?id=${incident.investigation_id}`}>View Investigation</Link>
+                      </Button>
+                    ) : (
+                      <Button type="button" variant="outline" onClick={handleStartInvestigation} disabled={isCreatingInvestigation}>
+                        {isCreatingInvestigation ? (
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        ) : (
+                          <FileSearch className="mr-2 h-4 w-4" />
+                        )}
+                        Start Investigation
+                      </Button>
+                    )}
+                  </div>
+                  <Button type="submit">Save Changes</Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </div>
+          <div className="md:col-span-1 flex flex-col gap-4 border-l pl-6">
+            <h3 className="text-lg font-semibold flex items-center gap-2"><MessageSquare className="h-5 w-5" /> Comments ({incident.comments.length})</h3>
+            <div className="flex-1 space-y-4 overflow-y-auto pr-2">
               {incident.comments.map((comment, index) => (
                 <div key={index} className="flex gap-3">
                   <Avatar>
@@ -382,21 +379,15 @@ const IncidentDetailsDialog = ({
                   </div>
                 </div>
               ))}
-              <div className="flex gap-3">
-                 <Avatar>
-                    <AvatarImage src={`https://placehold.co/40x40.png?text=SM`} />
-                    <AvatarFallback>SM</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                     <Textarea 
-                        placeholder="Add a comment..."
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        rows={2}
-                    />
-                    <Button size="sm" className="mt-2" onClick={handleAddComment} disabled={!newComment.trim()}>Add Comment</Button>
-                  </div>
-              </div>
+            </div>
+            <div className="flex flex-col gap-2 mt-auto">
+               <Textarea 
+                  placeholder="Add a comment..."
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  rows={2}
+              />
+              <Button size="sm" onClick={handleAddComment} disabled={!newComment.trim()}>Add Comment</Button>
             </div>
           </div>
         </div>
@@ -554,3 +545,5 @@ export default function IncidentsPage() {
     </AppShell>
   );
 }
+
+    
