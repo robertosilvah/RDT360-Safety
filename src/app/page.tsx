@@ -49,24 +49,29 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
-    // For last accident
-    const accidents = incidents.filter(i => i.type === 'Accident');
-    if (accidents.length === 0) {
-      setDaysSinceLastAccident({ value: 'N/A', description: 'No accidents recorded yet.' });
-    } else {
-      const lastAccidentDate = accidents.reduce((max, incident) => new Date(incident.date) > new Date(max.date) ? incident : max).date;
-      const days = differenceInDays(new Date(), new Date(lastAccidentDate));
-      setDaysSinceLastAccident({ value: days.toString(), description: 'All areas included' });
-    }
+    if (incidents.length > 0) {
+      // For last accident
+      const accidents = incidents.filter(i => i.type === 'Accident');
+      if (accidents.length === 0) {
+        setDaysSinceLastAccident({ value: 'N/A', description: 'No accidents recorded yet.' });
+      } else {
+        const lastAccidentDate = accidents.reduce((max, incident) => new Date(incident.date) > new Date(max.date) ? incident : max).date;
+        const days = differenceInDays(new Date(), new Date(lastAccidentDate));
+        setDaysSinceLastAccident({ value: days.toString(), description: 'All areas included' });
+      }
 
-    // For last incident
-    const allIncidents = incidents.filter(i => i.type === 'Incident');
-    if (allIncidents.length === 0) {
-        setDaysSinceLastIncident({ value: 'N/A', description: 'No incidents recorded yet.' });
+      // For last incident
+      const allIncidents = incidents.filter(i => i.type === 'Incident');
+      if (allIncidents.length === 0) {
+          setDaysSinceLastIncident({ value: 'N/A', description: 'No incidents recorded yet.' });
+      } else {
+          const lastIncidentDate = allIncidents.reduce((max, incident) => new Date(incident.date) > new Date(max.date) ? incident : max).date;
+          const days = differenceInDays(new Date(), new Date(lastIncidentDate));
+          setDaysSinceLastIncident({ value: days.toString(), description: 'All areas included' });
+      }
     } else {
-        const lastIncidentDate = allIncidents.reduce((max, incident) => new Date(incident.date) > new Date(max.date) ? incident : max).date;
-        const days = differenceInDays(new Date(), new Date(lastIncidentDate));
-        setDaysSinceLastIncident({ value: days.toString(), description: 'All areas included' });
+        setDaysSinceLastAccident({ value: '0', description: 'No accidents recorded yet.' });
+        setDaysSinceLastIncident({ value: '0', description: 'No incidents recorded yet.' });
     }
   }, [incidents]);
 
@@ -94,34 +99,35 @@ export default function DashboardPage() {
     Low: 'text-green-500',
   };
 
-  const submissionsByTypeData = useMemo(() => {
-    const contributions: { type: string; date: string }[] = [];
+  const submissionsByPersonData = useMemo(() => {
+    const contributions: { submitter: string; date: string }[] = [];
 
     observations.forEach(obs => {
-        contributions.push({ type: obs.report_type, date: obs.date });
+        contributions.push({ submitter: obs.submitted_by, date: obs.date });
     });
 
     incidents.forEach(inc => {
-        contributions.push({ type: inc.type, date: inc.date });
+        contributions.push({ submitter: inc.reported_by, date: inc.date });
     });
 
     const filteredContributions = contributions.filter(item => {
         if (!date?.from) return true;
-        const toDate = date.to ?? date.from;
+        const toDate = date.to ?? new Date();
         try {
             return isWithinInterval(new Date(item.date), { start: date.from, end: toDate });
         } catch (e) {
+            console.error(`Invalid date found: ${item.date}`);
             return false;
         }
     });
 
-    const contributionsByType = filteredContributions.reduce((acc: Record<string, number>, item) => {
-        acc[item.type] = (acc[item.type] || 0) + 1;
+    const contributionsByPerson = filteredContributions.reduce((acc: Record<string, number>, item) => {
+        acc[item.submitter] = (acc[item.submitter] || 0) + 1;
         return acc;
     }, {});
 
-    return Object.entries(contributionsByType)
-        .map(([type, count]) => ({ type, count }))
+    return Object.entries(contributionsByPerson)
+        .map(([person, count]) => ({ person, count }))
         .sort((a, b) => b.count - a.count);
   }, [observations, incidents, date]);
 
@@ -276,9 +282,9 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="flex-row items-center justify-between space-y-0">
               <div>
-                <CardTitle>Submissions by Type</CardTitle>
+                <CardTitle>Submissions</CardTitle>
                 <CardDescription>
-                  Count of observations and incidents by type.
+                  Total safety reports submitted by each person.
                 </CardDescription>
               </div>
               <Popover>
@@ -322,15 +328,15 @@ export default function DashboardPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Type</TableHead>
-                    <TableHead className="text-right">Count</TableHead>
+                    <TableHead>Person</TableHead>
+                    <TableHead className="text-right">Submissions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {submissionsByTypeData.map((item) => (
-                    <TableRow key={item.type}>
+                  {submissionsByPersonData.map((item) => (
+                    <TableRow key={item.person}>
                       <TableCell className="font-medium">
-                        {item.type}
+                        {item.person}
                       </TableCell>
                       <TableCell className="text-right">{item.count}</TableCell>
                     </TableRow>
