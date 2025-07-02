@@ -106,8 +106,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       onSnapshot(collection(db, 'correctiveActions'), (snapshot) => {
         const actionsFromDb = mapFromSnapshot<CorrectiveAction>(snapshot, 'action_id');
         const now = new Date();
-        const batch = writeBatch(db);
-        let hasUpdates = false;
     
         const processedActions = actionsFromDb.map(action => {
             let derivedType = action.type;
@@ -125,25 +123,17 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             // Backfill created_date if it doesn't exist, using due_date as a fallback for older records
             const derivedCreatedDate = action.created_date || action.due_date;
 
-            const updatedAction = { ...action, type: derivedType, created_date: derivedCreatedDate };
-
+            let finalStatus = action.status;
+            // Client-side check for 'Overdue' status, no need to write back to DB
             if (
-                (updatedAction.status === 'Pending' || updatedAction.status === 'In Progress') &&
-                new Date(updatedAction.due_date) < now
+                (action.status === 'Pending' || action.status === 'In Progress') &&
+                new Date(action.due_date) < now
             ) {
-                if (updatedAction.status !== 'Overdue') {
-                    const actionRef = doc(db, 'correctiveActions', updatedAction.action_id);
-                    batch.update(actionRef, { status: 'Overdue' });
-                    hasUpdates = true;
-                }
-                return { ...updatedAction, status: 'Overdue' as const };
+                finalStatus = 'Overdue';
             }
-            return updatedAction;
+
+            return { ...action, type: derivedType, created_date: derivedCreatedDate, status: finalStatus };
         });
-    
-        if (hasUpdates) {
-            batch.commit().catch(console.error);
-        }
         
         setCorrectiveActions(processedActions);
       }),
