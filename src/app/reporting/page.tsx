@@ -16,6 +16,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from 'recharts';
 import type { CorrectiveAction, Incident, Observation } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { riskLabels } from '@/app/observations/page';
 
 const KpiCard = ({ title, value, description }: { title: string; value: string | number; description?: string }) => (
     <div className="flex flex-col items-center justify-center p-4 text-center">
@@ -30,7 +32,7 @@ const CreatedVsCompletedChart = ({ data }: { data: any[] }) => (
         <LineChart data={data} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
             <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-            <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+            <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
             <Tooltip
                 contentStyle={{
                     backgroundColor: 'hsl(var(--background))',
@@ -50,7 +52,7 @@ const ActionsByTypeChart = ({ data }: { data: any[] }) => (
         <BarChart data={data} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
              <CartesianGrid strokeDasharray="3 3" vertical={false} />
             <XAxis dataKey="name" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
-            <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+            <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
             <Tooltip
                 cursor={{ fill: 'hsl(var(--accent) / 0.2)' }}
                 contentStyle={{
@@ -146,7 +148,7 @@ const ObservationTypeDonutChart = ({ data }: { data: any[] }) => {
     );
 };
 
-const WorkOrdersView = ({ actions, dateRange }: { actions: CorrectiveAction[]; dateRange?: DateRange }) => {
+const WorkOrdersView = ({ actions, dateRange, statusFilter, responsibleFilter, typeFilter }: { actions: CorrectiveAction[]; dateRange?: DateRange, statusFilter: string; responsibleFilter: string; typeFilter: string; }) => {
 
     const inRange = (date: string) => {
         if (!dateRange?.from) return true;
@@ -154,8 +156,17 @@ const WorkOrdersView = ({ actions, dateRange }: { actions: CorrectiveAction[]; d
         try { return isWithinInterval(new Date(date), { start: dateRange.from, end: toDate }); } catch (e) { return false; }
     }
 
-    const createdInPeriod = useMemo(() => actions.filter(a => a.created_date && inRange(a.created_date)), [actions, dateRange]);
-    const completedInPeriod = useMemo(() => actions.filter(a => a.completion_date && inRange(a.completion_date)), [actions, dateRange]);
+    const filteredByProps = useMemo(() => {
+        return actions.filter(action => {
+            const statusMatch = statusFilter === 'all' || action.status === statusFilter;
+            const responsibleMatch = responsibleFilter === 'all' || action.responsible_person === responsibleFilter;
+            const typeMatch = typeFilter === 'all' || action.type === typeFilter;
+            return statusMatch && responsibleMatch && typeMatch;
+        });
+    }, [actions, statusFilter, responsibleFilter, typeFilter]);
+
+    const createdInPeriod = useMemo(() => filteredByProps.filter(a => a.created_date && inRange(a.created_date)), [filteredByProps, dateRange]);
+    const completedInPeriod = useMemo(() => filteredByProps.filter(a => a.completion_date && inRange(a.completion_date)), [filteredByProps, dateRange]);
 
     const kpiData = useMemo(() => {
         const created = createdInPeriod.length;
@@ -238,14 +249,23 @@ const WorkOrdersView = ({ actions, dateRange }: { actions: CorrectiveAction[]; d
     );
 };
 
-const IncidentsView = ({ incidents, dateRange }: { incidents: Incident[], dateRange?: DateRange }) => {
+const IncidentsView = ({ incidents, dateRange, typeFilter, severityFilter, statusFilter, areaFilter }: { incidents: Incident[], dateRange?: DateRange, typeFilter: string; severityFilter: string; statusFilter: string; areaFilter: string; }) => {
 
     const filteredIncidents = useMemo(() => {
-        if (!dateRange?.from) return incidents;
-        const toDate = dateRange.to ?? dateRange.from;
-        const range = { start: dateRange.from, end: toDate };
-        return incidents.filter(incident => incident.date && isWithinInterval(new Date(incident.date), range));
-    }, [incidents, dateRange]);
+        return incidents.filter(incident => {
+            if (!dateRange?.from) return false;
+            const toDate = dateRange.to ?? dateRange.from;
+            const range = { start: dateRange.from, end: toDate };
+            if (!incident.date || !isWithinInterval(new Date(incident.date), range)) return false;
+
+            const typeMatch = typeFilter === 'all' || incident.type === typeFilter;
+            const severityMatch = severityFilter === 'all' || incident.severity === severityFilter;
+            const statusMatch = statusFilter === 'all' || incident.status === statusFilter;
+            const areaMatch = areaFilter === 'all' || incident.area === areaFilter;
+
+            return typeMatch && severityMatch && statusMatch && areaMatch;
+        });
+    }, [incidents, dateRange, typeFilter, severityFilter, statusFilter, areaFilter]);
 
     const kpiData = useMemo(() => {
         const total = filteredIncidents.length;
@@ -282,14 +302,22 @@ const IncidentsView = ({ incidents, dateRange }: { incidents: Incident[], dateRa
     );
 };
 
-const ObservationsView = ({ observations, dateRange }: { observations: Observation[], dateRange?: DateRange }) => {
+const ObservationsView = ({ observations, dateRange, typeFilter, riskFilter, statusFilter }: { observations: Observation[], dateRange?: DateRange, typeFilter: string; riskFilter: string; statusFilter: string; }) => {
 
     const filteredObservations = useMemo(() => {
-        if (!dateRange?.from) return observations;
-        const toDate = dateRange.to ?? dateRange.from;
-        const range = { start: dateRange.from, end: toDate };
-        return observations.filter(obs => obs.date && isWithinInterval(new Date(obs.date), range));
-    }, [observations, dateRange]);
+        return observations.filter(obs => {
+            if (!dateRange?.from) return false;
+            const toDate = dateRange.to ?? dateRange.from;
+            const range = { start: dateRange.from, end: toDate };
+            if (!obs.date || !isWithinInterval(new Date(obs.date), range)) return false;
+            
+            const typeMatch = typeFilter === 'all' || obs.report_type === typeFilter;
+            const riskMatch = riskFilter === 'all' || obs.risk_level === parseInt(riskFilter);
+            const statusMatch = statusFilter === 'all' || obs.status === statusFilter;
+
+            return typeMatch && riskMatch && statusMatch;
+        });
+    }, [observations, dateRange, typeFilter, riskFilter, statusFilter]);
 
     const kpiData = useMemo(() => {
         const total = filteredObservations.length;
@@ -335,6 +363,26 @@ export default function ReportingPage() {
         to: endOfMonth(new Date()),
     });
 
+    // Corrective Action Filters
+    const [actionStatusFilter, setActionStatusFilter] = useState('all');
+    const [actionResponsibleFilter, setActionResponsibleFilter] = useState('all');
+    const [actionTypeFilter, setActionTypeFilter] = useState('all');
+    
+    // Incident Filters
+    const [incidentTypeFilter, setIncidentTypeFilter] = useState('all');
+    const [incidentSeverityFilter, setIncidentSeverityFilter] = useState('all');
+    const [incidentStatusFilter, setIncidentStatusFilter] = useState('all');
+    const [incidentAreaFilter, setIncidentAreaFilter] = useState('all');
+
+    // Observation Filters
+    const [observationTypeFilter, setObservationTypeFilter] = useState('all');
+    const [observationRiskFilter, setObservationRiskFilter] = useState('all');
+    const [observationStatusFilter, setObservationStatusFilter] = useState('all');
+    
+    // Dynamic values for select dropdowns
+    const responsiblePersons = useMemo(() => Array.from(new Set(correctiveActions.map(a => a.responsible_person))).sort(), [correctiveActions]);
+    const incidentAreas = useMemo(() => Array.from(new Set(incidents.map(i => i.area))).sort(), [incidents]);
+
     const handleExport = () => {
         let data: any[] = [];
         let headers: string[] = [];
@@ -356,17 +404,30 @@ export default function ReportingPage() {
 
         switch (activeTab) {
             case 'work-orders':
-                data = correctiveActions.filter(a => a.created_date && inRange(a.created_date));
+                data = correctiveActions
+                    .filter(a => inRange(a.created_date))
+                    .filter(a => actionStatusFilter === 'all' || a.status === actionStatusFilter)
+                    .filter(a => actionResponsibleFilter === 'all' || a.responsible_person === actionResponsibleFilter)
+                    .filter(a => actionTypeFilter === 'all' || a.type === actionTypeFilter);
                 headers = ['display_id', 'description', 'status', 'responsible_person', 'due_date', 'created_date', 'completion_date', 'type'];
                 filename = 'corrective_actions_export.csv';
                 break;
             case 'incidents':
-                data = incidents.filter(i => i.date && inRange(i.date));
+                data = incidents
+                    .filter(i => inRange(i.date))
+                    .filter(i => incidentTypeFilter === 'all' || i.type === incidentTypeFilter)
+                    .filter(i => incidentSeverityFilter === 'all' || i.severity === incidentSeverityFilter)
+                    .filter(i => incidentStatusFilter === 'all' || i.status === incidentStatusFilter)
+                    .filter(i => incidentAreaFilter === 'all' || i.area === incidentAreaFilter);
                 headers = ['display_id', 'date', 'area', 'type', 'description', 'severity', 'status'];
                 filename = 'incidents_export.csv';
                 break;
             case 'observations':
-                data = observations.filter(o => o.date && inRange(o.date));
+                data = observations
+                    .filter(o => inRange(o.date))
+                    .filter(o => observationTypeFilter === 'all' || o.report_type === observationTypeFilter)
+                    .filter(o => observationRiskFilter === 'all' || o.risk_level === parseInt(observationRiskFilter))
+                    .filter(o => observationStatusFilter === 'all' || o.status === observationStatusFilter);
                 headers = ['display_id', 'report_type', 'submitted_by', 'date', 'risk_level', 'description', 'status'];
                 filename = 'observations_export.csv';
                 break;
@@ -424,6 +485,62 @@ export default function ReportingPage() {
                     </div>
                 </div>
 
+                <div className="flex flex-wrap items-center gap-2 py-4 border-b">
+                    <span className="text-sm font-medium">Filters:</span>
+                    {activeTab === 'work-orders' && (
+                        <>
+                            <Select value={actionStatusFilter} onValueChange={setActionStatusFilter}>
+                                <SelectTrigger className="w-auto sm:w-[180px]"><SelectValue placeholder="Status" /></SelectTrigger>
+                                <SelectContent><SelectItem value="all">All Statuses</SelectItem><SelectItem value="Pending">Pending</SelectItem><SelectItem value="In Progress">In Progress</SelectItem><SelectItem value="Completed">Completed</SelectItem><SelectItem value="Overdue">Overdue</SelectItem></SelectContent>
+                            </Select>
+                            <Select value={actionResponsibleFilter} onValueChange={setActionResponsibleFilter}>
+                                <SelectTrigger className="w-auto sm:w-[180px]"><SelectValue placeholder="Responsible" /></SelectTrigger>
+                                <SelectContent><SelectItem value="all">All Responsible</SelectItem>{responsiblePersons.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                            </Select>
+                            <Select value={actionTypeFilter} onValueChange={setActionTypeFilter}>
+                                <SelectTrigger className="w-auto sm:w-[180px]"><SelectValue placeholder="Type" /></SelectTrigger>
+                                <SelectContent><SelectItem value="all">All Types</SelectItem><SelectItem value="Preventive">Preventive</SelectItem><SelectItem value="Reactive">Reactive</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent>
+                            </Select>
+                        </>
+                    )}
+                    {activeTab === 'incidents' && (
+                        <>
+                            <Select value={incidentTypeFilter} onValueChange={setIncidentTypeFilter}>
+                                <SelectTrigger className="w-auto sm:w-[180px]"><SelectValue placeholder="Type" /></SelectTrigger>
+                                <SelectContent><SelectItem value="all">All Types</SelectItem><SelectItem value="Incident">Incident</SelectItem><SelectItem value="Accident">Accident</SelectItem></SelectContent>
+                            </Select>
+                             <Select value={incidentSeverityFilter} onValueChange={setIncidentSeverityFilter}>
+                                <SelectTrigger className="w-auto sm:w-[180px]"><SelectValue placeholder="Severity" /></SelectTrigger>
+                                <SelectContent><SelectItem value="all">All Severities</SelectItem><SelectItem value="Low">Low</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="High">High</SelectItem></SelectContent>
+                            </Select>
+                            <Select value={incidentStatusFilter} onValueChange={setIncidentStatusFilter}>
+                                <SelectTrigger className="w-auto sm:w-[180px]"><SelectValue placeholder="Status" /></SelectTrigger>
+                                <SelectContent><SelectItem value="all">All Statuses</SelectItem><SelectItem value="Open">Open</SelectItem><SelectItem value="Under Investigation">Under Investigation</SelectItem><SelectItem value="Closed">Closed</SelectItem></SelectContent>
+                            </Select>
+                            <Select value={incidentAreaFilter} onValueChange={setIncidentAreaFilter}>
+                                <SelectTrigger className="w-auto sm:w-[180px]"><SelectValue placeholder="Area" /></SelectTrigger>
+                                <SelectContent><SelectItem value="all">All Areas</SelectItem>{incidentAreas.map(a => <SelectItem key={a} value={a}>{a}</SelectItem>)}</SelectContent>
+                            </Select>
+                        </>
+                    )}
+                     {activeTab === 'observations' && (
+                        <>
+                            <Select value={observationTypeFilter} onValueChange={setObservationTypeFilter}>
+                                <SelectTrigger className="w-auto sm:w-[180px]"><SelectValue placeholder="Type" /></SelectTrigger>
+                                <SelectContent><SelectItem value="all">All Types</SelectItem><SelectItem value="Safety Concern">Safety Concern</SelectItem><SelectItem value="Positive Observation">Positive Observation</SelectItem><SelectItem value="Near Miss">Near Miss</SelectItem></SelectContent>
+                            </Select>
+                             <Select value={observationRiskFilter} onValueChange={setObservationRiskFilter}>
+                                <SelectTrigger className="w-auto sm:w-[180px]"><SelectValue placeholder="Risk Level" /></SelectTrigger>
+                                <SelectContent><SelectItem value="all">All Risk Levels</SelectItem>{Object.entries(riskLabels).map(([level, label]) => (<SelectItem key={level} value={level}>{label}</SelectItem>))}</SelectContent>
+                            </Select>
+                            <Select value={observationStatusFilter} onValueChange={setObservationStatusFilter}>
+                                <SelectTrigger className="w-auto sm:w-[180px]"><SelectValue placeholder="Status" /></SelectTrigger>
+                                <SelectContent><SelectItem value="all">All Statuses</SelectItem><SelectItem value="Open">Open</SelectItem><SelectItem value="Closed">Closed</SelectItem></SelectContent>
+                            </Select>
+                        </>
+                    )}
+                </div>
+
                 <Tabs defaultValue="work-orders" value={activeTab} onValueChange={setActiveTab}>
                     <TabsList>
                         <TabsTrigger value="work-orders">Corrective Actions</TabsTrigger>
@@ -431,13 +548,32 @@ export default function ReportingPage() {
                         <TabsTrigger value="observations">Observations</TabsTrigger>
                     </TabsList>
                     <TabsContent value="work-orders" className="pt-4">
-                        <WorkOrdersView actions={correctiveActions} dateRange={dateRange} />
+                        <WorkOrdersView 
+                            actions={correctiveActions} 
+                            dateRange={dateRange} 
+                            statusFilter={actionStatusFilter} 
+                            responsibleFilter={actionResponsibleFilter} 
+                            typeFilter={actionTypeFilter}
+                        />
                     </TabsContent>
                     <TabsContent value="incidents" className="pt-4">
-                        <IncidentsView incidents={incidents} dateRange={dateRange} />
+                        <IncidentsView 
+                            incidents={incidents} 
+                            dateRange={dateRange}
+                            typeFilter={incidentTypeFilter}
+                            severityFilter={incidentSeverityFilter}
+                            statusFilter={incidentStatusFilter}
+                            areaFilter={incidentAreaFilter}
+                        />
                     </TabsContent>
                      <TabsContent value="observations" className="pt-4">
-                        <ObservationsView observations={observations} dateRange={dateRange} />
+                        <ObservationsView 
+                            observations={observations} 
+                            dateRange={dateRange} 
+                            typeFilter={observationTypeFilter}
+                            riskFilter={observationRiskFilter}
+                            statusFilter={observationStatusFilter}
+                        />
                     </TabsContent>
                 </Tabs>
             </div>
