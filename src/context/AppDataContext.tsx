@@ -110,18 +110,35 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         let hasUpdates = false;
     
         const processedActions = actionsFromDb.map(action => {
+            let derivedType = action.type;
+            // Backfill type if it doesn't exist
+            if (!derivedType) {
+                if (action.related_to_incident) {
+                    derivedType = 'Reactive';
+                } else if (action.related_to_observation || action.related_to_forklift_inspection) {
+                    derivedType = 'Preventive';
+                } else {
+                    derivedType = 'Other';
+                }
+            }
+            
+            // Backfill created_date if it doesn't exist, using due_date as a fallback for older records
+            const derivedCreatedDate = action.created_date || action.due_date;
+
+            const updatedAction = { ...action, type: derivedType, created_date: derivedCreatedDate };
+
             if (
-                (action.status === 'Pending' || action.status === 'In Progress') &&
-                new Date(action.due_date) < now
+                (updatedAction.status === 'Pending' || updatedAction.status === 'In Progress') &&
+                new Date(updatedAction.due_date) < now
             ) {
-                if (action.status !== 'Overdue') {
-                    const actionRef = doc(db, 'correctiveActions', action.action_id);
+                if (updatedAction.status !== 'Overdue') {
+                    const actionRef = doc(db, 'correctiveActions', updatedAction.action_id);
                     batch.update(actionRef, { status: 'Overdue' });
                     hasUpdates = true;
                 }
-                return { ...action, status: 'Overdue' as const };
+                return { ...updatedAction, status: 'Overdue' as const };
             }
-            return action;
+            return updatedAction;
         });
     
         if (hasUpdates) {

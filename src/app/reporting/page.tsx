@@ -44,7 +44,7 @@ const CreatedVsCompletedChart = ({ data }: { data: any[] }) => (
     </ResponsiveContainer>
 );
 
-const WorkOrdersByTypeChart = ({ data }: { data: any[] }) => (
+const ActionsByTypeChart = ({ data }: { data: any[] }) => (
     <ResponsiveContainer width="100%" height={250}>
         <BarChart data={data} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
              <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -96,6 +96,7 @@ const WorkOrdersView = ({ actions, dateRange }: { actions: CorrectiveAction[], d
     const filteredActions = useMemo(() => {
         return actions.filter(action => {
             if (!dateRange?.from) return true;
+            if (!action.created_date) return false; // Ensure created_date exists
             const toDate = dateRange.to ?? dateRange.from;
             try {
                 return isWithinInterval(new Date(action.created_date), { start: dateRange.from, end: toDate });
@@ -115,6 +116,7 @@ const WorkOrdersView = ({ actions, dateRange }: { actions: CorrectiveAction[], d
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
         filteredActions.forEach(action => {
+            if (!action.created_date) return;
             const createdMonth = format(new Date(action.created_date), 'MMM');
             if (!months[createdMonth]) months[createdMonth] = { created: 0, completed: 0 };
             months[createdMonth].created++;
@@ -135,7 +137,8 @@ const WorkOrdersView = ({ actions, dateRange }: { actions: CorrectiveAction[], d
 
     const byTypeData = useMemo(() => {
         const counts = filteredActions.reduce((acc, action) => {
-            acc[action.type] = (acc[action.type] || 0) + 1;
+            const type = action.type || 'Other';
+            acc[type] = (acc[type] || 0) + 1;
             return acc;
         }, {} as Record<CorrectiveAction['type'], number>);
         return Object.entries(counts).map(([name, count]) => ({ name, count }));
@@ -158,7 +161,7 @@ const WorkOrdersView = ({ actions, dateRange }: { actions: CorrectiveAction[], d
                 <CardContent className="grid grid-cols-1 md:grid-cols-3 divide-y md:divide-y-0 md:divide-x">
                     <KpiCard title="Created" value={kpiData.created} />
                     <KpiCard title="Completed" value={kpiData.completed} />
-                    <KpiCard title="Percent Completed" value={`${kpiData.percentCompleted}%`} description="Work orders completed in this time period."/>
+                    <KpiCard title="Percent Completed" value={`${kpiData.percentCompleted}%`} description="Actions completed in this time period."/>
                 </CardContent>
                 <div className="px-6 pb-4">
                     <CreatedVsCompletedChart data={chartData} />
@@ -167,9 +170,9 @@ const WorkOrdersView = ({ actions, dateRange }: { actions: CorrectiveAction[], d
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
-                    <CardHeader><CardTitle>Work Orders by Type</CardTitle></CardHeader>
+                    <CardHeader><CardTitle>Corrective Actions by Type</CardTitle></CardHeader>
                     <CardContent>
-                       <WorkOrdersByTypeChart data={byTypeData} />
+                       <ActionsByTypeChart data={byTypeData} />
                     </CardContent>
                 </Card>
                  <Card>
