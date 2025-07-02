@@ -290,6 +290,7 @@ const PermitDetailsDialog = ({
     const success = await onUpdate(updatedPermit);
     if(success) {
       toast({ title: 'Permit Issued', description: 'The permit is now active.' });
+      setOpen(false);
     }
   };
 
@@ -594,7 +595,7 @@ const PermitDetailsDialog = ({
             {isCreateMode && (
                 <>
                     <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-                    <Button type="submit">Save as Draft</Button>
+                    <Button type="submit">Save Draft & Close</Button>
                 </>
             )}
             {!isCreateMode && permit && (
@@ -606,8 +607,8 @@ const PermitDetailsDialog = ({
                             </Button>
                             <div className="flex gap-2">
                                 <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-                                <Button type="submit">Save Draft Changes</Button>
-                                <Button type="button" onClick={handleIssuePermit}>Issue &amp; Sign Permit</Button>
+                                <Button type="submit">Save Changes & Close</Button>
+                                <Button type="button" onClick={handleIssuePermit}>Issue & Close</Button>
                             </div>
                         </div>
                     )}

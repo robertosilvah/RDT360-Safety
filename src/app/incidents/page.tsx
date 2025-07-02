@@ -171,7 +171,7 @@ const IncidentDetailsDialog = ({
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
 }) => {
-  const { updateIncident, addCommentToIncident, createInvestigationForIncident } = useAppData();
+  const { incidents, updateIncident, addCommentToIncident, createInvestigationForIncident } = useAppData();
   const { toast } = useToast();
   const router = useRouter();
   const [newComment, setNewComment] = useState('');
@@ -188,30 +188,31 @@ const IncidentDetailsDialog = ({
     },
   });
   
+  const currentIncident = incident ? incidents.find(i => i.incident_id === incident.incident_id) || null : null;
+
   useEffect(() => {
-    if (incident) {
+    if (currentIncident) {
       form.reset({
-        description: incident.description,
-        type: incident.type,
-        severity: incident.severity,
-        status: incident.status,
-        assigned_to: incident.assigned_to || '',
+        description: currentIncident.description,
+        type: currentIncident.type,
+        severity: currentIncident.severity,
+        status: currentIncident.status,
+        assigned_to: currentIncident.assigned_to || '',
       });
       setNewComment('');
     }
-  }, [incident, form, isOpen]);
+  }, [currentIncident, form, isOpen]);
 
-  if (!incident) return null;
+  if (!currentIncident) return null;
 
   const handleStartInvestigation = async () => {
-    if (!incident) return;
     setIsCreatingInvestigation(true);
     try {
-      const newInvestigationId = await createInvestigationForIncident(incident);
+      const newInvestigationId = await createInvestigationForIncident(currentIncident);
       if (newInvestigationId) {
         toast({
           title: 'Investigation Started',
-          description: `An investigation has been created for incident ${incident.display_id}.`,
+          description: `An investigation has been created for incident ${currentIncident.display_id}.`,
         });
         onOpenChange(false);
         router.push(`/investigations?id=${newInvestigationId}`);
@@ -235,14 +236,15 @@ const IncidentDetailsDialog = ({
   };
 
   const handleSubmit = (values: IncidentFormValues) => {
-    const updatedIncident = { ...incident, ...values, assigned_to: values.assigned_to || undefined };
+    const updatedIncident = { ...currentIncident, ...values, assigned_to: values.assigned_to || undefined };
     updateIncident(updatedIncident);
-    toast({ title: 'Incident Updated', description: `Incident ${incident.display_id} has been updated.` });
+    toast({ title: 'Incident Updated', description: `Incident ${currentIncident.display_id} has been updated.` });
+    onOpenChange(false);
   };
 
   const handleAddComment = () => {
     if (newComment.trim()) {
-      addCommentToIncident(incident.incident_id, { user: 'Safety Manager', comment: newComment.trim(), date: new Date().toISOString() });
+      addCommentToIncident(currentIncident.incident_id, { user: 'Safety Manager', comment: newComment.trim(), date: new Date().toISOString() });
       setNewComment('');
     }
   };
@@ -251,9 +253,9 @@ const IncidentDetailsDialog = ({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Incident Details: {incident.display_id}</DialogTitle>
+          <DialogTitle>Incident Details: {currentIncident.display_id}</DialogTitle>
            <DialogDescription>
-            Reported on {format(new Date(incident.date), 'PPP')} in {incident.area}
+            Reported on {format(new Date(currentIncident.date), 'PPP')} in {currentIncident.area}
           </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-h-[70vh]">
@@ -341,9 +343,9 @@ const IncidentDetailsDialog = ({
                 </div>
                 <DialogFooter className="!justify-between pt-4 mt-auto border-t">
                   <div>
-                    {incident.investigation_id ? (
+                    {currentIncident.investigation_id ? (
                       <Button type="button" variant="outline" asChild>
-                        <Link href={`/investigations?id=${incident.investigation_id}`}>View Investigation</Link>
+                        <Link href={`/investigations?id=${currentIncident.investigation_id}`}>View Investigation</Link>
                       </Button>
                     ) : (
                       <Button type="button" variant="outline" onClick={handleStartInvestigation} disabled={isCreatingInvestigation}>
@@ -356,15 +358,15 @@ const IncidentDetailsDialog = ({
                       </Button>
                     )}
                   </div>
-                  <Button type="submit">Save Changes</Button>
+                  <Button type="submit">Save & Close</Button>
                 </DialogFooter>
               </form>
             </Form>
           </div>
           <div className="md:col-span-1 flex flex-col gap-4 border-l pl-6">
-            <h3 className="text-lg font-semibold flex items-center gap-2"><MessageSquare className="h-5 w-5" /> Comments ({incident.comments.length})</h3>
+            <h3 className="text-lg font-semibold flex items-center gap-2"><MessageSquare className="h-5 w-5" /> Comments ({currentIncident.comments.length})</h3>
             <div className="flex-1 space-y-4 overflow-y-auto pr-2">
-              {incident.comments.map((comment, index) => (
+              {currentIncident.comments.map((comment, index) => (
                 <div key={index} className="flex gap-3">
                   <Avatar>
                     <AvatarImage src={`https://placehold.co/40x40.png?text=${comment.user.charAt(0)}`} />
@@ -442,11 +444,7 @@ export default function IncidentsPage() {
         variant: 'destructive',
     });
   };
-
-  const currentSelectedIncident = selectedIncident
-    ? incidents.find(i => i.incident_id === selectedIncident.incident_id) || null
-    : null;
-
+  
   return (
     <AppShell>
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -541,7 +539,7 @@ export default function IncidentsPage() {
         </Card>
       </div>
       <IncidentDetailsDialog 
-        incident={currentSelectedIncident}
+        incident={selectedIncident}
         isOpen={isDetailsDialogOpen}
         onOpenChange={setDetailsDialogOpen}
       />

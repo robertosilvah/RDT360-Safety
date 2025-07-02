@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -87,7 +88,7 @@ const ChecklistItemForm = ({
         </div>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button type="submit">{isEdit ? 'Save Changes' : 'Add Item'}</Button>
+          <Button type="submit">{isEdit ? 'Save & Close' : 'Add Item'}</Button>
         </DialogFooter>
       </form>
     </Form>

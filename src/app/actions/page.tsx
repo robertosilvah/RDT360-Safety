@@ -85,10 +85,6 @@ const ActionForm = ({
 
   const onSubmit = (data: ActionFormValues) => {
     onSave(data, initialValues?.action_id);
-    toast({
-      title: isEdit ? 'Corrective Action Updated' : 'Corrective Action Created',
-      description: isEdit ? 'The action has been updated.' : 'The new action has been added to the list.',
-    });
     setOpen(false);
     if (!isEdit) form.reset();
   };
@@ -217,7 +213,7 @@ const ActionForm = ({
         </div>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button type="submit">{isEdit ? 'Save Changes' : 'Create Action'}</Button>
+          <Button type="submit">{isEdit ? 'Save & Close' : 'Create Action'}</Button>
         </DialogFooter>
       </form>
     </Form>
@@ -234,10 +230,11 @@ const ActionDetailsDialog = ({
     const { correctiveActions, updateCorrectiveAction, addCommentToAction, incidents, observations } = useAppData();
     const [newComment, setNewComment] = useState('');
     
-    if (!action) return null;
+    const currentAction = action ? correctiveActions.find(a => a.action_id === action.action_id) || null : null;
+    if (!currentAction) return null;
 
     const handleSave = (values: ActionFormValues) => {
-        const actionToUpdate = correctiveActions.find(a => a.action_id === action.action_id);
+        const actionToUpdate = correctiveActions.find(a => a.action_id === currentAction.action_id);
         if (!actionToUpdate) return;
         
         const updatedAction = { 
@@ -248,11 +245,16 @@ const ActionDetailsDialog = ({
             status: values.status || actionToUpdate.status,
         };
         updateCorrectiveAction(updatedAction);
+        const { toast } = useToast();
+        toast({
+            title: 'Corrective Action Updated',
+            description: 'The action has been updated.',
+        });
     }
 
     const handleAddComment = () => {
         if(newComment.trim()) {
-            addCommentToAction(action.action_id, { user: 'Safety Manager', comment: newComment.trim(), date: new Date().toISOString() });
+            addCommentToAction(currentAction.action_id, { user: 'Safety Manager', comment: newComment.trim(), date: new Date().toISOString() });
             setNewComment('');
         }
     }
@@ -262,12 +264,12 @@ const ActionDetailsDialog = ({
             <DialogContent className="max-w-3xl">
                 <div className="max-h-[80vh] grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="md:col-span-2 space-y-6">
-                        <ActionForm onSave={handleSave} setOpen={onOpenChange} initialValues={action} isEdit incidents={incidents} observations={observations} />
+                        <ActionForm onSave={handleSave} setOpen={onOpenChange} initialValues={currentAction} isEdit incidents={incidents} observations={observations} />
                     </div>
                     <div className="md:col-span-1 space-y-4 pt-2">
                         <h3 className="text-lg font-semibold flex items-center gap-2"><MessageSquare className="h-5 w-5" /> Comments</h3>
                         <div className="space-y-4 max-h-[calc(70vh-150px)] overflow-y-auto pr-2">
-                           {action.comments.map((comment, index) => (
+                           {currentAction.comments.map((comment, index) => (
                                 <div key={index} className="flex gap-3">
                                 <Avatar>
                                     <AvatarImage src={`https://placehold.co/40x40.png?text=${comment.user.charAt(0)}`} />
@@ -455,6 +457,7 @@ export default function CorrectiveActionsPage() {
   const [isCreateDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedAction, setSelectedAction] = useState<CorrectiveAction | null>(null);
   const [isDetailsOpen, setDetailsOpen] = useState(false);
+  const { toast } = useToast();
 
   const myActions = useMemo(() => {
     if (!user?.displayName) return [];
@@ -471,16 +474,16 @@ export default function CorrectiveActionsPage() {
         related_to_observation: values.linkType === 'observation' ? values.linked_id : undefined,
       };
       addCorrectiveAction(newAction);
+      toast({
+        title: 'Corrective Action Created',
+        description: 'The new action has been added to the list.',
+      });
   };
   
   const openDetailsDialog = (action: CorrectiveAction) => {
     setSelectedAction(action);
     setDetailsOpen(true);
   }
-
-  const currentSelectedAction = selectedAction
-    ? allActions.find(a => a.action_id === selectedAction.action_id) || null
-    : null;
   
   return (
     <AppShell>
@@ -525,7 +528,7 @@ export default function CorrectiveActionsPage() {
         </Tabs>
 
         <ActionDetailsDialog 
-            action={currentSelectedAction}
+            action={selectedAction}
             isOpen={isDetailsOpen}
             onOpenChange={setDetailsOpen}
         />

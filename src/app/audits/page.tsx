@@ -257,6 +257,7 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
         if(finalStatus === 'Completed') {
           setIsEditing(false); // relock if now completed
         }
+        onOpenChange(false);
     };
     
     const handleAddComment = () => {
@@ -394,7 +395,7 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
                                 </Button>
                             ) : (
                                 <Button onClick={form.handleSubmit(onValidSubmit)} disabled={!form.formState.isDirty}>
-                                    Save Changes
+                                    Save & Close
                                 </Button>
                             )}
                         </DialogFooter>

@@ -115,7 +115,7 @@ const AreaForm = ({
           <Button type="button" variant="ghost" onClick={() => setOpen(false)}>
             Cancel
           </Button>
-          <Button type="submit">Save Area</Button>
+          <Button type="submit">Save & Close</Button>
         </DialogFooter>
       </form>
     </Form>

@@ -206,7 +206,10 @@ const PermitDetailsDialog = ({ permit, onAdd, onUpdate, addComment, setOpen, are
         supervisor_signature: { name: currentUser.displayName, date: new Date().toISOString() },
         comments: [ ...(permit.comments || []), { user: 'System Log', comment: `${currentUser.displayName} issued the permit, making it active.`, date: new Date().toISOString() } ],
     };
-    if (await onUpdate(updatedPermit)) toast({ title: 'Permit Issued', description: 'The permit is now active.' });
+    if (await onUpdate(updatedPermit)) {
+      toast({ title: 'Permit Issued', description: 'The permit is now active.' });
+      setOpen(false);
+    }
   };
 
   const handleDenyPermit = async (reason: string) => {
@@ -330,9 +333,9 @@ const PermitDetailsDialog = ({ permit, onAdd, onUpdate, addComment, setOpen, are
          </div>
         </div>
         <DialogFooter>
-            {isCreateMode && (<><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button type="submit">Save as Draft</Button></>)}
+            {isCreateMode && (<><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button type="submit">Save Draft & Close</Button></>)}
             {!isCreateMode && permit && (<>
-                {permit.status === 'Draft' && !isFormLocked && (<div className="flex justify-between w-full"><Button type="button" variant="destructive" onClick={() => setDenyDialogOpen(true)}>Deny Permit</Button><div className="flex gap-2"><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button type="submit">Save Draft Changes</Button><Button type="button" onClick={handleIssuePermit}>Issue &amp; Sign Permit</Button></div></div>)}
+                {permit.status === 'Draft' && !isFormLocked && (<div className="flex justify-between w-full"><Button type="button" variant="destructive" onClick={() => setDenyDialogOpen(true)}>Deny Permit</Button><div className="flex gap-2"><Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button><Button type="submit">Save Changes & Close</Button><Button type="button" onClick={handleIssuePermit}>Issue & Close</Button></div></div>)}
                 {permit.status !== 'Draft' && (<Button type="button" onClick={() => setOpen(false)}>Close</Button>)}
             </>)}
         </DialogFooter>

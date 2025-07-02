@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -113,7 +114,7 @@ const ForkliftForm = ({
         </div>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button type="submit">{isEdit ? 'Save Changes' : 'Add Forklift'}</Button>
+          <Button type="submit">{isEdit ? 'Save & Close' : 'Add Forklift'}</Button>
         </DialogFooter>
       </form>
     </Form>

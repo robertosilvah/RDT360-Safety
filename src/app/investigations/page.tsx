@@ -86,11 +86,13 @@ const NewActionForm = ({ investigationId, onActionAdded }: { investigationId: st
 };
 
 const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { investigation: Investigation | null; isOpen: boolean; onOpenChange: (open: boolean) => void; }) => {
-  const { incidents, updateInvestigation, addCommentToInvestigation, addDocumentToInvestigation, correctiveActions, uploadSettings } = useAppData();
+  const { incidents, investigations, updateInvestigation, addCommentToInvestigation, addDocumentToInvestigation, correctiveActions, uploadSettings } = useAppData();
   const { toast } = useToast();
   const [newComment, setNewComment] = useState('');
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  
+  const currentInvestigation = investigation ? investigations.find(i => i.investigation_id === investigation.investigation_id) || null : null;
 
   const form = useForm<InvestigationFormValues>({
     resolver: zodResolver(investigationFormSchema),
@@ -105,24 +107,24 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
   });
 
   useEffect(() => {
-    if (investigation) {
+    if (currentInvestigation) {
       form.reset({
-        status: investigation.status,
-        root_cause: investigation.root_cause,
-        contributing_factors: investigation.contributing_factors,
-        events_history: investigation.events_history,
-        lessons_learned: investigation.lessons_learned,
-        action_plan: investigation.action_plan,
+        status: currentInvestigation.status,
+        root_cause: currentInvestigation.root_cause,
+        contributing_factors: currentInvestigation.contributing_factors,
+        events_history: currentInvestigation.events_history,
+        lessons_learned: currentInvestigation.lessons_learned,
+        action_plan: currentInvestigation.action_plan,
       });
       setNewComment('');
       setIsEditing(false);
     }
-  }, [investigation, form, isOpen]);
+  }, [currentInvestigation, form, isOpen]);
 
-  if (!investigation) return null;
+  if (!currentInvestigation) return null;
 
-  const isLocked = investigation.status === 'Closed' && !isEditing;
-  const incidentDetails = incidents.find(i => i.incident_id === investigation.incident_id);
+  const isLocked = currentInvestigation.status === 'Closed' && !isEditing;
+  const incidentDetails = incidents.find(i => i.incident_id === currentInvestigation.incident_id);
 
   const handleAiAnalysis = async () => {
     if (!incidentDetails) {
@@ -158,7 +160,7 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
   };
 
   const handleSubmit = (values: InvestigationFormValues) => {
-    const updatedInvestigation = { ...investigation, ...values };
+    const updatedInvestigation = { ...currentInvestigation, ...values };
     updateInvestigation(updatedInvestigation);
     toast({ title: 'Investigation Updated' });
     onOpenChange(false);
@@ -166,14 +168,13 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
   
   const handleAddComment = () => {
     if(newComment.trim()) {
-      addCommentToInvestigation(investigation.investigation_id, { user: 'Safety Manager', comment: newComment.trim(), date: new Date().toISOString() });
+      addCommentToInvestigation(currentInvestigation.investigation_id, { user: 'Safety Manager', comment: newComment.trim(), date: new Date().toISOString() });
       setNewComment('');
-      toast({ title: 'Comment Added' });
     }
   }
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0] && investigation) {
+    if (e.target.files && e.target.files[0] && currentInvestigation) {
         const file = e.target.files[0];
         const maxSizeMB = uploadSettings?.docMaxSizeMB || 10;
         const maxSizeInBytes = maxSizeMB * 1024 * 1024;
@@ -190,7 +191,7 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
 
         // Mocking the upload process
         const newDocument = { name: file.name, url: `/docs/mock/${file.name}`};
-        addDocumentToInvestigation(investigation.investigation_id, newDocument);
+        addDocumentToInvestigation(currentInvestigation.investigation_id, newDocument);
         toast({ title: "Document Uploaded", description: `${file.name} has been attached.`});
         if (e.target) e.target.value = '';
     }
@@ -201,7 +202,7 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
     setIsEditing(true);
   };
 
-  const linkedActions = correctiveActions.filter(a => a.related_to_investigation === investigation.investigation_id);
+  const linkedActions = correctiveActions.filter(a => a.related_to_investigation === currentInvestigation.investigation_id);
   const severityVariant: { [key in Incident['severity']]: 'default' | 'secondary' | 'destructive' } = {
     'Low': 'default',
     'Medium': 'secondary',
@@ -212,7 +213,7 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Investigation Details: {investigation.display_id}</DialogTitle>
+          <DialogTitle>Investigation Details: {currentInvestigation.display_id}</DialogTitle>
           <DialogDescription>
             For Incident <Button variant="link" asChild className="p-0 h-auto"><Link href={`/incidents`}>{incidentDetails?.display_id}</Link></Button>
           </DialogDescription>
@@ -286,7 +287,7 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
             <div>
               <h3 className="text-lg font-semibold mb-2">Documents</h3>
               <div className="space-y-2">
-                {investigation.documents.map((doc, index) => (
+                {currentInvestigation.documents.map((doc, index) => (
                     <div key={index} className="flex items-center justify-between p-2 border rounded-md">
                         <div className="flex items-center gap-2">
                             <FileText className="h-4 w-4" />
@@ -294,7 +295,7 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
                         </div>
                     </div>
                 ))}
-                {investigation.documents.length === 0 && <p className="text-sm text-muted-foreground">No documents uploaded.</p>}
+                {currentInvestigation.documents.length === 0 && <p className="text-sm text-muted-foreground">No documents uploaded.</p>}
               </div>
               <div className="mt-4">
                 <Input id="file-upload" type="file" className="hidden" onChange={handleFileUpload} disabled={isLocked} />
@@ -321,7 +322,7 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
                  {isLocked ? (
                     <p className="text-sm text-muted-foreground italic mt-4">Investigation is closed. Re-open to add new actions.</p>
                  ) : (
-                    <NewActionForm investigationId={investigation.investigation_id} onActionAdded={() => {}} />
+                    <NewActionForm investigationId={currentInvestigation.investigation_id} onActionAdded={() => {}} />
                  )}
             </div>
 
@@ -329,7 +330,7 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
           <div className="md:col-span-1 flex flex-col gap-4 border-l pl-6">
             <h3 className="text-lg font-semibold flex items-center gap-2"><MessageSquare className="h-5 w-5" /> Comments</h3>
             <div className="flex-1 space-y-4 overflow-y-auto pr-2">
-              {investigation.comments.map((comment, index) => (
+              {currentInvestigation.comments.map((comment, index) => (
                 <div key={index} className="flex gap-3">
                   <Avatar><AvatarImage src={`https://placehold.co/40x40.png?text=${comment.user.charAt(0)}`} /><AvatarFallback>{comment.user.charAt(0)}</AvatarFallback></Avatar>
                   <div className="flex-1">
@@ -350,7 +351,7 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
             {isLocked ? (
                 <Button onClick={handleEdit}><Edit className="mr-2 h-4 w-4" /> Re-open and Edit</Button>
             ) : (
-                <Button type="submit" form="investigation-form">Save Investigation</Button>
+                <Button type="submit" form="investigation-form">Save & Close</Button>
             )}
         </DialogFooter>
       </DialogContent>
@@ -386,10 +387,6 @@ const InvestigationsPageContent = () => {
     setDetailsOpen(true);
   };
   
-  const currentSelectedInvestigation = selectedInvestigation
-    ? investigations.find(inv => inv.investigation_id === selectedInvestigation.investigation_id) || null
-    : null;
-
   return (
     <AppShell>
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -438,7 +435,7 @@ const InvestigationsPageContent = () => {
         </Card>
       </div>
       <InvestigationDetailsDialog
-        investigation={currentSelectedInvestigation}
+        investigation={selectedInvestigation}
         isOpen={isDetailsOpen}
         onOpenChange={setDetailsOpen}
       />

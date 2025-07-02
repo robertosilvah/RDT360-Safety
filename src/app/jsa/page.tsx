@@ -210,7 +210,7 @@ const JsaFormDialog = ({
               <Button type="button" variant="outline" size="sm" onClick={() => append({ step_description: '', hazards: '', controls: '' })}><PlusCircle className="mr-2 h-4 w-4" /> Add Step</Button>
             </div>
         </div>
-        <DialogFooter><Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button><Button type="submit">Save JSA</Button></DialogFooter>
+        <DialogFooter><Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button><Button type="submit">Save & Close</Button></DialogFooter>
       </form>
     </Form>
     </DialogContent>
