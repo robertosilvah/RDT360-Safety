@@ -143,7 +143,14 @@ const DenyPermitDialog = ({ open, onOpenChange, onConfirm }: { open: boolean; on
     );
 };
 
-const PermitDetailsDialog = ({ permit, onAdd, onUpdate, addComment, setOpen, areas }: {
+const PermitDetailsDialog = ({
+    permit,
+    onAdd,
+    onUpdate,
+    addComment,
+    setOpen,
+    areas,
+}: {
     permit?: ConfinedSpacePermit | null;
     onAdd: (data: Omit<ConfinedSpacePermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, locationName: string) => Promise<boolean>;
     onUpdate: (data: ConfinedSpacePermit) => Promise<boolean>;
@@ -180,8 +187,6 @@ const PermitDetailsDialog = ({ permit, onAdd, onUpdate, addComment, setOpen, are
         ...permit,
         permit_expires: format(new Date(permit.permit_expires), "yyyy-MM-dd'T'HH:mm"),
       });
-      setNewComment('');
-      setDenyDialogOpen(false);
     } else {
       form.reset({
         supervisor: currentUser?.displayName || '', areaId: '', entrants: '', work_description: '',
@@ -194,6 +199,14 @@ const PermitDetailsDialog = ({ permit, onAdd, onUpdate, addComment, setOpen, are
       });
     }
   }, [permit, form, currentUser]);
+
+  useEffect(() => {
+    if (permit) {
+        setNewComment('');
+        setDenyDialogOpen(false);
+    }
+  }, [permit]);
+
 
   const atmosphericTestingOk = form.watch('checklist.atmospheric_testing_ok');
 

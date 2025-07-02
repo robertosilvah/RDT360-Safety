@@ -239,8 +239,6 @@ const PermitDetailsDialog = ({
         checklist: permit.checklist,
         permit_expires: format(new Date(permit.permit_expires), "yyyy-MM-dd'T'HH:mm"),
       });
-      setNewComment('');
-      setDenyDialogOpen(false);
     } else {
       // Reset for create mode
       form.reset({
@@ -261,6 +259,13 @@ const PermitDetailsDialog = ({
       });
     }
   }, [permit, form, currentUser]);
+  
+   useEffect(() => {
+        if (permit) {
+            setNewComment('');
+            setDenyDialogOpen(false);
+        }
+    }, [permit]);
 
   const confinedSpacePermit = form.watch('checklist.confined_space_permit');
   const fireWatchRequired = form.watch('fire_watch_required');
