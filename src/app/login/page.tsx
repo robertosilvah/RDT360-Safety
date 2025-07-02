@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -55,6 +56,7 @@ export default function LoginPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState("sign-in");
 
   const signUpForm = useForm<SignUpFormValues>({
     resolver: zodResolver(signUpSchema),
@@ -72,17 +74,26 @@ export default function LoginPage() {
       const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
       const user = userCredential.user;
 
-      // Add user to 'users' collection in Firestore
+      // Add user to 'users' collection in Firestore with 'Pending' status
       await setDoc(doc(db, "users", user.uid), {
         id: user.uid,
         name: values.name,
         email: values.email,
         role: values.role,
-        status: 'Active', // Or 'Pending' if you want an approval flow
+        status: 'Pending',
       });
       
-      toast({ title: "Account Created", description: "You have been successfully signed up." });
-      router.push('/');
+      // Sign the user out immediately as they need approval
+      await auth.signOut();
+
+      toast({ 
+        title: "Registration Submitted", 
+        description: "Your account has been created and is awaiting administrator approval." 
+      });
+
+      signUpForm.reset();
+      setActiveTab("sign-in");
+
     } catch (error: any) {
       toast({ variant: "destructive", title: "Sign Up Failed", description: error.message });
     } finally {
@@ -94,10 +105,10 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       await signInWithEmailAndPassword(auth, values.email, values.password);
-      toast({ title: "Signed In", description: "Welcome back!" });
-      router.push('/');
+      // The AuthGuard and AuthContext will handle redirection and approval checks.
+      // If sign-in is successful here, it doesn't mean they have access yet.
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Sign In Failed", description: error.message });
+      toast({ variant: "destructive", title: "Sign In Failed", description: "Invalid email or password. Please check your credentials." });
     } finally {
       setIsLoading(false);
     }
@@ -115,7 +126,7 @@ export default function LoginPage() {
                 <span className="text-sm text-muted-foreground">Safety Insights</span>
             </div>
         </div>
-        <Tabs defaultValue="sign-in" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="sign-in">Sign In</TabsTrigger>
             <TabsTrigger value="sign-up">Sign Up</TabsTrigger>
@@ -163,7 +174,7 @@ export default function LoginPage() {
             <Card>
               <CardHeader>
                 <CardTitle>Sign Up</CardTitle>
-                <CardDescription>Create a new account to get started.</CardDescription>
+                <CardDescription>Create a new account to request access.</CardDescription>
               </CardHeader>
               <CardContent>
                 <Form {...signUpForm}>
@@ -218,7 +229,7 @@ export default function LoginPage() {
                         </FormItem>
                     )} />
                     <Button type="submit" className="w-full" disabled={isLoading}>
-                      {isLoading ? 'Creating Account...' : 'Create Account'}
+                      {isLoading ? 'Submitting...' : 'Request Access'}
                     </Button>
                   </form>
                 </Form>

@@ -109,7 +109,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     
         const processedActions = actionsFromDb.map(action => {
             let derivedType = action.type;
-            // Backfill type if it doesn't exist
             if (!derivedType) {
                 if (action.related_to_incident) {
                     derivedType = 'Reactive';
@@ -120,13 +119,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 }
             }
             
-            // Backfill created_date if it doesn't exist, using due_date as a fallback for older records
             const derivedCreatedDate = action.created_date || action.due_date;
 
             let finalStatus = action.status;
-            // Client-side check for 'Overdue' status, no need to write back to DB
             if (
-                (action.status === 'Pending' || action.status === 'In Progress') &&
+                finalStatus !== 'Completed' &&
                 new Date(action.due_date) < now
             ) {
                 finalStatus = 'Overdue';
@@ -140,22 +137,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       onSnapshot(collection(db, 'incidents'), (snapshot) => setIncidents(mapFromSnapshot(snapshot, 'incident_id'))),
       onSnapshot(collection(db, 'safetyWalks'), (snapshot) => setSafetyWalks(mapFromSnapshot(snapshot, 'safety_walk_id'))),
       onSnapshot(collection(db, 'forkliftInspections'), (snapshot) => setForkliftInspections(mapFromSnapshot(snapshot, 'inspection_id'))),
-      onSnapshot(collection(db, 'users'), (snapshot) => {
-        const usersFromDb = mapFromSnapshot<User>(snapshot, 'id');
-        // Special handling for mock admin user to ensure it's always in the list for development
-        const adminId = 'admin-user-id-001';
-        const hasAdmin = usersFromDb.some(u => u.id === adminId);
-        if (!hasAdmin) {
-          usersFromDb.push({
-            id: adminId,
-            name: 'Admin User',
-            email: 'admin@example.com',
-            role: 'Administrator',
-            status: 'Active',
-          });
-        }
-        setUsers(usersFromDb);
-      }),
+      onSnapshot(collection(db, 'users'), (snapshot) => setUsers(mapFromSnapshot(snapshot, 'id'))),
       onSnapshot(collection(db, 'forklifts'), (snapshot) => setForklifts(mapFromSnapshot(snapshot, 'id'))),
       onSnapshot(collection(db, 'predefinedChecklistItems'), (snapshot) => setPredefinedChecklistItems(mapFromSnapshot(snapshot, 'id'))),
       onSnapshot(collection(db, 'areas'), (snapshot) => {
@@ -262,7 +244,6 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
      const { action_id, ...data } = updatedAction;
      const originalAction = correctiveActions.find(a => a.action_id === action_id);
 
-    // If status is changing to 'Completed', set completion_date
     if (originalAction && originalAction.status !== 'Completed' && data.status === 'Completed') {
         (data as Partial<CorrectiveAction>).completion_date = new Date().toISOString();
     }
