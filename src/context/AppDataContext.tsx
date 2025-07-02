@@ -13,7 +13,7 @@ interface AppDataContextType {
   updateObservation: (observation: Observation) => Promise<void>;
   deleteObservation: (observationId: string) => Promise<void>;
   correctiveActions: CorrectiveAction[];
-  addCorrectiveAction: (action: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'>) => Promise<void>;
+  addCorrectiveAction: (action: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'| 'created_date' | 'completion_date' | 'type'>) => Promise<void>;
   updateCorrectiveAction: (updatedAction: CorrectiveAction) => Promise<void>;
   addCommentToAction: (actionId: string, comment: Comment) => Promise<void>;
   incidents: Incident[];
@@ -234,14 +234,32 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     await deleteDoc(doc(db, 'observations', observationId));
   };
 
-  const addCorrectiveAction = async (action: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'>) => {
+  const addCorrectiveAction = async (action: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments' | 'created_date' | 'completion_date' | 'type'>) => {
     const displayId = `ACT${String(correctiveActions.length + 1).padStart(3, '0')}`;
-    await addDoc(collection(db, 'correctiveActions'), { ...action, display_id: displayId, comments: [] });
+    let type: CorrectiveAction['type'] = 'Other';
+    if (action.related_to_incident) {
+      type = 'Reactive';
+    } else if (action.related_to_observation || action.related_to_forklift_inspection) {
+      type = 'Preventive';
+    }
+    await addDoc(collection(db, 'correctiveActions'), {
+      ...action,
+      display_id: displayId,
+      comments: [],
+      created_date: new Date().toISOString(),
+      type: type,
+    });
   };
   
   const updateCorrectiveAction = async (updatedAction: CorrectiveAction) => {
      const { action_id, ...data } = updatedAction;
-     await updateDoc(doc(db, 'correctiveActions', action_id), data);
+     const originalAction = correctiveActions.find(a => a.action_id === action_id);
+
+    // If status is changing to 'Completed', set completion_date
+    if (originalAction && originalAction.status !== 'Completed' && data.status === 'Completed') {
+        (data as Partial<CorrectiveAction>).completion_date = new Date().toISOString();
+    }
+     await updateDoc(doc(db, 'correctiveActions', action_id), data as { [x: string]: any; });
   };
   
   const addCommentToAction = async (actionId: string, comment: Comment) => {

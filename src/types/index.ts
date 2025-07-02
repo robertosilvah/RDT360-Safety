@@ -5,6 +5,7 @@
 
 
 
+
 export type Comment = {
   user: string;
   comment: string;
@@ -86,6 +87,9 @@ export type CorrectiveAction = {
   related_to_forklift_inspection?: string;
   related_to_investigation?: string;
   due_date: string;
+  created_date: string;
+  completion_date?: string;
+  type: 'Preventive' | 'Reactive' | 'Other';
   status: 'Pending' | 'In Progress' | 'Completed' | 'Overdue';
   responsible_person: string;
   description: string;
