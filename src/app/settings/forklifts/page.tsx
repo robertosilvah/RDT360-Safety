@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAppData } from '@/context/AppDataContext';
-import { PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, QrCode, Printer } from 'lucide-react';
+import { QRCodeCanvas } from 'qrcode.react';
 import {
   Dialog,
   DialogContent,
@@ -121,11 +122,48 @@ const ForkliftForm = ({
   );
 };
 
+const QrCodeDialog = ({ forklift, open, onOpenChange }: { forklift: Forklift | null; open: boolean; onOpenChange: (open: boolean) => void; }) => {
+    if (!forklift) return null;
+
+    const qrUrl = typeof window !== 'undefined'
+        ? `${window.location.origin}/forklift-inspections?forklift_id=${forklift.id}`
+        : '';
+    
+    const handlePrint = () => {
+        window.print();
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md">
+                <div className="qr-code-printable-area flex flex-col items-center justify-center text-center p-4">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl">Forklift: {forklift.id}</DialogTitle>
+                        <DialogDescription>{forklift.name}</DialogDescription>
+                    </DialogHeader>
+                    <div className="p-4 my-4 border rounded-lg bg-white">
+                        {qrUrl && <QRCodeCanvas value={qrUrl} size={256} />}
+                    </div>
+                    <p className="text-sm text-muted-foreground max-w-xs">
+                        Scan this QR code with a mobile device to open the pre-use inspection form for this forklift.
+                    </p>
+                </div>
+                <DialogFooter className="no-print !justify-between">
+                    <Button type="button" variant="outline" onClick={handlePrint}>
+                        <Printer className="mr-2 h-4 w-4" /> Print QR Code
+                    </Button>
+                    <Button type="button" onClick={() => onOpenChange(false)}>Close</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
 
 export default function ForkliftManagementPage() {
   const { forklifts, addForklift, updateForklift, removeForklift } = useAppData();
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingForklift, setEditingForklift] = useState<Forklift | undefined>(undefined);
+  const [qrCodeForklift, setQrCodeForklift] = useState<Forklift | null>(null);
   const { toast } = useToast();
 
   const handleSave = (data: ForkliftFormValues, isEdit: boolean) => {
@@ -144,6 +182,7 @@ export default function ForkliftManagementPage() {
   };
 
   return (
+    <>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div>
@@ -183,6 +222,9 @@ export default function ForkliftManagementPage() {
                   <TableCell>{forklift.name}</TableCell>
                   <TableCell>{forklift.area}</TableCell>
                   <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" onClick={() => setQrCodeForklift(forklift)}>
+                      <QrCode className="h-4 w-4" />
+                    </Button>
                     <Button variant="ghost" size="icon" onClick={() => openForm(forklift)}>
                       <Edit className="h-4 w-4" />
                     </Button>
@@ -212,5 +254,11 @@ export default function ForkliftManagementPage() {
           </Table>
         </CardContent>
       </Card>
+      <QrCodeDialog 
+        forklift={qrCodeForklift}
+        open={!!qrCodeForklift}
+        onOpenChange={(open) => !open && setQrCodeForklift(null)}
+      />
+    </>
   );
 }

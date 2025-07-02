@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense, useEffect } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { Button } from '@/components/ui/button';
 import {
@@ -50,6 +50,8 @@ import type { ForkliftInspection } from '@/types';
 import { PlusCircle, AlertTriangle, Printer } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
+import { useSearchParams } from 'next/navigation';
+import { Skeleton } from '@/components/ui/skeleton';
 
 // Schema for the corrective action creation dialog
 const actionFormSchema = z.object({
@@ -180,7 +182,7 @@ const ActionCreateDialog = ({
     )
 }
 
-const NewInspectionForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
+const NewInspectionForm = ({ setOpen, defaultForkliftId }: { setOpen: (open: boolean) => void; defaultForkliftId?: string; }) => {
     const { addForkliftInspection, forklifts } = useAppData();
     const { toast } = useToast();
     const [actionDialogState, setActionDialogState] = useState<{ isOpen: boolean; itemIndex: number | null }>({ isOpen: false, itemIndex: null });
@@ -188,7 +190,7 @@ const NewInspectionForm = ({ setOpen }: { setOpen: (open: boolean) => void }) =>
     const form = useForm<InspectionFormValues>({
         resolver: zodResolver(inspectionFormSchema),
         defaultValues: {
-            forklift_id: '',
+            forklift_id: defaultForkliftId || '',
             operator_name: '',
             checklist: FORKLIFT_CHECKLIST_QUESTIONS.map(item => ({ ...item, status: 'Pass', comment: '', actionId: '' })),
         },
@@ -200,6 +202,12 @@ const NewInspectionForm = ({ setOpen }: { setOpen: (open: boolean) => void }) =>
     });
 
     const forkliftId = form.watch('forklift_id');
+    
+    useEffect(() => {
+        if (defaultForkliftId) {
+            form.setValue('forklift_id', defaultForkliftId);
+        }
+    }, [defaultForkliftId, form]);
 
     const onSubmit = (data: InspectionFormValues) => {
         const newInspection: Omit<ForkliftInspection, 'inspection_id' | 'display_id'> = {
@@ -250,7 +258,7 @@ const NewInspectionForm = ({ setOpen }: { setOpen: (open: boolean) => void }) =>
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Forklift ID</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!!defaultForkliftId}>
                                             <FormControl><SelectTrigger><SelectValue placeholder="Select a forklift" /></SelectTrigger></FormControl>
                                             <SelectContent>
                                                 {forklifts.map(fl => <SelectItem key={fl.id} value={fl.id}>{fl.id} - {fl.name}</SelectItem>)}
@@ -419,12 +427,43 @@ const ForkliftInspectionDetailsDialog = ({
     )
 }
 
+const PageSkeleton = () => (
+    <AppShell>
+      <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+        <div className="flex items-center justify-between space-y-2">
+          <Skeleton className="h-10 w-1/3" />
+          <Skeleton className="h-10 w-36" />
+        </div>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-8 w-1/4" />
+            <Skeleton className="h-4 w-1/2" />
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-12 w-full" />
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </AppShell>
+);
 
-export default function ForkliftInspectionPage() {
+function ForkliftInspectionPageContent() {
     const { forkliftInspections } = useAppData();
     const [isCreateOpen, setCreateOpen] = useState(false);
     const [selectedInspection, setSelectedInspection] = useState<ForkliftInspection | null>(null);
     const [isDetailsOpen, setDetailsOpen] = useState(false);
+    const searchParams = useSearchParams();
+    const forkliftIdFromUrl = searchParams.get('forklift_id');
+
+    useEffect(() => {
+        if (forkliftIdFromUrl) {
+            setCreateOpen(true);
+        }
+    }, [forkliftIdFromUrl]);
 
     const handleRowClick = (inspection: ForkliftInspection) => {
         setSelectedInspection(inspection);
@@ -443,7 +482,7 @@ export default function ForkliftInspectionPage() {
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="max-w-2xl">
-                           <NewInspectionForm setOpen={setCreateOpen} />
+                           <NewInspectionForm setOpen={setCreateOpen} defaultForkliftId={forkliftIdFromUrl || undefined} />
                         </DialogContent>
                     </Dialog>
                 </div>
@@ -498,5 +537,13 @@ export default function ForkliftInspectionPage() {
                 />
             </div>
         </AppShell>
+    );
+}
+
+export default function ForkliftInspectionPage() {
+    return (
+        <Suspense fallback={<PageSkeleton />}>
+            <ForkliftInspectionPageContent />
+        </Suspense>
     );
 }

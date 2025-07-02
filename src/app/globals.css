@@ -87,7 +87,8 @@
   body * {
     visibility: hidden;
   }
-  .printable-area, .printable-area * {
+  .printable-area, .printable-area *,
+  .qr-code-printable-area, .qr-code-printable-area * {
     visibility: visible;
   }
   .printable-area {
@@ -98,6 +99,19 @@
     height: auto;
     padding: 1rem;
     color: black;
+  }
+  .qr-code-printable-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: auto;
+    padding: 1rem;
+    color: black;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
   }
   .no-print {
     display: none;
