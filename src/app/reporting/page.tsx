@@ -8,13 +8,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DateRange } from 'react-day-picker';
 import { format, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
 import { useAppData } from '@/context/AppDataContext';
-import { Calendar as CalendarIcon, Filter, Plus, Users, MapPin, AlertCircle, Clock } from 'lucide-react';
+import { Calendar as CalendarIcon, Download } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from 'recharts';
 import type { CorrectiveAction, Incident, Observation } from '@/types';
+import { useToast } from '@/hooks/use-toast';
 
 const KpiCard = ({ title, value, description }: { title: string; value: string | number; description?: string }) => (
     <div className="flex flex-col items-center justify-center p-4 text-center">
@@ -145,31 +146,19 @@ const ObservationTypeDonutChart = ({ data }: { data: any[] }) => {
     );
 };
 
-const WorkOrdersView = ({ actions, dateRange }: { actions: CorrectiveAction[], dateRange?: DateRange }) => {
-
-    const filteredActions = useMemo(() => {
-        return actions.filter(action => {
-            if (!dateRange?.from) return true;
-            if (!action.created_date) return false; // Ensure created_date exists
-            const toDate = dateRange.to ?? dateRange.from;
-            try {
-                return isWithinInterval(new Date(action.created_date), { start: dateRange.from, end: toDate });
-            } catch (e) { return false; }
-        });
-    }, [actions, dateRange]);
-
+const WorkOrdersView = ({ actions }: { actions: CorrectiveAction[] }) => {
     const kpiData = useMemo(() => {
-        const created = filteredActions.length;
-        const completed = filteredActions.filter(a => a.status === 'Completed').length;
+        const created = actions.length;
+        const completed = actions.filter(a => a.status === 'Completed').length;
         const percentCompleted = created > 0 ? ((completed / created) * 100).toFixed(1) : '0.0';
         return { created, completed, percentCompleted };
-    }, [filteredActions]);
+    }, [actions]);
 
     const chartData = useMemo(() => {
         const months: { [key: string]: { created: number; completed: number } } = {};
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-        filteredActions.forEach(action => {
+        actions.forEach(action => {
             if (!action.created_date) return;
             const createdMonth = format(new Date(action.created_date), 'MMM');
             if (!months[createdMonth]) months[createdMonth] = { created: 0, completed: 0 };
@@ -187,24 +176,24 @@ const WorkOrdersView = ({ actions, dateRange }: { actions: CorrectiveAction[], d
             created: months[name]?.created || 0,
             completed: months[name]?.completed || 0,
         }));
-    }, [filteredActions]);
+    }, [actions]);
 
     const byTypeData = useMemo(() => {
-        const counts = filteredActions.reduce((acc, action) => {
+        const counts = actions.reduce((acc, action) => {
             const type = action.type || 'Other';
             acc[type] = (acc[type] || 0) + 1;
             return acc;
         }, {} as Record<CorrectiveAction['type'], number>);
         return Object.entries(counts).map(([name, count]) => ({ name, count }));
-    }, [filteredActions]);
+    }, [actions]);
     
     const byStatusData = useMemo(() => {
-        const counts = filteredActions.reduce((acc, action) => {
+        const counts = actions.reduce((acc, action) => {
             acc[action.status] = (acc[action.status] || 0) + 1;
             return acc;
         }, {} as Record<CorrectiveAction['status'], number>);
         return Object.entries(counts).map(([name, value]) => ({ name, value }));
-    }, [filteredActions]);
+    }, [actions]);
 
     return (
         <div className="space-y-6">
@@ -240,31 +229,21 @@ const WorkOrdersView = ({ actions, dateRange }: { actions: CorrectiveAction[], d
     );
 };
 
-const IncidentsView = ({ incidents, dateRange }: { incidents: Incident[], dateRange?: DateRange }) => {
-    const filteredIncidents = useMemo(() => {
-        return incidents.filter(incident => {
-            if (!dateRange?.from) return true;
-            const toDate = dateRange.to ?? dateRange.from;
-            try {
-                return isWithinInterval(new Date(incident.date), { start: dateRange.from, end: toDate });
-            } catch (e) { return false; }
-        });
-    }, [incidents, dateRange]);
-
+const IncidentsView = ({ incidents }: { incidents: Incident[] }) => {
     const kpiData = useMemo(() => {
-        const total = filteredIncidents.length;
-        const accidents = filteredIncidents.filter(i => i.type === 'Accident').length;
-        const highSeverity = filteredIncidents.filter(i => i.severity === 'High').length;
+        const total = incidents.length;
+        const accidents = incidents.filter(i => i.type === 'Accident').length;
+        const highSeverity = incidents.filter(i => i.severity === 'High').length;
         return { total, accidents, highSeverity };
-    }, [filteredIncidents]);
+    }, [incidents]);
 
     const bySeverityData = useMemo(() => {
-        const counts = filteredIncidents.reduce((acc, incident) => {
+        const counts = incidents.reduce((acc, incident) => {
             acc[incident.severity] = (acc[incident.severity] || 0) + 1;
             return acc;
         }, {} as Record<Incident['severity'], number>);
         return Object.entries(counts).map(([name, value]) => ({ name, value }));
-    }, [filteredIncidents]);
+    }, [incidents]);
 
     return (
         <div className="space-y-6">
@@ -286,31 +265,21 @@ const IncidentsView = ({ incidents, dateRange }: { incidents: Incident[], dateRa
     );
 };
 
-const ObservationsView = ({ observations, dateRange }: { observations: Observation[], dateRange?: DateRange }) => {
-    const filteredObservations = useMemo(() => {
-        return observations.filter(obs => {
-            if (!dateRange?.from) return true;
-            const toDate = dateRange.to ?? dateRange.from;
-            try {
-                return isWithinInterval(new Date(obs.date), { start: dateRange.from, end: toDate });
-            } catch (e) { return false; }
-        });
-    }, [observations, dateRange]);
-
+const ObservationsView = ({ observations }: { observations: Observation[] }) => {
     const kpiData = useMemo(() => {
-        const total = filteredObservations.length;
-        const positive = filteredObservations.filter(o => o.report_type === 'Positive Observation').length;
-        const nearMiss = filteredObservations.filter(o => o.report_type === 'Near Miss').length;
+        const total = observations.length;
+        const positive = observations.filter(o => o.report_type === 'Positive Observation').length;
+        const nearMiss = observations.filter(o => o.report_type === 'Near Miss').length;
         return { total, positive, nearMiss };
-    }, [filteredObservations]);
+    }, [observations]);
 
     const byTypeData = useMemo(() => {
-        const counts = filteredObservations.reduce((acc, obs) => {
+        const counts = observations.reduce((acc, obs) => {
             acc[obs.report_type] = (acc[obs.report_type] || 0) + 1;
             return acc;
         }, {} as Record<Observation['report_type'], number>);
         return Object.entries(counts).map(([name, value]) => ({ name, value }));
-    }, [filteredObservations]);
+    }, [observations]);
     
     return (
         <div className="space-y-6">
@@ -332,13 +301,98 @@ const ObservationsView = ({ observations, dateRange }: { observations: Observati
     );
 };
 
-
 export default function ReportingPage() {
     const { correctiveActions, incidents, observations } = useAppData();
+    const { toast } = useToast();
+    const [activeTab, setActiveTab] = useState('work-orders');
     const [dateRange, setDateRange] = useState<DateRange | undefined>({
         from: startOfMonth(new Date()),
         to: endOfMonth(new Date()),
     });
+
+    const filteredActions = useMemo(() => {
+        return correctiveActions.filter(action => {
+            if (!dateRange?.from) return true;
+            if (!action.created_date) return false;
+            const toDate = dateRange.to ?? dateRange.from;
+            try { return isWithinInterval(new Date(action.created_date), { start: dateRange.from, end: toDate }); } catch (e) { return false; }
+        });
+    }, [correctiveActions, dateRange]);
+
+    const filteredIncidents = useMemo(() => {
+        return incidents.filter(incident => {
+            if (!dateRange?.from) return true;
+            const toDate = dateRange.to ?? dateRange.from;
+            try { return isWithinInterval(new Date(incident.date), { start: dateRange.from, end: toDate }); } catch (e) { return false; }
+        });
+    }, [incidents, dateRange]);
+
+    const filteredObservations = useMemo(() => {
+        return observations.filter(obs => {
+            if (!dateRange?.from) return true;
+            const toDate = dateRange.to ?? dateRange.from;
+            try { return isWithinInterval(new Date(obs.date), { start: dateRange.from, end: toDate }); } catch (e) { return false; }
+        });
+    }, [observations, dateRange]);
+
+    const handleExport = () => {
+        let data: any[] = [];
+        let headers: string[] = [];
+        let filename = 'report.csv';
+
+        const escapeCsvCell = (cell: any): string => {
+            const value = String(cell ?? '');
+            if (value.includes(',') || value.includes('"') || value.includes('\n')) {
+                return `"${value.replace(/"/g, '""')}"`;
+            }
+            return value;
+        };
+
+        switch (activeTab) {
+            case 'work-orders':
+                data = filteredActions;
+                headers = ['display_id', 'description', 'status', 'responsible_person', 'due_date', 'created_date', 'completion_date', 'type'];
+                filename = 'corrective_actions_export.csv';
+                break;
+            case 'incidents':
+                data = filteredIncidents;
+                headers = ['display_id', 'date', 'area', 'type', 'description', 'severity', 'status'];
+                filename = 'incidents_export.csv';
+                break;
+            case 'observations':
+                data = filteredObservations;
+                headers = ['display_id', 'report_type', 'submitted_by', 'date', 'risk_level', 'description', 'status'];
+                filename = 'observations_export.csv';
+                break;
+            default:
+                toast({ title: 'Error', description: 'No data to export for this view.', variant: 'destructive' });
+                return;
+        }
+
+        if (data.length === 0) {
+            toast({ title: 'No Data', description: 'There is no data to export for the selected filters.' });
+            return;
+        }
+
+        const csvContent = [
+            headers.join(','),
+            ...data.map(row => 
+                headers.map(header => escapeCsvCell(row[header as keyof typeof row])).join(',')
+            )
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        toast({ title: 'Export Successful', description: `Downloaded ${filename}` });
+    };
 
     return (
         <AppShell>
@@ -357,24 +411,27 @@ export default function ReportingPage() {
                                 <Calendar initialFocus mode="range" defaultMonth={dateRange?.from} selected={dateRange} onSelect={setDateRange} numberOfMonths={2}/>
                             </PopoverContent>
                         </Popover>
-                         <Button variant="outline">Export</Button>
+                         <Button variant="outline" onClick={handleExport}>
+                            <Download className="mr-2 h-4 w-4" />
+                            Export
+                         </Button>
                     </div>
                 </div>
 
-                <Tabs defaultValue="work-orders">
+                <Tabs defaultValue="work-orders" value={activeTab} onValueChange={setActiveTab}>
                     <TabsList>
                         <TabsTrigger value="work-orders">Corrective Actions</TabsTrigger>
                         <TabsTrigger value="incidents">Incidents</TabsTrigger>
                         <TabsTrigger value="observations">Observations</TabsTrigger>
                     </TabsList>
                     <TabsContent value="work-orders" className="pt-4">
-                        <WorkOrdersView actions={correctiveActions} dateRange={dateRange} />
+                        <WorkOrdersView actions={filteredActions} />
                     </TabsContent>
                     <TabsContent value="incidents" className="pt-4">
-                        <IncidentsView incidents={incidents} dateRange={dateRange} />
+                        <IncidentsView incidents={filteredIncidents} />
                     </TabsContent>
                      <TabsContent value="observations" className="pt-4">
-                        <ObservationsView observations={observations} dateRange={dateRange} />
+                        <ObservationsView observations={filteredObservations} />
                     </TabsContent>
                 </Tabs>
             </div>
