@@ -349,15 +349,6 @@ export default function ConfinedSpacePermitsPage() {
     const [isDialogOpen, setDialogOpen] = useState(false);
     const [selectedPermit, setSelectedPermit] = useState<ConfinedSpacePermit | null>(null);
 
-    useEffect(() => {
-        if (selectedPermit?.permit_id && isDialogOpen) {
-            const freshPermit = confinedSpacePermits.find(p => p.permit_id === selectedPermit.permit_id);
-            if (freshPermit && JSON.stringify(freshPermit) !== JSON.stringify(selectedPermit)) {
-                setSelectedPermit(freshPermit);
-            }
-        }
-    }, [confinedSpacePermits, selectedPermit, isDialogOpen]);
-
     const handleAddPermit = async (permit: Omit<ConfinedSpacePermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, locationName: string): Promise<boolean> => {
         try { await addConfinedSpacePermit(permit, locationName); return true; } catch (error) { console.error("Failed to add Permit:", error); toast({ variant: 'destructive', title: 'Save Failed' }); return false; }
     };
@@ -374,6 +365,10 @@ export default function ConfinedSpacePermitsPage() {
         if (new Date(permit.permit_expires) < new Date()) return { text: 'Expired', variant: 'destructive' };
         return { text: 'Active', variant: 'default' };
     }
+
+    const currentSelectedPermit = selectedPermit
+        ? confinedSpacePermits.find(p => p.permit_id === selectedPermit.permit_id) || null
+        : null;
 
     return (
         <AppShell>
@@ -408,7 +403,7 @@ export default function ConfinedSpacePermitsPage() {
             </div>
             <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) setSelectedPermit(null); setDialogOpen(open); }}>
                 <DialogContent className="max-w-5xl">
-                    <PermitDetailsDialog onAdd={handleAddPermit} onUpdate={handleUpdatePermit} addComment={handleAddCommentToPermit} setOpen={setDialogOpen} permit={selectedPermit} areas={areas} />
+                    <PermitDetailsDialog onAdd={handleAddPermit} onUpdate={handleUpdatePermit} addComment={handleAddCommentToPermit} setOpen={setDialogOpen} permit={currentSelectedPermit} areas={areas} />
                 </DialogContent>
             </Dialog>
         </AppShell>

@@ -429,8 +429,7 @@ export default function IncidentsPage() {
   };
 
   const handleRowClick = (incident: Incident) => {
-    const currentIncidentState = incidents.find(i => i.incident_id === incident.incident_id);
-    setSelectedIncident(currentIncidentState || incident);
+    setSelectedIncident(incident);
     setDetailsDialogOpen(true);
   }
 
@@ -443,6 +442,10 @@ export default function IncidentsPage() {
         variant: 'destructive',
     });
   };
+
+  const currentSelectedIncident = selectedIncident
+    ? incidents.find(i => i.incident_id === selectedIncident.incident_id) || null
+    : null;
 
   return (
     <AppShell>
@@ -538,12 +541,10 @@ export default function IncidentsPage() {
         </Card>
       </div>
       <IncidentDetailsDialog 
-        incident={selectedIncident}
+        incident={currentSelectedIncident}
         isOpen={isDetailsDialogOpen}
         onOpenChange={setDetailsDialogOpen}
       />
     </AppShell>
   );
 }
-
-    

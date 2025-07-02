@@ -474,10 +474,13 @@ export default function CorrectiveActionsPage() {
   };
   
   const openDetailsDialog = (action: CorrectiveAction) => {
-    const currentActionState = allActions.find(a => a.action_id === action.action_id);
-    setSelectedAction(currentActionState || action);
+    setSelectedAction(action);
     setDetailsOpen(true);
   }
+
+  const currentSelectedAction = selectedAction
+    ? allActions.find(a => a.action_id === selectedAction.action_id) || null
+    : null;
   
   return (
     <AppShell>
@@ -522,7 +525,7 @@ export default function CorrectiveActionsPage() {
         </Tabs>
 
         <ActionDetailsDialog 
-            action={selectedAction}
+            action={currentSelectedAction}
             isOpen={isDetailsOpen}
             onOpenChange={setDetailsOpen}
         />
@@ -530,5 +533,3 @@ export default function CorrectiveActionsPage() {
     </AppShell>
   );
 }
-
-  

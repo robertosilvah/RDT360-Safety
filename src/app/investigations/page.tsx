@@ -385,6 +385,10 @@ const InvestigationsPageContent = () => {
     setSelectedInvestigation(investigation);
     setDetailsOpen(true);
   };
+  
+  const currentSelectedInvestigation = selectedInvestigation
+    ? investigations.find(inv => inv.investigation_id === selectedInvestigation.investigation_id) || null
+    : null;
 
   return (
     <AppShell>
@@ -434,7 +438,7 @@ const InvestigationsPageContent = () => {
         </Card>
       </div>
       <InvestigationDetailsDialog
-        investigation={selectedInvestigation}
+        investigation={currentSelectedInvestigation}
         isOpen={isDetailsOpen}
         onOpenChange={setDetailsOpen}
       />

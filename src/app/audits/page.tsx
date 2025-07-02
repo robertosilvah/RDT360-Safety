@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -278,7 +279,7 @@ const SafetyWalkDetailsDialog = ({ walk, isOpen, onOpenChange }: { walk: SafetyW
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-4xl">
                  <DialogHeader>
-                    <DialogTitle>Safety Walk Details: {walk.safety_walk_id}</DialogTitle>
+                    <DialogTitle>Safety Walk Details: {walk.display_id}</DialogTitle>
                     <DialogDescription>
                         Walk on {format(new Date(walk.date), 'PPP')}.
                     </DialogDescription>
@@ -452,10 +453,13 @@ export default function SafetyWalksPage() {
   }
   
   const handleRowClick = (walk: SafetyWalk) => {
-    const currentWalkState = safetyWalks.find(w => w.safety_walk_id === walk.safety_walk_id);
-    setSelectedWalk(currentWalkState || walk);
+    setSelectedWalk(walk);
     setDetailsOpen(true);
   };
+
+  const currentSelectedWalk = selectedWalk
+    ? safetyWalks.find(w => w.safety_walk_id === selectedWalk.safety_walk_id) || null
+    : null;
 
   return (
     <AppShell>
@@ -496,7 +500,7 @@ export default function SafetyWalksPage() {
                   const Icon = statusInfo[walk.status].icon;
                   return (
                     <TableRow key={walk.safety_walk_id} onClick={() => handleRowClick(walk)} className="cursor-pointer">
-                      <TableCell className="font-medium">{walk.safety_walk_id}</TableCell>
+                      <TableCell className="font-medium">{walk.display_id}</TableCell>
                       <TableCell>{new Date(walk.date).toLocaleDateString()}</TableCell>
                       <TableCell>{walk.walker}</TableCell>
                       <TableCell>{walk.people_involved || 'N/A'}</TableCell>
@@ -519,7 +523,7 @@ export default function SafetyWalksPage() {
       </div>
 
       <SafetyWalkDetailsDialog
-        walk={selectedWalk}
+        walk={currentSelectedWalk}
         isOpen={isDetailsOpen}
         onOpenChange={setDetailsOpen}
       />
