@@ -1,3 +1,4 @@
+
 'use client';
 
 import { ReactNode } from "react";
@@ -5,7 +6,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Truck, ListChecks, FolderTree, Paintbrush, Upload } from 'lucide-react';
+import { Users, Truck, ListChecks, FolderTree, Paintbrush, Upload, Database } from 'lucide-react';
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
     const pathname = usePathname();
@@ -16,6 +17,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
         : pathname.includes('/areas') ? 'areas'
         : pathname.includes('/branding') ? 'branding'
         : pathname.includes('/uploads') ? 'uploads'
+        : pathname.includes('/sql-export') ? 'sql-export'
         : '';
 
     return (
@@ -58,6 +60,11 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
                          <TabsTrigger value="uploads" asChild>
                            <Link href="/settings/uploads">
                                <Upload className="mr-2 h-4 w-4" /> File Uploads
+                           </Link>
+                        </TabsTrigger>
+                         <TabsTrigger value="sql-export" asChild>
+                           <Link href="/settings/sql-export">
+                               <Database className="mr-2 h-4 w-4" /> SQL Export
                            </Link>
                         </TabsTrigger>
                     </TabsList>

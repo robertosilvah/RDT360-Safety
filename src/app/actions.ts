@@ -2,8 +2,9 @@
 'use server';
 
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '@/lib/firebase';
+import { storage, db } from '@/lib/firebase';
 import { getJsaAnalysisAction, getInvestigationAnalysisAction, getKpiSummaryAction } from './actions.google';
+import { collection, getDocs } from 'firebase/firestore';
 
 export { getJsaAnalysisAction, getInvestigationAnalysisAction, getKpiSummaryAction };
 
@@ -82,4 +83,70 @@ export async function fetchAndUploadImageAction(imageUrlOrId: string): Promise<s
     }
     throw new Error('An unknown error occurred during image fetching and uploading.');
   }
+}
+
+const getCollectionData = async (collectionName: string) => {
+  const snapshot = await getDocs(collection(db, collectionName));
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+const escapeSqlValue = (value: any): string => {
+    if (value === null || typeof value === 'undefined') return 'NULL';
+    if (typeof value === 'boolean') return value ? '1' : '0';
+    if (typeof value === 'number') return value.toString();
+    if (typeof value === 'string') return `'${value.replace(/'/g, "''")}'`;
+    if (typeof value === 'object') return `'${JSON.stringify(value).replace(/'/g, "''")}'`; // Store objects/arrays as JSON strings
+    return `'${value.toString().replace(/'/g, "''")}'`;
+};
+
+const generateCreateTableSql = (tableName: string, sampleDoc: Record<string, any>): string => {
+    let columns = '`id` VARCHAR(255) PRIMARY KEY';
+    for (const key in sampleDoc) {
+        if (key === 'id') continue;
+        let type = 'TEXT';
+        const value = sampleDoc[key];
+        if (typeof value === 'number') type = 'FLOAT';
+        if (typeof value === 'boolean') type = 'TINYINT(1)';
+        columns += `,\n  \`${key}\` ${type}`;
+    }
+    return `CREATE TABLE \`${tableName}\` (\n  ${columns}\n);\n\n`;
+};
+
+
+export async function exportDatabaseToSqlAction(): Promise<string> {
+  const collectionNames = [
+    'users', 'areas', 'forklifts', 'predefinedChecklistItems', 'jsas',
+    'incidents', 'observations', 'safetyWalks', 'forkliftInspections',
+    'correctiveActions', 'investigations', 'safetyDocs', 'complianceRecords',
+    'hotWorkPermits', 'confinedSpacePermits'
+  ];
+
+  let sqlOutput = '-- RDT360-Safety SQL Export\n';
+  sqlOutput += `-- Generated on: ${new Date().toISOString()}\n\n`;
+
+  for (const name of collectionNames) {
+    try {
+      const data = await getCollectionData(name);
+      if (data.length === 0) {
+        sqlOutput += `-- Collection '${name}' is empty. Skipping.\n\n`;
+        continue;
+      }
+      
+      sqlOutput += `-- Data for collection: ${name}\n`;
+      sqlOutput += generateCreateTableSql(name, data[0]);
+
+      data.forEach(doc => {
+          const keys = Object.keys(doc).map(k => `\`${k}\``).join(', ');
+          const values = Object.values(doc).map(escapeSqlValue).join(', ');
+          sqlOutput += `INSERT INTO \`${name}\` (${keys}) VALUES (${values});\n`;
+      });
+      sqlOutput += '\n';
+
+    } catch (e) {
+      console.error(`Failed to export collection ${name}:`, e);
+      sqlOutput += `-- Failed to export collection '${name}'. Error: ${(e as Error).message}\n\n`;
+    }
+  }
+
+  return sqlOutput;
 }
