@@ -102,6 +102,7 @@ const escapeSqlValue = (value: any): string => {
 const generateCreateTableSql = (tableName: string, sampleDoc?: Record<string, any>): string => {
     let columns = '`id` VARCHAR(255) PRIMARY KEY';
     if (sampleDoc) {
+      // Use Object.keys on the sample document to define columns
       for (const key in sampleDoc) {
           if (key === 'id') continue;
           let type = 'TEXT';
@@ -111,6 +112,7 @@ const generateCreateTableSql = (tableName: string, sampleDoc?: Record<string, an
           columns += `,\n  \`${key}\` ${type}`;
       }
     }
+    // If there's no sampleDoc (collection is empty), it will just create the table with the primary key.
     return `CREATE TABLE IF NOT EXISTS \`${tableName}\` (\n  ${columns}\n);\n\n`;
 };
 
