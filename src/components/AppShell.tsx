@@ -37,6 +37,7 @@ import {
   ChevronRight,
   Box,
   BookCopy,
+  HelpCircle,
 } from 'lucide-react';
 import { Header } from './Header';
 import { Button } from './ui/button';
@@ -179,6 +180,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </CardDescription>
             </Card>
           <SidebarMenu>
+            <SidebarMenuItem>
+                <SidebarMenuButton asChild isActive={pathname.startsWith('/help')}>
+                    <Link href="/help">
+                        <HelpCircle />
+                        <span>Help</span>
+                    </Link>
+                </SidebarMenuButton>
+            </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton asChild isActive={pathname.startsWith('/settings')}>
                 <Link href="/settings/users">
