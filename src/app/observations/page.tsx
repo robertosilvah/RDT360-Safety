@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -1242,7 +1243,7 @@ export default function ObservationsPage() {
                         );
                       })
                     ) : (
-                      <TableRow>
+                      <TableRow key="no-observations-row">
                         <TableCell colSpan={8} className="h-24 text-center">
                           No observations have been recorded yet.
                         </TableCell>
@@ -1342,7 +1343,7 @@ export default function ObservationsPage() {
                         );
                         })
                     ) : (
-                        <TableRow>
+                        <TableRow key="no-my-observations-row">
                             <TableCell colSpan={8} className="text-center">You have not submitted any observations yet.</TableCell>
                         </TableRow>
                     )}
@@ -1369,3 +1370,4 @@ export default function ObservationsPage() {
     </AppShell>
   );
 }
+
