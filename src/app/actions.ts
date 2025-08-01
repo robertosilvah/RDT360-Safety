@@ -99,17 +99,19 @@ const escapeSqlValue = (value: any): string => {
     return `'${value.toString().replace(/'/g, "''")}'`;
 };
 
-const generateCreateTableSql = (tableName: string, sampleDoc: Record<string, any>): string => {
+const generateCreateTableSql = (tableName: string, sampleDoc?: Record<string, any>): string => {
     let columns = '`id` VARCHAR(255) PRIMARY KEY';
-    for (const key in sampleDoc) {
-        if (key === 'id') continue;
-        let type = 'TEXT';
-        const value = sampleDoc[key];
-        if (typeof value === 'number') type = 'FLOAT';
-        if (typeof value === 'boolean') type = 'TINYINT(1)';
-        columns += `,\n  \`${key}\` ${type}`;
+    if (sampleDoc) {
+      for (const key in sampleDoc) {
+          if (key === 'id') continue;
+          let type = 'TEXT';
+          const value = sampleDoc[key];
+          if (typeof value === 'number') type = 'FLOAT';
+          if (typeof value === 'boolean') type = 'TINYINT(1)';
+          columns += `,\n  \`${key}\` ${type}`;
+      }
     }
-    return `CREATE TABLE \`${tableName}\` (\n  ${columns}\n);\n\n`;
+    return `CREATE TABLE IF NOT EXISTS \`${tableName}\` (\n  ${columns}\n);\n\n`;
 };
 
 
@@ -127,19 +129,19 @@ export async function exportDatabaseToSqlAction(): Promise<string> {
   for (const name of collectionNames) {
     try {
       const data = await getCollectionData(name);
-      if (data.length === 0) {
-        sqlOutput += `-- Collection '${name}' is empty. Skipping.\n\n`;
-        continue;
-      }
       
       sqlOutput += `-- Data for collection: ${name}\n`;
       sqlOutput += generateCreateTableSql(name, data[0]);
 
-      data.forEach(doc => {
-          const keys = Object.keys(doc).map(k => `\`${k}\``).join(', ');
-          const values = Object.values(doc).map(escapeSqlValue).join(', ');
-          sqlOutput += `INSERT INTO \`${name}\` (${keys}) VALUES (${values});\n`;
-      });
+      if (data.length > 0) {
+          data.forEach(doc => {
+              const keys = Object.keys(doc).map(k => `\`${k}\``).join(', ');
+              const values = Object.values(doc).map(escapeSqlValue).join(', ');
+              sqlOutput += `INSERT INTO \`${name}\` (${keys}) VALUES (${values});\n`;
+          });
+      } else {
+          sqlOutput += `-- Collection '${name}' is empty. No INSERT statements generated.\n`;
+      }
       sqlOutput += '\n';
 
     } catch (e) {
