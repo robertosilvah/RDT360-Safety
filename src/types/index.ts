@@ -1,7 +1,8 @@
 
 export type WorkHoursLog = {
   id: string;
-  log_date: string;
+  start_date: string;
+  end_date: string;
   hours_worked: number;
   notes?: string;
 }

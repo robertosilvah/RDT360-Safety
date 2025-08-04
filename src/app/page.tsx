@@ -94,9 +94,10 @@ export default function DashboardPage() {
         return { value: 'N/A', description: 'No accidents recorded yet' };
     }
     const lastAccidentDate = new Date(accidents.reduce((max, incident) => new Date(incident.date) > new Date(max.date) ? incident : max).date);
-
+    
+    // We only sum hours from logs where the *end date* is after the last accident.
     const relevantHours = workHours
-        .filter(wh => isAfter(new Date(wh.log_date), lastAccidentDate))
+        .filter(wh => isAfter(new Date(wh.end_date), lastAccidentDate))
         .reduce((sum, wh) => sum + wh.hours_worked, 0);
 
     return { value: relevantHours.toLocaleString(), description: `Since ${format(lastAccidentDate, 'P')}`};

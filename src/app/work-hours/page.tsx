@@ -38,10 +38,15 @@ import { useToast } from '@/hooks/use-toast';
 import type { WorkHoursLog } from '@/types';
 
 const workHoursFormSchema = z.object({
-  log_date: z.string().refine((val) => val && !isNaN(Date.parse(val)), { message: 'A valid date is required.' }),
+  start_date: z.string().refine((val) => val && !isNaN(Date.parse(val)), { message: 'A valid start date is required.' }),
+  end_date: z.string().refine((val) => val && !isNaN(Date.parse(val)), { message: 'A valid end date is required.' }),
   hours_worked: z.coerce.number().min(1, 'Hours worked must be greater than 0.'),
   notes: z.string().optional(),
+}).refine(data => new Date(data.end_date) >= new Date(data.start_date), {
+    message: "End date must be on or after the start date.",
+    path: ["end_date"],
 });
+
 
 type WorkHoursFormValues = z.infer<typeof workHoursFormSchema>;
 
@@ -59,7 +64,8 @@ const WorkHoursForm = ({
   const form = useForm<WorkHoursFormValues>({
     resolver: zodResolver(workHoursFormSchema),
     defaultValues: {
-      log_date: log ? format(new Date(log.log_date), 'yyyy-MM-dd') : '',
+      start_date: log ? format(new Date(log.start_date), 'yyyy-MM-dd') : '',
+      end_date: log ? format(new Date(log.end_date), 'yyyy-MM-dd') : '',
       hours_worked: log?.hours_worked || 0,
       notes: log?.notes || '',
     },
@@ -76,21 +82,34 @@ const WorkHoursForm = ({
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit Work Hours Log' : 'Add New Work Hours Log'}</DialogTitle>
           <DialogDescription>
-            {isEdit ? 'Update the details for this log entry.' : 'Log the total hours worked for a specific day.'}
+            {isEdit ? 'Update the details for this log entry.' : 'Log the total hours worked for a specific period.'}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <FormField
-            control={form.control}
-            name="log_date"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Date</FormLabel>
-                <FormControl><Input type="date" {...field} /></FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+          <div className="grid grid-cols-2 gap-4">
+             <FormField
+                control={form.control}
+                name="start_date"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>Start Date</FormLabel>
+                    <FormControl><Input type="date" {...field} /></FormControl>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
+             <FormField
+                control={form.control}
+                name="end_date"
+                render={({ field }) => (
+                <FormItem>
+                    <FormLabel>End Date</FormLabel>
+                    <FormControl><Input type="date" {...field} /></FormControl>
+                    <FormMessage />
+                </FormItem>
+                )}
+            />
+          </div>
           <FormField
             control={form.control}
             name="hours_worked"
@@ -132,7 +151,8 @@ export default function WorkHoursPage() {
 
   const handleSave = (data: WorkHoursFormValues, isEdit: boolean, logId?: string) => {
     const logData = {
-        log_date: new Date(data.log_date).toISOString(),
+        start_date: new Date(data.start_date).toISOString(),
+        end_date: new Date(data.end_date).toISOString(),
         hours_worked: data.hours_worked,
         notes: data.notes,
     }
@@ -150,7 +170,7 @@ export default function WorkHoursPage() {
     setFormOpen(true);
   };
   
-  const sortedLogs = [...workHours].sort((a,b) => new Date(b.log_date).getTime() - new Date(a.log_date).getTime());
+  const sortedLogs = [...workHours].sort((a,b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
 
   return (
     <AppShell>
@@ -181,7 +201,7 @@ export default function WorkHoursPage() {
             <Table>
                 <TableHeader>
                 <TableRow>
-                    <TableHead>Date</TableHead>
+                    <TableHead>Period</TableHead>
                     <TableHead>Hours Worked</TableHead>
                     <TableHead>Notes</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
@@ -190,7 +210,7 @@ export default function WorkHoursPage() {
                 <TableBody>
                 {sortedLogs.map((log) => (
                     <TableRow key={log.id}>
-                    <TableCell className="font-medium">{format(new Date(log.log_date), 'PPP')}</TableCell>
+                    <TableCell className="font-medium">{format(new Date(log.start_date), 'PPP')} - {format(new Date(log.end_date), 'PPP')}</TableCell>
                     <TableCell>{log.hours_worked.toLocaleString()}</TableCell>
                     <TableCell>{log.notes || 'N/A'}</TableCell>
                     <TableCell className="text-right">
@@ -207,7 +227,7 @@ export default function WorkHoursPage() {
                             <AlertDialogHeader>
                             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                             <AlertDialogDescription>
-                                This will permanently delete the log for {format(new Date(log.log_date), 'PPP')}. This action cannot be undone.
+                                This will permanently delete the log for the period starting {format(new Date(log.start_date), 'PPP')}. This action cannot be undone.
                             </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
