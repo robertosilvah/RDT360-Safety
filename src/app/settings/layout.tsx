@@ -6,12 +6,13 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Truck, ListChecks, FolderTree, Paintbrush, Upload, Database } from 'lucide-react';
+import { Users, Truck, ListChecks, FolderTree, Paintbrush, Upload, Database, Shield } from 'lucide-react';
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
     const pathname = usePathname();
 
     const activeTab = pathname.includes('/users') ? 'users' 
+        : pathname.includes('/groups') ? 'groups'
         : pathname.includes('/forklifts') ? 'forklifts' 
         : pathname.includes('/checklist') ? 'checklist' 
         : pathname.includes('/areas') ? 'areas'
@@ -35,6 +36,11 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
                         <TabsTrigger value="users" asChild>
                            <Link href="/settings/users">
                                <Users className="mr-2 h-4 w-4" /> Users
+                           </Link>
+                        </TabsTrigger>
+                         <TabsTrigger value="groups" asChild>
+                           <Link href="/settings/groups">
+                               <Shield className="mr-2 h-4 w-4" /> Groups & Permissions
                            </Link>
                         </TabsTrigger>
                          <TabsTrigger value="areas" asChild>
