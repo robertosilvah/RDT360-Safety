@@ -173,11 +173,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </SidebarMenu>
         </SidebarContent>
         <SidebarFooter className="space-y-2">
-           <Card className="bg-accent/20 border-accent/50">
-                <CardDescription className="p-4 text-xs text-foreground/80">
-                    <strong className="font-semibold text-foreground">Need help?</strong> Visit our help center or contact support for assistance.
-                </CardDescription>
-            </Card>
           <SidebarMenu>
             <SidebarMenuItem>
                 <SidebarMenuButton asChild isActive={pathname.startsWith('/help')}>
