@@ -1,5 +1,6 @@
 
 
+
 export type TalkSection = {
   na: boolean;
   details: string;
@@ -29,6 +30,8 @@ export type ToolboxTalk = {
   special_ppe: TalkSection;
   signatures: ToolboxSignature[];
   actions_to_be_taken?: {topic: string; action: string; by_who: string}[];
+  assigned_to: string[]; // Array of user names or IDs
+  attachments: { name: string; url: string }[];
 };
 
 export type WorkHoursLog = {

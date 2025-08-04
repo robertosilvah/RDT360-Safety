@@ -1,12 +1,13 @@
 
 
 
+
 import { db, storage } from '@/lib/firebase';
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, writeBatch, DocumentReference,
   getDocs, query, where, getDoc,
 } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import type { Observation, CorrectiveAction, Incident, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, ConfinedSpacePermit, IncidentData, Comment, WorkHoursLog, ToolboxTalk, ToolboxSignature } from '@/types';
 
 // Generic subscribe to collection function
@@ -228,6 +229,16 @@ export const updateJsa = async (updatedJsa: JSA): Promise<boolean> => {
     return true;
 };
 
+export const batchUpdateJsaStatus = async (jsaIds: string[], status: 'Active' | 'Expired' | 'Draft'): Promise<void> => {
+    const batch = writeBatch(db);
+    jsaIds.forEach(id => {
+        const docRef = doc(db, 'jsas', id);
+        batch.update(docRef, { status });
+    });
+    await batch.commit();
+}
+
+
 // Hot Work Permit Functions
 export const addHotWorkPermit = async (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, displayId: string, locationName: string) => {
   const newPermitData = { ...permit, display_id: displayId, created_date: new Date().toISOString(), status: 'Draft' as const, locationName: locationName, comments: [] };
@@ -255,8 +266,20 @@ export const addCommentToDocument = async (collectionName: string, docId: string
 };
 
 // Toolbox Talk Functions
-export const addToolboxTalk = async (talk: Omit<ToolboxTalk, 'id' | 'display_id' | 'signatures'>) => {
-  return await addDoc(collection(db, 'toolboxTalks'), talk);
+export const addToolboxTalk = async (talk: Omit<ToolboxTalk, 'id' | 'display_id' | 'signatures' | 'attachments'>, attachment?: File) => {
+  let attachmentUrl = '';
+  if (attachment) {
+      const storageRef = ref(storage, `toolbox-attachments/${Date.now()}_${attachment.name}`);
+      await uploadBytes(storageRef, attachment);
+      attachmentUrl = await getDownloadURL(storageRef);
+  }
+
+  const newTalkData = {
+      ...talk,
+      signatures: [],
+      attachments: attachment ? [{ name: attachment.name, url: attachmentUrl }] : [],
+  };
+  return await addDoc(collection(db, 'toolboxTalks'), newTalkData);
 };
 
 export const addToolboxSignature = async (talkId: string, signature: Omit<ToolboxSignature, 'id'>) => {
@@ -286,7 +309,7 @@ export const getSignaturesForTalk = (talkId: string, callback: (data: ToolboxSig
 export const updateBrandingSettings = async (logoFile: File) => {
   if (!logoFile) return;
   const storageRef = ref(storage, `branding/logo`);
-  await uploadString(storageRef, URL.createObjectURL(logoFile), 'data_url');
+  await uploadBytes(storageRef, logoFile);
   const logoUrl = await getDownloadURL(storageRef);
   await setDoc(doc(db, 'settings', 'branding'), { logoUrl });
 };

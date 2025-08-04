@@ -184,8 +184,8 @@ export const addCommentToDocument = async (collectionName: string, docId: string
     logAction('addCommentToDocument', { collectionName, docId, comments });
 };
 
-export const addToolboxTalk = async (talk: Omit<ToolboxTalk, 'id' | 'display_id' | 'signatures'>) => {
-    logAction('addToolboxTalk', talk);
+export const addToolboxTalk = async (talk: Omit<ToolboxTalk, 'id' | 'display_id' | 'signatures' | 'attachments'>, attachment?: File) => {
+    logAction('addToolboxTalk', { talk, attachment: attachment?.name });
     return { id: 'mock-talk-id' };
 };
 

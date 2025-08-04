@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useAppData } from '@/context/AppDataContext';
 import { useToast } from '@/hooks/use-toast';
 import type { ToolboxTalk, ToolboxSignature, TalkSection } from '@/types';
-import { Clock, User, MapPin, Edit, Check, Link as LinkIcon, Printer, QrCode, ClipboardList } from 'lucide-react';
+import { Clock, User, MapPin, Edit, Check, Link as LinkIcon, Printer, QrCode, ClipboardList, Paperclip, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -192,7 +192,7 @@ const SectionToTable = ({ text }: { text: string }) => {
 };
 
 export default function TalkDetailsPage({ params }: { params: { id: string } }) {
-  const { toolboxTalks, brandingSettings } = useAppData();
+  const { toolboxTalks, brandingSettings, users } = useAppData();
   const [talk, setTalk] = useState<ToolboxTalk | null | undefined>(undefined);
   const [signatures, setSignatures] = useState<ToolboxSignature[]>([]);
   const router = useRouter();
@@ -225,6 +225,9 @@ export default function TalkDetailsPage({ params }: { params: { id: string } }) 
   
   const handlePrint = () => window.print();
 
+  const assignedUsers = users.filter(user => talk.assigned_to.includes(user.id));
+  const hasSigned = (userName: string) => signatures.some(sig => sig.name === userName);
+
   return (
     <AppShell>
       <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 no-print">
@@ -252,16 +255,16 @@ export default function TalkDetailsPage({ params }: { params: { id: string } }) 
           <div className="text-center my-6">
               <h1 className="text-3xl font-bold">Safety Toolbox Talk</h1>
           </div>
-
-          {/* Details Table */}
+          
            <div className="grid grid-cols-5 border-t border-l border-r">
                 <div className="col-span-1 p-2 border-b border-r font-semibold bg-gray-50">Toolbox Topic</div>
                 <div className="col-span-4 p-2 border-b">{talk.topic}</div>
-                <div className="col-span-1 p-2 border-b border-r font-semibold bg-gray-50">Personnel In Attendance</div>
+                <div className="col-span-1 p-2 border-b border-r font-semibold bg-gray-50">Assigned Personnel</div>
                 <div className="col-span-4 p-2 border-b">
                     <ul className="list-disc pl-5">
-                       {signatures.map(sig => <li key={sig.id}>{sig.name}</li>)}
-                       {signatures.length === 0 && <li>No one has signed yet.</li>}
+                       {assignedUsers.length > 0 ? assignedUsers.map(user => (
+                           <li key={user.id}>{user.name} {hasSigned(user.name) && <Check className="inline h-4 w-4 text-green-600" />}</li>
+                        )) : <li>No one assigned.</li>}
                     </ul>
                 </div>
             </div>
@@ -285,6 +288,20 @@ export default function TalkDetailsPage({ params }: { params: { id: string } }) 
                 <h3 className="font-bold text-lg mb-2">Topic Summary</h3>
                 <SectionToTable text={talk.observations} />
             </div>
+
+            {/* Attachments */}
+            {talk.attachments && talk.attachments.length > 0 && (
+                <div className="mt-4">
+                    <h3 className="font-bold text-lg mb-2 flex items-center gap-2"><Paperclip /> Attachments</h3>
+                    <div className="flex flex-col gap-2">
+                        {talk.attachments.map(att => (
+                            <Button key={att.url} variant="outline" asChild className="w-fit">
+                                <a href={att.url} target="_blank" rel="noopener noreferrer">{att.name}</a>
+                            </Button>
+                        ))}
+                    </div>
+                </div>
+            )}
             
              {/* Attendance Record */}
             <div className="mt-8">

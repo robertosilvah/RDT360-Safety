@@ -1,5 +1,6 @@
 
 
+
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
@@ -73,7 +74,7 @@ interface AppDataContextType {
   updateWorkHoursLog: (log: WorkHoursLog) => Promise<void>;
   removeWorkHoursLog: (logId: string) => Promise<void>;
   toolboxTalks: ToolboxTalk[];
-  addToolboxTalk: (talk: Omit<ToolboxTalk, 'id' | 'display_id' | 'signatures'>) => Promise<void>;
+  addToolboxTalk: (talk: Omit<ToolboxTalk, 'id' | 'display_id' | 'signatures' | 'attachments'>, attachment?: File) => Promise<void>;
   addToolboxSignature: (talkId: string, signature: Omit<ToolboxSignature, 'id' | 'toolbox_talk_id'>) => Promise<void>;
 }
 
@@ -293,9 +294,9 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const addToolboxTalk = async (talk: Omit<ToolboxTalk, 'id' | 'display_id' | 'signatures'>) => {
+  const addToolboxTalk = async (talk: Omit<ToolboxTalk, 'id' | 'display_id' | 'signatures' | 'attachments'>, attachment?: File) => {
       const displayId = `TT${String(toolboxTalks.length + 1).padStart(4, '0')}`;
-      await api.addToolboxTalk({ ...talk, display_id: displayId });
+      await api.addToolboxTalk({ ...talk, display_id: displayId }, attachment);
   };
 
   const addToolboxSignature = async (talkId: string, signature: Omit<ToolboxSignature, 'id' | 'toolbox_talk_id'>) => {

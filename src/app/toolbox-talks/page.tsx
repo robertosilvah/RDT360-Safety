@@ -22,6 +22,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
 import { generateToolboxTalkAction } from '@/app/actions';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
+import { ChevronsUpDown } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 const talkSectionSchema = z.object({
   na: z.boolean().default(false),
@@ -43,6 +47,8 @@ const talkFormSchema = z.object({
   unsafe_conditions: talkSectionSchema,
   corrections_changed_procedures: talkSectionSchema,
   special_ppe: talkSectionSchema,
+  assigned_to: z.array(z.string()).optional(),
+  attachment: z.instanceof(File).optional(),
 });
 
 type TalkFormValues = z.infer<typeof talkFormSchema>;
@@ -97,9 +103,11 @@ const TalkSectionInput = ({ form, fieldName, label }: {
 );
 
 const CreateTalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
-  const { addToolboxTalk } = useAppData();
+  const { addToolboxTalk, users, uploadSettings } = useAppData();
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [openUserSelect, setOpenUserSelect] = useState(false);
 
   const form = useForm<TalkFormValues>({
     resolver: zodResolver(talkFormSchema),
@@ -115,8 +123,11 @@ const CreateTalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
       unsafe_conditions: { na: false, details: '' },
       corrections_changed_procedures: { na: false, details: '' },
       special_ppe: { na: false, details: '' },
+      assigned_to: [],
     },
   });
+  
+  const selectedUserIds = form.watch('assigned_to') || [];
 
   const handleGenerateContent = async () => {
     const topic = form.getValues('topic');
@@ -151,11 +162,12 @@ const CreateTalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
   };
 
   const onSubmit = async (values: TalkFormValues) => {
+    setIsSubmitting(true);
     try {
       await addToolboxTalk({
         ...values,
         date: new Date(values.date).toISOString(),
-      });
+      }, values.attachment);
       toast({
         title: 'Toolbox Talk Created',
         description: `The talk "${values.title}" has been successfully scheduled.`,
@@ -167,6 +179,8 @@ const CreateTalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
         title: 'Error',
         description: 'Failed to create the toolbox talk.',
       });
+    } finally {
+        setIsSubmitting(false);
     }
   };
 
@@ -215,6 +229,88 @@ const CreateTalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
           <FormField control={form.control} name="observations" render={({ field }) => (
             <FormItem><FormLabel>General Topics / Observations</FormLabel><FormControl><Textarea placeholder="Describe the topics covered in the talk..." {...field} rows={6} /></FormControl><FormMessage /></FormItem>
           )} />
+
+          <Separator />
+          <h3 className="text-lg font-semibold">Assignment & Attachments</h3>
+
+           <FormField
+            control={form.control}
+            name="assigned_to"
+            render={({ field }) => (
+              <FormItem className="flex flex-col">
+                <FormLabel>Assign to Users (Optional)</FormLabel>
+                 <Popover open={openUserSelect} onOpenChange={setOpenUserSelect}>
+                    <PopoverTrigger asChild>
+                    <FormControl>
+                        <Button variant="outline" role="combobox" className="w-full justify-between">
+                        {selectedUserIds.length > 0 ? `${selectedUserIds.length} user(s) selected` : "Select users..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                    </FormControl>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-full p-0">
+                    <Command>
+                        <CommandInput placeholder="Search users..." />
+                        <CommandEmpty>No users found.</CommandEmpty>
+                        <CommandGroup>
+                        {users.map((user) => (
+                            <CommandItem
+                                value={user.name}
+                                key={user.id}
+                                onSelect={() => {
+                                    const isSelected = selectedUserIds.includes(user.id);
+                                    const newSelection = isSelected
+                                    ? selectedUserIds.filter((id) => id !== user.id)
+                                    : [...selectedUserIds, user.id];
+                                    field.onChange(newSelection);
+                                }}
+                            >
+                            <Check className={`mr-2 h-4 w-4 ${selectedUserIds.includes(user.id) ? "opacity-100" : "opacity-0"}`} />
+                            {user.name}
+                            </CommandItem>
+                        ))}
+                        </CommandGroup>
+                    </Command>
+                    </PopoverContent>
+                </Popover>
+                 <div className="flex flex-wrap gap-1 pt-2">
+                    {selectedUserIds.map(id => {
+                        const user = users.find(u => u.id === id);
+                        return user ? <Badge key={id} variant="secondary">{user.name}</Badge> : null;
+                    })}
+                </div>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+           <FormField
+                control={form.control}
+                name="attachment"
+                render={({ field: { onChange, value, ...rest } }) => (
+                    <FormItem>
+                        <FormLabel>Attach Document (Optional)</FormLabel>
+                        <FormControl>
+                            <Input
+                                type="file"
+                                {...rest}
+                                onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    const maxSizeMB = uploadSettings?.docMaxSizeMB || 10;
+                                    const maxSizeInBytes = maxSizeMB * 1024 * 1024;
+                                    if(file && file.size > maxSizeInBytes) {
+                                        toast({ variant: 'destructive', title: 'File too large', description: `Attachment must be smaller than ${maxSizeMB}MB.` });
+                                        if (e.target) e.target.value = '';
+                                    } else if (file) {
+                                        onChange(file);
+                                    }
+                                }}
+                            />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
           
           <Separator />
 
@@ -227,7 +323,10 @@ const CreateTalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
         </div>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
-          <Button type="submit">Create Talk</Button>
+          <Button type="submit" disabled={isSubmitting}>
+             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+             Create Talk
+          </Button>
         </DialogFooter>
       </form>
     </Form>
