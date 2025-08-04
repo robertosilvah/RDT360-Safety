@@ -150,6 +150,7 @@ export default function WorkHoursPage() {
   const { toast } = useToast();
 
   const handleSave = (data: WorkHoursFormValues, isEdit: boolean, logId?: string) => {
+    // Ensure dates are consistently stored in ISO format
     const logData = {
         start_date: new Date(data.start_date).toISOString(),
         end_date: new Date(data.end_date).toISOString(),
@@ -170,7 +171,14 @@ export default function WorkHoursPage() {
     setFormOpen(true);
   };
   
-  const sortedLogs = [...workHours].sort((a,b) => new Date(b.start_date).getTime() - new Date(a.start_date).getTime());
+  const sortedLogs = [...workHours].sort((a,b) => {
+      try {
+        return new Date(b.start_date).getTime() - new Date(a.start_date).getTime();
+      } catch (e) {
+        // Handle invalid dates if they still exist in the data
+        return 0;
+      }
+  });
 
   return (
     <AppShell>
@@ -208,37 +216,47 @@ export default function WorkHoursPage() {
                 </TableRow>
                 </TableHeader>
                 <TableBody>
-                {sortedLogs.map((log) => (
+                {sortedLogs.map((log) => {
+                    let startDate = 'Invalid Date';
+                    let endDate = 'Invalid Date';
+                    try {
+                        startDate = format(new Date(log.start_date), 'PPP');
+                    } catch (e) { console.error(`Invalid start_date for log ${log.id}:`, log.start_date); }
+                    try {
+                        endDate = format(new Date(log.end_date), 'PPP');
+                    } catch (e) { console.error(`Invalid end_date for log ${log.id}:`, log.end_date); }
+
+                    return (
                     <TableRow key={log.id}>
-                    <TableCell className="font-medium">{format(new Date(log.start_date), 'PPP')} - {format(new Date(log.end_date), 'PPP')}</TableCell>
-                    <TableCell>{log.hours_worked.toLocaleString()}</TableCell>
-                    <TableCell>{log.notes || 'N/A'}</TableCell>
-                    <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => openForm(log)}>
-                        <Edit className="h-4 w-4" />
-                        </Button>
-                        <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
-                            <Trash2 className="h-4 w-4" />
+                        <TableCell className="font-medium">{startDate} - {endDate}</TableCell>
+                        <TableCell>{log.hours_worked.toLocaleString()}</TableCell>
+                        <TableCell>{log.notes || 'N/A'}</TableCell>
+                        <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" onClick={() => openForm(log)}>
+                            <Edit className="h-4 w-4" />
                             </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                This will permanently delete the log for the period starting {format(new Date(log.start_date), 'PPP')}. This action cannot be undone.
-                            </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => removeWorkHoursLog(log.id)}>Delete</AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                        </AlertDialog>
-                    </TableCell>
+                            <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
+                                <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This will permanently delete the log for the period starting {startDate}. This action cannot be undone.
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => removeWorkHoursLog(log.id)}>Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                            </AlertDialog>
+                        </TableCell>
                     </TableRow>
-                ))}
+                )})}
                 </TableBody>
             </Table>
             </CardContent>
