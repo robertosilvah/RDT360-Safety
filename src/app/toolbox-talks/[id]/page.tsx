@@ -20,6 +20,8 @@ import SignaturePad from 'react-signature-canvas';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { QRCodeCanvas } from 'qrcode.react';
 import api from '@/services/backend';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
 
 const SignatureDialog = ({ talk, onSignatureSaved }: { talk: ToolboxTalk; onSignatureSaved: () => void; }) => {
   const { addToolboxSignature } = useAppData();
@@ -60,7 +62,7 @@ const SignatureDialog = ({ talk, onSignatureSaved }: { talk: ToolboxTalk; onSign
   return (
     <Dialog open={isOpen} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button className="no-print">
           <Edit className="mr-2 h-4 w-4" /> Add Your Signature
         </Button>
       </DialogTrigger>
@@ -132,8 +134,65 @@ const TalkSectionDisplay = ({ section, title }: { section: TalkSection; title: s
   </div>
 );
 
+const SectionToTable = ({ text }: { text: string }) => {
+  const lines = text.split('\n').filter(line => line.trim() !== '');
+  const isStructured = lines.some(line => line.startsWith('**'));
+
+  if (!isStructured) {
+    return <p className="whitespace-pre-wrap">{text}</p>;
+  }
+
+  const sections: { title: string; items: string[] }[] = [];
+  let currentSection: { title: string; items: string[] } | null = null;
+
+  lines.forEach(line => {
+    if (line.startsWith('**')) {
+      if (currentSection) sections.push(currentSection);
+      currentSection = { title: line.replace(/\*\*/g, '').trim(), items: [] };
+    } else if (currentSection) {
+      currentSection.items.push(line.trim());
+    }
+  });
+  if (currentSection) sections.push(currentSection);
+  
+  const getCols = () => {
+    const titles = sections.map(s => s.title);
+    if (titles.includes('Actions to be taken') && titles.includes('By who?')) {
+      return 3;
+    }
+    return 1;
+  }
+  const cols = getCols();
+  const byWhoData = sections.find(s => s.title === 'By who?')?.items;
+
+  if (cols === 3) {
+      return (
+        <Table className="border">
+            <TableHeader>
+                <TableRow>
+                    <TableHead>Discussion topic</TableHead>
+                    <TableHead>Actions to be taken</TableHead>
+                    <TableHead>By who?</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {sections.find(s => s.title === 'Key Discussion Points')?.items.map((item, index) => (
+                    <TableRow key={index}>
+                        <TableCell>{item}</TableCell>
+                        <TableCell>{sections.find(s => s.title === 'Actions to be taken')?.items[index] || ''}</TableCell>
+                        <TableCell>{byWhoData?.[index] || ''}</TableCell>
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
+      )
+  }
+
+  return <p className="whitespace-pre-wrap">{text}</p>;
+};
+
 export default function TalkDetailsPage({ params }: { params: { id: string } }) {
-  const { toolboxTalks } = useAppData();
+  const { toolboxTalks, brandingSettings } = useAppData();
   const [talk, setTalk] = useState<ToolboxTalk | null | undefined>(undefined);
   const [signatures, setSignatures] = useState<ToolboxSignature[]>([]);
   const router = useRouter();
@@ -163,68 +222,97 @@ export default function TalkDetailsPage({ params }: { params: { id: string } }) 
   if (talk === null) {
     notFound();
   }
+  
+  const handlePrint = () => window.print();
 
   return (
     <AppShell>
-      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6">
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-start">
-              <div>
-                <CardTitle className="text-3xl">{talk.title}</CardTitle>
-                <CardDescription>Toolbox Talk Details - {talk.display_id}</CardDescription>
+      <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 no-print">
+        <div className="flex justify-between items-center">
+            <h2 className="text-3xl font-bold tracking-tight">Toolbox Talk Details</h2>
+            <div className="flex items-center gap-2">
+                <Button onClick={handlePrint} variant="outline"><Printer className="mr-2 h-4 w-4" /> Print / Save PDF</Button>
+                <SignatureDialog talk={talk} onSignatureSaved={() => {}} />
+            </div>
+        </div>
+      </div>
+      <div className="bg-white p-4 md:p-8 printable-area">
+          {/* Header */}
+          <header className="flex justify-between items-start pb-4 border-b">
+              <div className="flex items-center gap-4">
+                  {brandingSettings?.logoUrl && <Image src={brandingSettings.logoUrl} alt="Company Logo" width={140} height={70} className="object-contain" />}
               </div>
-              <div className="flex items-center gap-2">
-                 <QrCodeDialog url={typeof window !== 'undefined' ? window.location.href : ''} talk={talk} />
-                 <Button variant="outline" size="icon" onClick={handleCopyLink}><LinkIcon className="h-4 w-4" /></Button>
+              <div className="text-right text-xs">
+                  <p><strong>Template ID:</strong> {talk.display_id}</p>
+                  <p><strong>Form Created:</strong> {format(new Date(talk.date), 'PPP p')}</p>
               </div>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-              <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-muted-foreground" /><span>{format(new Date(talk.date), 'PPP p')}</span></div>
-              <div className="flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" /><span>Leader: {talk.leader}</span></div>
-              <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /><span>Location: {talk.location}</span></div>
-              <div className="flex items-center gap-2"><ClipboardList className="h-4 w-4 text-muted-foreground" /><span>Department: {talk.department}</span></div>
-            </div>
-            <Separator />
-            <div className="space-y-4">
-                <div><h4 className="font-semibold mb-2">General Topics Discussed</h4><p className="text-sm text-muted-foreground whitespace-pre-wrap">{talk.observations}</p></div>
-                <TalkSectionDisplay section={talk.accidents_near_misses} title="1) Accidents or Near Misses Discussed" />
-                <TalkSectionDisplay section={talk.unsafe_conditions} title="2) Unsafe or At-Risk Conditions" />
-                <TalkSectionDisplay section={talk.corrections_changed_procedures} title="3) Corrected Conditions or Changed Procedures" />
-                <TalkSectionDisplay section={talk.special_ppe} title="4) Special Care and Additional PPE" />
-            </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-            <CardHeader>
-                <div className="flex justify-between items-center">
-                    <CardTitle>Attendance & Signatures ({signatures.length})</CardTitle>
-                    <SignatureDialog talk={talk} onSignatureSaved={() => {}} />
+          </header>
+
+          {/* Title */}
+          <div className="text-center my-6">
+              <h1 className="text-3xl font-bold">Safety Toolbox Talk</h1>
+          </div>
+
+          {/* Details Table */}
+           <div className="grid grid-cols-5 border-t border-l border-r">
+                <div className="col-span-1 p-2 border-b border-r font-semibold bg-gray-50">Toolbox Topic</div>
+                <div className="col-span-4 p-2 border-b">{talk.topic}</div>
+                <div className="col-span-1 p-2 border-b border-r font-semibold bg-gray-50">Personnel In Attendance</div>
+                <div className="col-span-4 p-2 border-b">
+                    <ul className="list-disc pl-5">
+                       {signatures.map(sig => <li key={sig.id}>{sig.name}</li>)}
+                       {signatures.length === 0 && <li>No one has signed yet.</li>}
+                    </ul>
                 </div>
-                <CardDescription>Record of all personnel who have attended and acknowledged this talk.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {signatures.map(sig => (
-                        <div key={sig.id} className="flex items-center gap-4 p-3 border rounded-md">
-                            <div className="relative w-24 h-12 bg-gray-100 rounded-md">
-                                <Image src={sig.signature_image_url} alt={`Signature of ${sig.name}`} layout="fill" objectFit="contain" />
-                            </div>
-                            <div className="flex-1">
-                                <p className="font-semibold text-sm">{sig.name}</p>
-                                <p className="text-xs text-muted-foreground">Signed: {format(new Date(sig.signed_at), 'P p')}</p>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-                 {signatures.length === 0 && (
-                    <div className="text-center py-8 text-muted-foreground">No signatures have been recorded yet.</div>
-                )}
-            </CardContent>
-        </Card>
+            </div>
+
+            {/* Presenter Table */}
+            <div className="mt-4">
+                <h3 className="font-bold text-lg mb-2">Training Officer/Presenter</h3>
+                <Table className="border">
+                    <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Position</TableHead><TableHead>Venue</TableHead><TableHead>Signature</TableHead></TableRow></TableHeader>
+                    <TableBody><TableRow><TableCell>{talk.leader}</TableCell><TableCell>{talk.department}</TableCell><TableCell>{talk.location}</TableCell><TableCell>{talk.leader}<br /><span className="text-xs text-gray-500">{format(new Date(talk.date), 'PPP p')}</span></TableCell></TableRow></TableBody>
+                </Table>
+            </div>
+            
+            {/* Duration */}
+            <div className="mt-4 border-t border-b py-2 text-sm">
+                <strong>Date and Duration:</strong> Start: {format(new Date(talk.date), 'PPP, h:mm a')}
+            </div>
+
+            {/* Topic Summary */}
+            <div className="mt-4">
+                <h3 className="font-bold text-lg mb-2">Topic Summary</h3>
+                <SectionToTable text={talk.observations} />
+            </div>
+            
+             {/* Attendance Record */}
+            <div className="mt-8">
+                <h3 className="font-bold text-lg mb-2">Attendance Record</h3>
+                <Table className="border">
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead className="w-1/3">Individual name (Printed)</TableHead>
+                            <TableHead className="w-1/3">Company</TableHead>
+                            <TableHead className="w-1/3">Signature</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {signatures.map(sig => (
+                            <TableRow key={sig.id}>
+                                <TableCell>{sig.name}</TableCell>
+                                <TableCell>RDT360-Safety</TableCell>
+                                <TableCell>
+                                    <div className="relative h-12">
+                                       <Image src={sig.signature_image_url} alt={`Signature of ${sig.name}`} layout="fill" objectFit="contain" className="object-left" />
+                                    </div>
+                                    <p className="text-xs text-gray-500 mt-1">{format(new Date(sig.signed_at), 'PPP p')}</p>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            </div>
       </div>
     </AppShell>
   );

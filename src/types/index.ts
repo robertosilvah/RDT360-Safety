@@ -1,6 +1,5 @@
 
 
-
 export type TalkSection = {
   na: boolean;
   details: string;
@@ -29,6 +28,7 @@ export type ToolboxTalk = {
   corrections_changed_procedures: TalkSection;
   special_ppe: TalkSection;
   signatures: ToolboxSignature[];
+  actions_to_be_taken?: {topic: string; action: string; by_who: string}[];
 };
 
 export type WorkHoursLog = {

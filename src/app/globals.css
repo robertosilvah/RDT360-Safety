@@ -84,11 +84,11 @@
 }
 
 @media print {
-  body * {
-    visibility: hidden;
+  body {
+    background: white;
+    color: black;
   }
-  .printable-area, .printable-area *,
-  .qr-code-printable-area, .qr-code-printable-area * {
+  .printable-area, .printable-area * {
     visibility: visible;
   }
   .printable-area {
@@ -100,7 +100,10 @@
     padding: 1rem;
     color: black;
   }
-  .qr-code-printable-area {
+  .qr-code-printable-area, .qr-code-printable-area * {
+    visibility: visible;
+  }
+   .qr-code-printable-area {
     position: absolute;
     left: 0;
     top: 0;
@@ -113,7 +116,8 @@
     align-items: center;
     justify-content: center;
   }
-  .no-print {
+  .no-print, .no-print * {
+    visibility: hidden;
     display: none;
   }
 }
