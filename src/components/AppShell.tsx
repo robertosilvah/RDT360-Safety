@@ -176,7 +176,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
            <Card className="bg-accent/20 border-accent/50">
                 <CardDescription className="p-4 text-xs text-foreground/80">
                     <strong className="font-semibold text-foreground">Need help?</strong> Visit our help center or contact support for assistance.
-                    <Button size="sm" className="w-full mt-3" variant="outline">Contact Support</Button>
                 </CardDescription>
             </Card>
           <SidebarMenu>
