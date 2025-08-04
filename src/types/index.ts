@@ -1,5 +1,11 @@
 
 
+
+export type TalkSection = {
+  na: boolean;
+  details: string;
+};
+
 export type ToolboxSignature = {
   id: string;
   toolbox_talk_id: string;
@@ -15,7 +21,12 @@ export type ToolboxTalk = {
   date: string;
   leader: string;
   location: string;
-  observations: string;
+  department: string;
+  observations: string; // This can be the general topic
+  accidents_near_misses: TalkSection;
+  unsafe_conditions: TalkSection;
+  corrections_changed_procedures: TalkSection;
+  special_ppe: TalkSection;
   signatures: ToolboxSignature[];
 };
 

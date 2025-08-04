@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useAppData } from '@/context/AppDataContext';
 import { useToast } from '@/hooks/use-toast';
-import type { ToolboxTalk, ToolboxSignature } from '@/types';
-import { Clock, User, MapPin, Edit, Check, Link as LinkIcon, Printer, QrCode } from 'lucide-react';
+import type { ToolboxTalk, ToolboxSignature, TalkSection } from '@/types';
+import { Clock, User, MapPin, Edit, Check, Link as LinkIcon, Printer, QrCode, ClipboardList } from 'lucide-react';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -119,6 +119,19 @@ const QrCodeDialog = ({ url, talk }: { url: string; talk: ToolboxTalk }) => {
     )
 }
 
+const TalkSectionDisplay = ({ section, title }: { section: TalkSection; title: string }) => (
+  <div>
+    <h4 className="font-semibold mb-2">{title}</h4>
+    <div className="text-sm p-4 border rounded-md bg-muted/30">
+      {section.na ? (
+        <span className="italic text-muted-foreground">Not Applicable</span>
+      ) : (
+        <p className="text-muted-foreground whitespace-pre-wrap">{section.details}</p>
+      )}
+    </div>
+  </div>
+);
+
 export default function TalkDetailsPage({ params }: { params: { id: string } }) {
   const { toolboxTalks } = useAppData();
   const [talk, setTalk] = useState<ToolboxTalk | null | undefined>(undefined);
@@ -168,15 +181,19 @@ export default function TalkDetailsPage({ params }: { params: { id: string } }) 
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
               <div className="flex items-center gap-2"><Clock className="h-4 w-4 text-muted-foreground" /><span>{format(new Date(talk.date), 'PPP p')}</span></div>
               <div className="flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground" /><span>Leader: {talk.leader}</span></div>
               <div className="flex items-center gap-2"><MapPin className="h-4 w-4 text-muted-foreground" /><span>Location: {talk.location}</span></div>
+              <div className="flex items-center gap-2"><ClipboardList className="h-4 w-4 text-muted-foreground" /><span>Department: {talk.department}</span></div>
             </div>
             <Separator />
-            <div>
-              <h4 className="font-semibold mb-2">Topics Discussed / Observations</h4>
-              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{talk.observations}</p>
+            <div className="space-y-4">
+                <div><h4 className="font-semibold mb-2">General Topics Discussed</h4><p className="text-sm text-muted-foreground whitespace-pre-wrap">{talk.observations}</p></div>
+                <TalkSectionDisplay section={talk.accidents_near_misses} title="1) Accidents or Near Misses Discussed" />
+                <TalkSectionDisplay section={talk.unsafe_conditions} title="2) Unsafe or At-Risk Conditions" />
+                <TalkSectionDisplay section={talk.corrections_changed_procedures} title="3) Corrected Conditions or Changed Procedures" />
+                <TalkSectionDisplay section={talk.special_ppe} title="4) Special Care and Additional PPE" />
             </div>
           </CardContent>
         </Card>

@@ -8,8 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { useAppData } from '@/context/AppDataContext';
 import { useToast } from '@/hooks/use-toast';
-import type { ToolboxTalk } from '@/types';
-import { PlusCircle, FileSignature, Clock, User, MapPin } from 'lucide-react';
+import type { TalkSection, ToolboxTalk } from '@/types';
+import { PlusCircle, FileSignature, Clock, User, MapPin, Check } from 'lucide-react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -19,16 +19,80 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { format } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Separator } from '@/components/ui/separator';
+
+const talkSectionSchema = z.object({
+  na: z.boolean().default(false),
+  details: z.string().optional(),
+}).refine(data => data.na || (data.details && data.details.trim() !== ''), {
+  message: "Details are required if N/A is not checked.",
+  path: ['details'],
+});
 
 const talkFormSchema = z.object({
   title: z.string().min(5, "Title must be at least 5 characters."),
   date: z.string().refine(val => val && !isNaN(Date.parse(val)), { message: "A valid date is required." }),
   leader: z.string().min(2, "Leader name is required."),
   location: z.string().min(2, "Location is required."),
-  observations: z.string().min(10, "Observations must be at least 10 characters."),
+  department: z.string().min(2, "Department is required."),
+  observations: z.string().min(10, "General topics/observations must be at least 10 characters."),
+  accidents_near_misses: talkSectionSchema,
+  unsafe_conditions: talkSectionSchema,
+  corrections_changed_procedures: talkSectionSchema,
+  special_ppe: talkSectionSchema,
 });
 
 type TalkFormValues = z.infer<typeof talkFormSchema>;
+
+const TalkSectionInput = ({ form, fieldName, label }: {
+    form: ReturnType<typeof useForm<TalkFormValues>>;
+    fieldName: "accidents_near_misses" | "unsafe_conditions" | "corrections_changed_procedures" | "special_ppe";
+    label: string;
+}) => (
+    <Card className="p-4 bg-muted/30">
+      <FormField
+        control={form.control}
+        name={`${fieldName}.details`}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>{label}</FormLabel>
+            <FormControl>
+              <Textarea
+                placeholder="Enter details here or check N/A..."
+                {...field}
+                value={field.value ?? ''}
+                disabled={form.watch(`${fieldName}.na`)}
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+      <FormField
+        control={form.control}
+        name={`${fieldName}.na`}
+        render={({ field }) => (
+          <FormItem className="flex flex-row items-center space-x-2 space-y-0 mt-2">
+            <FormControl>
+              <Checkbox
+                checked={field.value}
+                onCheckedChange={(checked) => {
+                  field.onChange(checked);
+                  if (checked) {
+                    form.setValue(`${fieldName}.details`, 'N/A');
+                  } else {
+                     form.setValue(`${fieldName}.details`, '');
+                  }
+                }}
+              />
+            </FormControl>
+            <FormLabel className="font-normal">Not Applicable</FormLabel>
+          </FormItem>
+        )}
+      />
+    </Card>
+);
 
 const CreateTalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
   const { addToolboxTalk } = useAppData();
@@ -40,7 +104,12 @@ const CreateTalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
       date: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
       leader: '',
       location: '',
+      department: '',
       observations: '',
+      accidents_near_misses: { na: false, details: '' },
+      unsafe_conditions: { na: false, details: '' },
+      corrections_changed_procedures: { na: false, details: '' },
+      special_ppe: { na: false, details: '' },
     },
   });
 
@@ -85,12 +154,24 @@ const CreateTalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
               <FormItem><FormLabel>Leader / Responsible</FormLabel><FormControl><Input placeholder="e.g., John Doe" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
           </div>
-          <FormField control={form.control} name="location" render={({ field }) => (
-            <FormItem><FormLabel>Location</FormLabel><FormControl><Input placeholder="e.g., Assembly Area" {...field} /></FormControl><FormMessage /></FormItem>
-          )} />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField control={form.control} name="location" render={({ field }) => (
+              <FormItem><FormLabel>Location</FormLabel><FormControl><Input placeholder="e.g., Assembly Area" {...field} /></FormControl><FormMessage /></FormItem>
+            )} />
+             <FormField control={form.control} name="department" render={({ field }) => (
+              <FormItem><FormLabel>Department</FormLabel><FormControl><Input placeholder="e.g., Production" {...field} /></FormControl><FormMessage /></FormItem>
+            )} />
+          </div>
           <FormField control={form.control} name="observations" render={({ field }) => (
-            <FormItem><FormLabel>Topics & Observations</FormLabel><FormControl><Textarea placeholder="Describe the topics covered in the talk..." {...field} rows={5} /></FormControl><FormMessage /></FormItem>
+            <FormItem><FormLabel>General Topics / Observations</FormLabel><FormControl><Textarea placeholder="Describe the topics covered in the talk..." {...field} rows={3} /></FormControl><FormMessage /></FormItem>
           )} />
+          <Separator />
+          <div className="space-y-4">
+            <TalkSectionInput form={form} fieldName="accidents_near_misses" label="1) Discuss any accidents or near misses that have occurred since last meeting:" />
+            <TalkSectionInput form={form} fieldName="unsafe_conditions" label="2) List any unsafe or at risk conditions that exist:" />
+            <TalkSectionInput form={form} fieldName="corrections_changed_procedures" label="3) Any conditions or procedures that have been corrected or changed for a safer/better working Environment:" />
+            <TalkSectionInput form={form} fieldName="special_ppe" label="4) Any Special care and additional PPE needed to execute the current Job:" />
+          </div>
         </div>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
@@ -116,7 +197,7 @@ export default function ToolboxTalksPage() {
                 <PlusCircle className="mr-2 h-4 w-4" /> Create Talk
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-2xl">
+            <DialogContent className="max-w-3xl">
               <CreateTalkForm setOpen={setCreateOpen} />
             </DialogContent>
           </Dialog>

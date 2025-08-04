@@ -4,20 +4,22 @@
 import React, { useState, useMemo } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { DateRange } from 'react-day-picker';
 import { format, isWithinInterval, startOfMonth, endOfMonth } from 'date-fns';
 import { useAppData } from '@/context/AppDataContext';
-import { Calendar as CalendarIcon, Download } from 'lucide-react';
+import { Calendar as CalendarIcon, Download, FileSignature } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bar, BarChart, CartesianGrid, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis, Cell } from 'recharts';
-import type { CorrectiveAction, Incident, Observation } from '@/types';
+import type { CorrectiveAction, Incident, Observation, ToolboxTalk } from '@/types';
 import { useToast } from '@/hooks/use-toast';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { riskLabels } from '@/app/observations/page';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import Link from 'next/link';
 
 const KpiCard = ({ title, value, description }: { title: string; value: string | number; description?: string }) => (
     <div className="flex flex-col items-center justify-center p-4 text-center">
@@ -354,8 +356,66 @@ const ObservationsView = ({ observations, dateRange, typeFilter, riskFilter, sta
     );
 };
 
+const ToolboxTalksView = ({ talks, dateRange, departmentFilter }: { talks: ToolboxTalk[]; dateRange?: DateRange; departmentFilter: string; }) => {
+  const filteredTalks = useMemo(() => {
+    return talks.filter(talk => {
+      if (!dateRange?.from) return false;
+      const toDate = dateRange.to ?? dateRange.from;
+      const range = { start: dateRange.from, end: toDate };
+      if (!talk.date || !isWithinInterval(new Date(talk.date), range)) return false;
+      
+      const departmentMatch = departmentFilter === 'all' || talk.department === departmentFilter;
+      return departmentMatch;
+    });
+  }, [talks, dateRange, departmentFilter]);
+
+  return (
+    <Card>
+        <CardHeader>
+            <CardTitle>Toolbox Talks Log</CardTitle>
+            <CardDescription>A list of talks held within the selected date range and department.</CardDescription>
+        </CardHeader>
+        <CardContent>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Title</TableHead>
+                        <TableHead>Leader</TableHead>
+                        <TableHead>Department</TableHead>
+                        <TableHead>Attendance</TableHead>
+                        <TableHead>Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {filteredTalks.length > 0 ? filteredTalks.map(talk => (
+                        <TableRow key={talk.id}>
+                            <TableCell>{format(new Date(talk.date), 'P')}</TableCell>
+                            <TableCell className="font-medium">{talk.title}</TableCell>
+                            <TableCell>{talk.leader}</TableCell>
+                            <TableCell>{talk.department}</TableCell>
+                            <TableCell>{talk.signatures.length}</TableCell>
+                            <TableCell>
+                                <Button variant="outline" size="sm" asChild>
+                                    <Link href={`/toolbox-talks/${talk.id}`}>View Details</Link>
+                                </Button>
+                            </TableCell>
+                        </TableRow>
+                    )) : (
+                        <TableRow>
+                            <TableCell colSpan={6} className="text-center">No toolbox talks found for the selected filters.</TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+        </CardContent>
+    </Card>
+  );
+};
+
+
 export default function ReportingPage() {
-    const { correctiveActions, incidents, observations } = useAppData();
+    const { correctiveActions, incidents, observations, toolboxTalks } = useAppData();
     const { toast } = useToast();
     const [activeTab, setActiveTab] = useState('work-orders');
     const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -378,10 +438,15 @@ export default function ReportingPage() {
     const [observationTypeFilter, setObservationTypeFilter] = useState('all');
     const [observationRiskFilter, setObservationRiskFilter] = useState('all');
     const [observationStatusFilter, setObservationStatusFilter] = useState('all');
+
+    // Toolbox Talk Filters
+    const [talkDepartmentFilter, setTalkDepartmentFilter] = useState('all');
     
     // Dynamic values for select dropdowns
     const responsiblePersons = useMemo(() => Array.from(new Set(correctiveActions.map(a => a.responsible_person))).sort(), [correctiveActions]);
     const incidentAreas = useMemo(() => Array.from(new Set(incidents.map(i => i.area))).sort(), [incidents]);
+    const talkDepartments = useMemo(() => Array.from(new Set(toolboxTalks.map(t => t.department))).sort(), [toolboxTalks]);
+
 
     const handleExport = () => {
         let data: any[] = [];
@@ -430,6 +495,14 @@ export default function ReportingPage() {
                     .filter(o => observationStatusFilter === 'all' || o.status === observationStatusFilter);
                 headers = ['display_id', 'report_type', 'submitted_by', 'date', 'risk_level', 'description', 'status'];
                 filename = 'observations_export.csv';
+                break;
+            case 'toolbox-talks':
+                data = toolboxTalks
+                    .filter(t => inRange(t.date))
+                    .filter(t => talkDepartmentFilter === 'all' || t.department === talkDepartmentFilter)
+                    .map(t => ({...t, signatures: t.signatures.length})); // a bit of a hack for export
+                headers = ['display_id', 'title', 'date', 'leader', 'department', 'signatures'];
+                filename = 'toolbox_talks_export.csv';
                 break;
             default:
                 toast({ title: 'Error', description: 'No data to export for this view.', variant: 'destructive' });
@@ -539,6 +612,14 @@ export default function ReportingPage() {
                             </Select>
                         </>
                     )}
+                    {activeTab === 'toolbox-talks' && (
+                        <>
+                            <Select value={talkDepartmentFilter} onValueChange={setTalkDepartmentFilter}>
+                                <SelectTrigger className="w-auto sm:w-[180px]"><SelectValue placeholder="Department" /></SelectTrigger>
+                                <SelectContent><SelectItem value="all">All Departments</SelectItem>{talkDepartments.map(d => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent>
+                            </Select>
+                        </>
+                    )}
                 </div>
 
                 <Tabs defaultValue="work-orders" value={activeTab} onValueChange={setActiveTab}>
@@ -546,6 +627,7 @@ export default function ReportingPage() {
                         <TabsTrigger value="work-orders">Corrective Actions</TabsTrigger>
                         <TabsTrigger value="incidents">Incidents</TabsTrigger>
                         <TabsTrigger value="observations">Observations</TabsTrigger>
+                        <TabsTrigger value="toolbox-talks">Toolbox Talks</TabsTrigger>
                     </TabsList>
                     <TabsContent value="work-orders" className="pt-4">
                         <WorkOrdersView 
@@ -573,6 +655,13 @@ export default function ReportingPage() {
                             typeFilter={observationTypeFilter}
                             riskFilter={observationRiskFilter}
                             statusFilter={observationStatusFilter}
+                        />
+                    </TabsContent>
+                    <TabsContent value="toolbox-talks" className="pt-4">
+                        <ToolboxTalksView
+                            talks={toolboxTalks}
+                            dateRange={dateRange}
+                            departmentFilter={talkDepartmentFilter}
                         />
                     </TabsContent>
                 </Tabs>
