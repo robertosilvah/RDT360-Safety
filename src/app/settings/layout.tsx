@@ -19,6 +19,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
         : pathname.includes('/branding') ? 'branding'
         : pathname.includes('/uploads') ? 'uploads'
         : pathname.includes('/sql-export') ? 'sql-export'
+        : pathname.includes('/database') ? 'database'
         : '';
 
     return (
@@ -66,6 +67,11 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
                          <TabsTrigger value="uploads" asChild>
                            <Link href="/settings/uploads">
                                <Upload className="mr-2 h-4 w-4" /> File Uploads
+                           </Link>
+                        </TabsTrigger>
+                         <TabsTrigger value="database" asChild>
+                           <Link href="/settings/database">
+                               <Database className="mr-2 h-4 w-4" /> Database
                            </Link>
                         </TabsTrigger>
                          <TabsTrigger value="sql-export" asChild>
