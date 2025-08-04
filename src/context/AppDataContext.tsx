@@ -1,8 +1,9 @@
 
+
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, IncidentData, ConfinedSpacePermit, WorkHoursLog } from '@/types';
+import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, IncidentData, ConfinedSpacePermit, WorkHoursLog, ToolboxTalk, ToolboxSignature } from '@/types';
 import api from '@/services/backend';
 
 interface AppDataContextType {
@@ -71,6 +72,9 @@ interface AppDataContextType {
   addWorkHoursLog: (log: Omit<WorkHoursLog, 'id'>) => Promise<void>;
   updateWorkHoursLog: (log: WorkHoursLog) => Promise<void>;
   removeWorkHoursLog: (logId: string) => Promise<void>;
+  toolboxTalks: ToolboxTalk[];
+  addToolboxTalk: (talk: Omit<ToolboxTalk, 'id' | 'display_id' | 'signatures'>) => Promise<void>;
+  addToolboxSignature: (talkId: string, signature: Omit<ToolboxSignature, 'id' | 'toolbox_talk_id'>) => Promise<void>;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -94,6 +98,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [brandingSettings, setBrandingSettings] = useState<BrandingSettings | null>(null);
   const [uploadSettings, setUploadSettings] = useState<UploadSettings | null>(null);
   const [workHours, setWorkHours] = useState<WorkHoursLog[]>([]);
+  const [toolboxTalks, setToolboxTalks] = useState<ToolboxTalk[]>([]);
 
   useEffect(() => {
     const unsubscribers = [
@@ -166,6 +171,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
             setUploadSettings(settings || { imageMaxSizeMB: 5, docMaxSizeMB: 10 });
         }),
         api.subscribeToCollection<WorkHoursLog>('workHours', setWorkHours, 'id'),
+        api.subscribeToCollection<ToolboxTalk>('toolboxTalks', (talks) => {
+            const talksWithSignatures: ToolboxTalk[] = talks.map(talk => ({...talk, signatures: []}));
+            setToolboxTalks(talksWithSignatures);
+        }, 'id'),
     ];
     return () => unsubscribers.forEach(unsub => unsub());
   }, []);
@@ -284,6 +293,15 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const addToolboxTalk = async (talk: Omit<ToolboxTalk, 'id' | 'display_id' | 'signatures'>) => {
+      const displayId = `TT${String(toolboxTalks.length + 1).padStart(4, '0')}`;
+      await api.addToolboxTalk({ ...talk, display_id: displayId });
+  };
+
+  const addToolboxSignature = async (talkId: string, signature: Omit<ToolboxSignature, 'id' | 'toolbox_talk_id'>) => {
+      await api.addToolboxSignature(talkId, { ...signature, toolbox_talk_id: talkId });
+  };
+
   return (
     <AppDataContext.Provider value={{
       observations, addObservation,
@@ -356,6 +374,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       addWorkHoursLog: api.addWorkHoursLog,
       updateWorkHoursLog: api.updateWorkHoursLog,
       removeWorkHoursLog: api.removeWorkHoursLog,
+      toolboxTalks, addToolboxTalk, addToolboxSignature,
     }}>
       {children}
     </AppDataContext.Provider>

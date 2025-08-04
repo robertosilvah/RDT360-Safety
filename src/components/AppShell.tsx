@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import * as React from 'react';
@@ -39,6 +40,7 @@ import {
   BookCopy,
   HelpCircle,
   Clock,
+  Presentation,
 } from 'lucide-react';
 import { Header } from './Header';
 import { Button } from './ui/button';
@@ -67,10 +69,11 @@ const menuItems = [
   {
     label: 'Tools',
     icon: Wrench,
-    subPath: ['/jsa', '/forklift-inspections'],
+    subPath: ['/jsa', '/forklift-inspections', '/toolbox-talks'],
     items: [
       { href: '/jsa', label: 'JSAs', icon: FileSignature },
       { href: '/forklift-inspections', label: 'Forklift Inspections', icon: Truck },
+      { href: '/toolbox-talks', label: 'Toolbox Talks', icon: Presentation },
     ]
   },
   { href: '/documents', label: 'Documents', icon: FileText },

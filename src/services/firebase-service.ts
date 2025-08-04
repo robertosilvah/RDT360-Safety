@@ -1,12 +1,13 @@
 
 
+
 import { db, storage } from '@/lib/firebase';
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, writeBatch, DocumentReference,
   getDocs, query, where, getDoc,
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import type { Observation, CorrectiveAction, Incident, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, ConfinedSpacePermit, IncidentData, Comment, WorkHoursLog } from '@/types';
+import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import type { Observation, CorrectiveAction, Incident, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, ConfinedSpacePermit, IncidentData, Comment, WorkHoursLog, ToolboxTalk, ToolboxSignature } from '@/types';
 
 // Generic subscribe to collection function
 export const subscribeToCollection = <T extends { [key: string]: any }>(
@@ -253,11 +254,39 @@ export const addCommentToDocument = async (collectionName: string, docId: string
   await updateDoc(doc(db, collectionName, docId), { comments });
 };
 
+// Toolbox Talk Functions
+export const addToolboxTalk = async (talk: Omit<ToolboxTalk, 'id' | 'display_id' | 'signatures'>) => {
+  return await addDoc(collection(db, 'toolboxTalks'), talk);
+};
+
+export const addToolboxSignature = async (talkId: string, signature: Omit<ToolboxSignature, 'id'>) => {
+    const storageRef = ref(storage, `toolbox-signatures/${talkId}_${Date.now()}.png`);
+    const uploadResult = await uploadString(storageRef, signature.signature_image_url, 'data_url');
+    const downloadUrl = await getDownloadURL(uploadResult.ref);
+
+    const signatureData = {
+        ...signature,
+        signature_image_url: downloadUrl
+    };
+    return await addDoc(collection(db, 'toolboxSignatures'), signatureData);
+};
+
+export const getSignaturesForTalk = (talkId: string, callback: (data: ToolboxSignature[]) => void): (() => void) => {
+  const q = query(collection(db, 'toolboxSignatures'), where('toolbox_talk_id', '==', talkId));
+  return onSnapshot(q, (querySnapshot) => {
+    const data = querySnapshot.docs.map(doc => ({
+      ...doc.data(),
+      id: doc.id,
+    } as ToolboxSignature));
+    callback(data);
+  });
+};
+
 // Settings Functions
 export const updateBrandingSettings = async (logoFile: File) => {
   if (!logoFile) return;
   const storageRef = ref(storage, `branding/logo`);
-  await uploadBytes(storageRef, logoFile);
+  await uploadString(storageRef, URL.createObjectURL(logoFile), 'data_url');
   const logoUrl = await getDownloadURL(storageRef);
   await setDoc(doc(db, 'settings', 'branding'), { logoUrl });
 };

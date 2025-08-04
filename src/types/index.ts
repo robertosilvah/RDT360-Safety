@@ -1,4 +1,24 @@
 
+
+export type ToolboxSignature = {
+  id: string;
+  toolbox_talk_id: string;
+  name: string;
+  signature_image_url: string;
+  signed_at: string;
+};
+
+export type ToolboxTalk = {
+  id: string;
+  display_id: string;
+  title: string;
+  date: string;
+  leader: string;
+  location: string;
+  observations: string;
+  signatures: ToolboxSignature[];
+};
+
 export type WorkHoursLog = {
   id: string;
   start_date: string;

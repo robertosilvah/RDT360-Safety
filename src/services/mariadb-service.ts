@@ -2,7 +2,7 @@
 // This is a mock implementation for the MariaDB local API.
 // In a real application, these functions would make fetch requests to your local API endpoints.
 
-import type { Observation, CorrectiveAction, Incident, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, ConfinedSpacePermit, IncidentData, Comment, WorkHoursLog } from '@/types';
+import type { Observation, CorrectiveAction, Incident, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, ConfinedSpacePermit, IncidentData, Comment, WorkHoursLog, ToolboxTalk, ToolboxSignature } from '@/types';
 
 const logAction = (action: string, data?: any) => {
     console.log(`[MariaDB Mock] Action: ${action}`, data || '');
@@ -182,6 +182,22 @@ export const updateConfinedSpacePermit = async (permit: any) => {
 
 export const addCommentToDocument = async (collectionName: string, docId: string, comments: Comment[]) => {
     logAction('addCommentToDocument', { collectionName, docId, comments });
+};
+
+export const addToolboxTalk = async (talk: Omit<ToolboxTalk, 'id' | 'display_id' | 'signatures'>) => {
+    logAction('addToolboxTalk', talk);
+    return { id: 'mock-talk-id' };
+};
+
+export const addToolboxSignature = async (talkId: string, signature: Omit<ToolboxSignature, 'id'>) => {
+    logAction('addToolboxSignature', { talkId, signature });
+    return { id: 'mock-signature-id' };
+};
+
+export const getSignaturesForTalk = (talkId: string, callback: (data: ToolboxSignature[]) => void): (() => void) => {
+    logAction('getSignaturesForTalk', { talkId });
+    callback([]);
+    return () => {};
 };
 
 export const updateBrandingSettings = async (logoFile: File): Promise<void> => {
