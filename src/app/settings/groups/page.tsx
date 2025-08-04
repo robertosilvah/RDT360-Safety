@@ -1,12 +1,15 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { CheckCircle2, XCircle, Shield } from 'lucide-react';
+import { Shield, Save } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import type { User } from '@/types';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 
 type Permission = {
   module: string;
@@ -16,7 +19,7 @@ type Permission = {
   delete: boolean;
 };
 
-const permissionsByRole: Record<User['role'], Permission[]> = {
+const initialPermissionsByRole: Record<User['role'], Permission[]> = {
   Administrator: [
     { module: 'Dashboard', view: true, create: true, edit: true, delete: true },
     { module: 'Incidents', view: true, create: true, edit: true, delete: true },
@@ -74,54 +77,99 @@ const permissionsByRole: Record<User['role'], Permission[]> = {
   ],
 };
 
-const PermissionIcon = ({ granted }: { granted: boolean }) => {
-  return granted ? (
-    <CheckCircle2 className="h-5 w-5 text-green-500" />
-  ) : (
-    <XCircle className="h-5 w-5 text-red-500" />
-  );
-};
+const PermissionCheckbox = ({
+  checked,
+  onCheckedChange,
+}: {
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) => (
+  <Checkbox
+    checked={checked}
+    onCheckedChange={onCheckedChange}
+    className="data-[state=checked]:bg-green-500 border-gray-400"
+  />
+);
 
 export default function GroupsPage() {
+  const [permissions, setPermissions] = useState(initialPermissionsByRole);
+  const { toast } = useToast();
+
+  const handlePermissionChange = (
+    role: User['role'],
+    module: string,
+    permission: keyof Omit<Permission, 'module'>,
+    value: boolean
+  ) => {
+    setPermissions(prev => {
+      const newPermissions = { ...prev };
+      const rolePermissions = newPermissions[role].map(p => {
+        if (p.module === module) {
+          return { ...p, [permission]: value };
+        }
+        return p;
+      });
+      return { ...newPermissions, [role]: rolePermissions };
+    });
+  };
+  
+  const handleSaveChanges = () => {
+    // In a real app, you would save this `permissions` state to your backend (e.g., Firestore).
+    // For now, we'll just show a success message.
+    console.log("Saving permissions:", permissions);
+    toast({
+        title: "Permissions Saved",
+        description: "User group permissions have been updated.",
+    });
+  };
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>Groups & Permissions</CardTitle>
         <CardDescription>
-          Review the permissions for each user role in the system. This page is currently read-only.
+          Configure the permissions for each user role in the system.
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Accordion type="single" collapsible className="w-full">
-          {Object.entries(permissionsByRole).map(([role, permissions]) => (
+        <Accordion type="single" collapsible className="w-full" defaultValue="Manager">
+          {Object.entries(permissions).map(([role, perms]) => (
             <AccordionItem value={role} key={role}>
               <AccordionTrigger>
                 <div className="flex items-center gap-2">
                   <Shield className="h-5 w-5" />
                   <span className="font-semibold">{role}</span>
-                  <Badge variant="outline">{permissions.length} Modules</Badge>
+                  <Badge variant="outline">{perms.length} Modules</Badge>
                 </div>
               </AccordionTrigger>
               <AccordionContent>
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-800">
                       <tr>
-                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Module</th>
-                        <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">View</th>
-                        <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Create</th>
-                        <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Edit</th>
-                        <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Delete</th>
+                        <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Module</th>
+                        <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">View</th>
+                        <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Create</th>
+                        <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Edit</th>
+                        <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Delete</th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {permissions.map((p) => (
+                    <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                      {perms.map((p) => (
                         <tr key={p.module}>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{p.module}</td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 flex justify-center"><PermissionIcon granted={p.view} /></td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center"><PermissionIcon granted={p.create} /></td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center"><PermissionIcon granted={p.edit} /></td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-center"><PermissionIcon granted={p.delete} /></td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{p.module}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                            <PermissionCheckbox checked={p.view} onCheckedChange={(val) => handlePermissionChange(role as User['role'], p.module, 'view', val)} />
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                            <PermissionCheckbox checked={p.create} onCheckedChange={(val) => handlePermissionChange(role as User['role'], p.module, 'create', val)} />
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                            <PermissionCheckbox checked={p.edit} onCheckedChange={(val) => handlePermissionChange(role as User['role'], p.module, 'edit', val)} />
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-center">
+                            <PermissionCheckbox checked={p.delete} onCheckedChange={(val) => handlePermissionChange(role as User['role'], p.module, 'delete', val)} />
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -131,6 +179,9 @@ export default function GroupsPage() {
             </AccordionItem>
           ))}
         </Accordion>
+        <div className="mt-6 flex justify-end">
+            <Button onClick={handleSaveChanges}><Save className="mr-2 h-4 w-4" /> Save All Changes</Button>
+        </div>
       </CardContent>
     </Card>
   );
