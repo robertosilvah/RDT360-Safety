@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { useAppData } from '@/context/AppDataContext';
 import { useToast } from '@/hooks/use-toast';
 import type { TalkSection, ToolboxTalk } from '@/types';
-import { PlusCircle, FileSignature, Clock, User, MapPin, Check } from 'lucide-react';
+import { PlusCircle, FileSignature, Clock, User, MapPin, Check, Wand2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,6 +21,7 @@ import { format } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
+import { generateToolboxTalkAction } from '@/app/actions';
 
 const talkSectionSchema = z.object({
   na: z.boolean().default(false),
@@ -31,6 +32,7 @@ const talkSectionSchema = z.object({
 });
 
 const talkFormSchema = z.object({
+  topic: z.string().min(3, "Topic must be at least 3 characters."),
   title: z.string().min(5, "Title must be at least 5 characters."),
   date: z.string().refine(val => val && !isNaN(Date.parse(val)), { message: "A valid date is required." }),
   leader: z.string().min(2, "Leader name is required."),
@@ -97,9 +99,12 @@ const TalkSectionInput = ({ form, fieldName, label }: {
 const CreateTalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
   const { addToolboxTalk } = useAppData();
   const { toast } = useToast();
+  const [isGenerating, setIsGenerating] = useState(false);
+
   const form = useForm<TalkFormValues>({
     resolver: zodResolver(talkFormSchema),
     defaultValues: {
+      topic: '',
       title: '',
       date: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
       leader: '',
@@ -112,6 +117,38 @@ const CreateTalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
       special_ppe: { na: false, details: '' },
     },
   });
+
+  const handleGenerateContent = async () => {
+    const topic = form.getValues('topic');
+    if (!topic) {
+        toast({
+            variant: 'destructive',
+            title: 'Topic Required',
+            description: 'Please enter a topic to generate content.',
+        });
+        return;
+    }
+    setIsGenerating(true);
+    try {
+        const result = await generateToolboxTalkAction({ topic });
+        if (result.content) {
+            form.setValue('observations', result.content, { shouldValidate: true });
+            toast({
+                title: 'Content Generated',
+                description: 'The "General Topics" field has been populated.',
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        toast({
+            variant: 'destructive',
+            title: 'Generation Failed',
+            description: 'An error occurred while generating the content.',
+        });
+    } finally {
+        setIsGenerating(false);
+    }
+  };
 
   const onSubmit = async (values: TalkFormValues) => {
     try {
@@ -162,10 +199,25 @@ const CreateTalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
               <FormItem><FormLabel>Department</FormLabel><FormControl><Input placeholder="e.g., Production" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
           </div>
-          <FormField control={form.control} name="observations" render={({ field }) => (
-            <FormItem><FormLabel>General Topics / Observations</FormLabel><FormControl><Textarea placeholder="Describe the topics covered in the talk..." {...field} rows={3} /></FormControl><FormMessage /></FormItem>
-          )} />
+          
           <Separator />
+          
+          <div className="space-y-2">
+            <FormField control={form.control} name="topic" render={({ field }) => (
+                <FormItem><FormLabel>Topic of the Day</FormLabel><FormControl><Input placeholder="Enter a topic like 'Ladder Safety'" {...field} /></FormControl><FormMessage /></FormItem>
+            )}/>
+            <Button type="button" variant="outline" size="sm" onClick={handleGenerateContent} disabled={isGenerating}>
+                {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                Generate with AI
+            </Button>
+          </div>
+          
+          <FormField control={form.control} name="observations" render={({ field }) => (
+            <FormItem><FormLabel>General Topics / Observations</FormLabel><FormControl><Textarea placeholder="Describe the topics covered in the talk..." {...field} rows={6} /></FormControl><FormMessage /></FormItem>
+          )} />
+          
+          <Separator />
+
           <div className="space-y-4">
             <TalkSectionInput form={form} fieldName="accidents_near_misses" label="1) Discuss any accidents or near misses that have occurred since last meeting:" />
             <TalkSectionInput form={form} fieldName="unsafe_conditions" label="2) List any unsafe or at risk conditions that exist:" />

@@ -3,10 +3,10 @@
 
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage, db } from '@/lib/firebase';
-import { getJsaAnalysisAction, getInvestigationAnalysisAction, getKpiSummaryAction } from './actions.google';
+import { getJsaAnalysisAction, getInvestigationAnalysisAction, getKpiSummaryAction, generateToolboxTalkAction } from './actions.google';
 import { collection, getDocs } from 'firebase/firestore';
 
-export { getJsaAnalysisAction, getInvestigationAnalysisAction, getKpiSummaryAction };
+export { getJsaAnalysisAction, getInvestigationAnalysisAction, getKpiSummaryAction, generateToolboxTalkAction };
 
 export async function fetchAndUploadImageAction(imageUrlOrId: string): Promise<string> {
   if (!imageUrlOrId) {

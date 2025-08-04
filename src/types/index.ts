@@ -17,6 +17,7 @@ export type ToolboxSignature = {
 export type ToolboxTalk = {
   id: string;
   display_id: string;
+  topic: string;
   title: string;
   date: string;
   leader: string;
