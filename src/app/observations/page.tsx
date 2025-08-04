@@ -20,12 +20,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import type { Observation, Area, CorrectiveAction } from '@/types';
+import type { Observation, Area, CorrectiveAction, User } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
-import { Camera, Eye, Siren, User, Users, FileText, ClipboardCheck, Upload, Download, Trash2, Edit, Wrench, FilePlus2 } from 'lucide-react';
+import { Camera, Eye, Siren, User as UserIcon, Users, FileText, ClipboardCheck, Upload, Download, Trash2, Edit, Wrench, FilePlus2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -786,7 +786,7 @@ const ObservationDetailsDialog = ({
         <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
+              <UserIcon className="h-4 w-4 text-muted-foreground" />
               <div>
                 <p className="text-sm font-medium">Person Documenting</p>
                 <p className="text-sm text-muted-foreground">{observation.submitted_by}</p>
@@ -886,6 +886,136 @@ const parseCsvRow = (row: string): string[] => {
   return values;
 };
 
+
+interface ObservationTableProps {
+  observations: Observation[];
+  title: string;
+  description: string;
+  emptyMessage: string;
+  isAdmin: boolean;
+  currentUser: User | null;
+  onRowClick: (observation: Observation) => void;
+  onEditClick: (event: React.MouseEvent, observation: Observation) => void;
+  onDelete: (event: React.MouseEvent, observationId: string) => void;
+}
+
+const ObservationTable: React.FC<ObservationTableProps> = ({
+  observations,
+  title,
+  description,
+  emptyMessage,
+  isAdmin,
+  currentUser,
+  onRowClick,
+  onEditClick,
+  onDelete,
+}) => {
+
+  const statusVariant: { [key in Observation['status']]: 'outline' | 'default' } = {
+    Open: 'default',
+    Closed: 'outline',
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>ID</TableHead>
+              <TableHead>Date</TableHead>
+              <TableHead>Type</TableHead>
+              <TableHead>Risk</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Photo</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {observations.length > 0 ? (
+              observations.map((obs) => {
+                const canEdit = isAdmin || (currentUser && currentUser.displayName === obs.submitted_by);
+                return (
+                  <TableRow key={obs.observation_id} onClick={() => onRowClick(obs)} className="cursor-pointer">
+                    <TableCell className="font-medium">{obs.display_id}</TableCell>
+                    <TableCell>{new Date(obs.date).toLocaleDateString()}</TableCell>
+                    <TableCell>{obs.report_type}</TableCell>
+                    <TableCell>
+                      <Badge variant={riskVariant[obs.risk_level]}>
+                        {riskLabels[obs.risk_level]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate">{obs.description}</TableCell>
+                    <TableCell>
+                      <Badge variant={statusVariant[obs.status]}>{obs.status}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      {obs.imageUrl ? (
+                        <div className="w-16 h-12 relative">
+                          <Image
+                            src={obs.imageUrl}
+                            alt={`Observation ${obs.observation_id}`}
+                            fill
+                            className="rounded-md object-cover"
+                            data-ai-hint="safety observation"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-16 h-12 flex items-center justify-center bg-muted rounded-md">
+                          <Camera className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {canEdit && (
+                        <Button variant="ghost" size="icon" onClick={(e) => onEditClick(e, obs)}>
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {isAdmin && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete observation <span className="font-mono">{obs.display_id}</span>. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
+                              <AlertDialogAction onClick={(e) => onDelete(e, obs.observation_id)}>Delete</AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            ) : (
+              <TableRow>
+                <TableCell colSpan={8} className="h-24 text-center">
+                  {emptyMessage}
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function ObservationsPage() {
   const { observations, deleteObservation, users, areas } = useAppData();
   const { user: authUser } = useAuth();
@@ -897,17 +1027,9 @@ export default function ObservationsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const userRole = authUser?.uid === 'admin-user-id-001' 
-    ? 'Administrator' 
-    : users.find(u => u.id === authUser?.uid)?.role;
-
-  const isAdmin = userRole === 'Administrator';
-  const canExport = isAdmin || userRole === 'Manager';
-
-  const statusVariant: { [key in Observation['status']]: 'outline' | 'default' } = {
-    Open: 'default',
-    Closed: 'outline',
-  };
+  const currentUser = users.find(u => u.id === authUser?.uid) || null;
+  const isAdmin = currentUser?.role === 'Administrator';
+  const canExport = isAdmin || currentUser?.role === 'Manager';
 
   const myObservations = observations.filter(
     (obs) => authUser && obs.submitted_by === authUser.displayName
@@ -1163,194 +1285,32 @@ export default function ObservationsPage() {
                 </div>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Risk</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Photo</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {observations.length > 0 ? (
-                      observations.map((obs) => {
-                        const canEdit = isAdmin || (authUser && authUser.displayName === obs.submitted_by);
-                        return (
-                          <TableRow key={obs.observation_id} onClick={() => handleRowClick(obs)} className="cursor-pointer">
-                            <TableCell className="font-medium">{obs.display_id}</TableCell>
-                            <TableCell>{new Date(obs.date).toLocaleDateString()}</TableCell>
-                            <TableCell>{obs.report_type}</TableCell>
-                            <TableCell>
-                              <Badge variant={riskVariant[obs.risk_level]}>
-                                {riskLabels[obs.risk_level]}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="max-w-xs truncate">{obs.description}</TableCell>
-                            <TableCell>
-                              <Badge variant={statusVariant[obs.status]}>{obs.status}</Badge>
-                            </TableCell>
-                            <TableCell>
-                              {obs.imageUrl ? (
-                                <div className="w-16 h-12 relative">
-                                  <Image
-                                    src={obs.imageUrl}
-                                    alt={`Observation ${obs.observation_id}`}
-                                    fill
-                                    className="rounded-md object-cover"
-                                    data-ai-hint="safety observation"
-                                  />
-                                </div>
-                              ) : (
-                                <div className="w-16 h-12 flex items-center justify-center bg-muted rounded-md">
-                                  <Camera className="h-6 w-6 text-muted-foreground" />
-                                </div>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                                {canEdit && (
-                                  <Button variant="ghost" size="icon" onClick={(e) => handleEditClick(e, obs)}>
-                                    <Edit className="h-4 w-4" />
-                                  </Button>
-                                )}
-                                {isAdmin && (
-                                    <AlertDialog>
-                                        <AlertDialogTrigger asChild>
-                                            <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
-                                                <Trash2 className="h-4 w-4 text-destructive" />
-                                            </Button>
-                                        </AlertDialogTrigger>
-                                        <AlertDialogContent>
-                                            <AlertDialogHeader>
-                                                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                <AlertDialogDescription>
-                                                    This will permanently delete observation <span className="font-mono">{obs.display_id}</span>. This action cannot be undone.
-                                                </AlertDialogDescription>
-                                            </AlertDialogHeader>
-                                            <AlertDialogFooter>
-                                                <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
-                                                <AlertDialogAction onClick={(e) => handleDelete(e, obs.observation_id)}>Delete</AlertDialogAction>
-                                            </AlertDialogFooter>
-                                        </AlertDialogContent>
-                                    </AlertDialog>
-                                )}
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    ) : (
-                      <TableRow key="no-observations-row">
-                        <TableCell colSpan={8} className="h-24 text-center">
-                          No observations have been recorded yet.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                <ObservationTable
+                    observations={observations}
+                    title="All Observations"
+                    description="A list of all submitted safety observations."
+                    emptyMessage="No observations have been recorded yet."
+                    isAdmin={isAdmin}
+                    currentUser={currentUser}
+                    onRowClick={handleRowClick}
+                    onEditClick={handleEditClick}
+                    onDelete={handleDelete}
+                />
               </CardContent>
             </Card>
           </TabsContent>
           <TabsContent value="my" className="mt-4">
-             <Card>
-              <CardHeader>
-                <CardTitle>My Submitted Observations</CardTitle>
-                <CardDescription>
-                  A list of all safety observations you have submitted.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>ID</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Risk</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Photo</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {myObservations.length > 0 ? (
-                        myObservations.map((obs) => {
-                          const canEdit = isAdmin || (authUser && authUser.displayName === obs.submitted_by);
-                          return (
-                            <TableRow key={`my-${obs.observation_id}`} onClick={() => handleRowClick(obs)} className="cursor-pointer">
-                              <TableCell className="font-medium">{obs.display_id}</TableCell>
-                              <TableCell>{new Date(obs.date).toLocaleDateString()}</TableCell>
-                              <TableCell>{obs.report_type}</TableCell>
-                              <TableCell>
-                                  <Badge variant={riskVariant[obs.risk_level]}>
-                                  {riskLabels[obs.risk_level]}
-                                  </Badge>
-                              </TableCell>
-                              <TableCell className="max-w-xs truncate">{obs.description}</TableCell>
-                              <TableCell>
-                                  <Badge variant={statusVariant[obs.status]}>{obs.status}</Badge>
-                              </TableCell>
-                              <TableCell>
-                                  {obs.imageUrl ? (
-                                  <div className="w-16 h-12 relative">
-                                      <Image
-                                      src={obs.imageUrl}
-                                      alt={`Observation ${obs.observation_id}`}
-                                      fill
-                                      className="rounded-md object-cover"
-                                      data-ai-hint="safety observation"
-                                      />
-                                  </div>
-                                  ) : (
-                                  <div className="w-16 h-12 flex items-center justify-center bg-muted rounded-md">
-                                      <Camera className="h-6 w-6 text-muted-foreground" />
-                                  </div>
-                                  )}
-                              </TableCell>
-                              <TableCell className="text-right">
-                                  {canEdit && (
-                                      <Button variant="ghost" size="icon" onClick={(e) => handleEditClick(e, obs)}>
-                                      <Edit className="h-4 w-4" />
-                                      </Button>
-                                  )}
-                                  {isAdmin && (
-                                      <AlertDialog>
-                                          <AlertDialogTrigger asChild>
-                                              <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
-                                                  <Trash2 className="h-4 w-4 text-destructive" />
-                                              </Button>
-                                          </AlertDialogTrigger>
-                                          <AlertDialogContent>
-                                              <AlertDialogHeader>
-                                                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                                  <AlertDialogDescription>
-                                                      This will permanently delete observation <span className="font-mono">{obs.display_id}</span>. This action cannot be undone.
-                                                  </AlertDialogDescription>
-                                              </AlertDialogHeader>
-                                              <AlertDialogFooter>
-                                                  <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Cancel</AlertDialogCancel>
-                                                  <AlertDialogAction onClick={(e) => handleDelete(e, obs.observation_id)}>Delete</AlertDialogAction>
-                                              </AlertDialogFooter>
-                                          </AlertDialogContent>
-                                      </AlertDialog>
-                                  )}
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                    ) : (
-                        <TableRow key="no-my-observations-row">
-                            <TableCell colSpan={8} className="text-center h-24">You have not submitted any observations yet.</TableCell>
-                        </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+              <ObservationTable
+                  observations={myObservations}
+                  title="My Submitted Observations"
+                  description="A list of all safety observations you have submitted."
+                  emptyMessage="You have not submitted any observations yet."
+                  isAdmin={isAdmin}
+                  currentUser={currentUser}
+                  onRowClick={handleRowClick}
+                  onEditClick={handleEditClick}
+                  onDelete={handleDelete}
+              />
           </TabsContent>
         </Tabs>
         
@@ -1370,9 +1330,3 @@ export default function ObservationsPage() {
     </AppShell>
   );
 }
-
-
-
-
-
-    
