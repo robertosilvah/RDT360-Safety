@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/table';
 import { useAppData } from '@/context/AppDataContext';
 import type { Incident } from '@/types';
-import { ArrowUpRight, Clock, ShieldAlert, Siren, Calendar as CalendarIcon, FileSearch } from 'lucide-react';
+import { ArrowUpRight, Clock, ShieldAlert, Siren, Calendar as CalendarIcon, FileSearch, Timer } from 'lucide-react';
 import Link from 'next/link';
 import { differenceInDays, format, isWithinInterval } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -45,11 +45,6 @@ export default function DashboardPage() {
     description: <Skeleton className="h-4 w-32" />,
   });
 
-  const [daysSinceLastIncident, setDaysSinceLastIncident] = useState<{value: React.ReactNode, description: React.ReactNode}>({
-    value: <Skeleton className="h-8 w-16" />,
-    description: <Skeleton className="h-4 w-32" />,
-  });
-
   useEffect(() => {
     if (incidents.length > 0) {
       // For last accident
@@ -61,21 +56,38 @@ export default function DashboardPage() {
         const days = differenceInDays(new Date(), new Date(lastAccidentDate));
         setDaysSinceLastAccident({ value: days.toString(), description: 'All areas included' });
       }
-
-      // For last incident
-      const allIncidents = incidents.filter(i => i.type === 'Incident');
-      if (allIncidents.length === 0) {
-          setDaysSinceLastIncident({ value: 'N/A', description: 'No incidents recorded yet.' });
-      } else {
-          const lastIncidentDate = allIncidents.reduce((max, incident) => new Date(incident.date) > new Date(max.date) ? incident : max).date;
-          const days = differenceInDays(new Date(), new Date(lastIncidentDate));
-          setDaysSinceLastIncident({ value: days.toString(), description: 'All areas included' });
-      }
     } else {
         setDaysSinceLastAccident({ value: '0', description: 'No accidents recorded yet.' });
-        setDaysSinceLastIncident({ value: '0', description: 'No incidents recorded yet.' });
     }
   }, [incidents]);
+
+  const { avgTimeBetweenIncidents, daysSinceLastIncident } = useMemo(() => {
+    if (incidents.length < 2) {
+      const days = incidents.length === 1 ? differenceInDays(new Date(), new Date(incidents[0].date)) : 0;
+      const description = incidents.length === 1 ? 'Since the only incident' : 'No incidents recorded yet.';
+      return { 
+          avgTimeBetweenIncidents: { value: 'N/A', description: 'Need >1 incident to calculate' },
+          daysSinceLastIncident: { value: days.toString(), description }
+      };
+    }
+    
+    const sortedIncidents = [...incidents].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    let totalDifference = 0;
+    for (let i = 1; i < sortedIncidents.length; i++) {
+        const diff = differenceInDays(new Date(sortedIncidents[i].date), new Date(sortedIncidents[i-1].date));
+        totalDifference += diff;
+    }
+    
+    const averageDays = (totalDifference / (sortedIncidents.length - 1)).toFixed(1);
+    const lastIncidentDays = differenceInDays(new Date(), new Date(sortedIncidents[sortedIncidents.length - 1].date));
+
+    return {
+        avgTimeBetweenIncidents: { value: averageDays, description: `Based on ${incidents.length} incidents`},
+        daysSinceLastIncident: { value: lastIncidentDays.toString(), description: 'All areas included' }
+    };
+  }, [incidents]);
+
 
   const pendingActions = useMemo(() => {
     return correctiveActions.filter(
@@ -225,7 +237,7 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between space-y-2">
           <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           <KpiCard
             title="Days Since Last Accident"
             value={daysSinceLastAccident.value}
@@ -237,6 +249,12 @@ export default function DashboardPage() {
             value={daysSinceLastIncident.value}
             icon={<ShieldAlert className="h-4 w-4 text-muted-foreground" />}
             description={daysSinceLastIncident.description}
+          />
+          <KpiCard
+            title="Avg. Time Between Incidents"
+            value={`${avgTimeBetweenIncidents.value} Days`}
+            icon={<Timer className="h-4 w-4 text-muted-foreground" />}
+            description={avgTimeBetweenIncidents.description}
           />
           <KpiCard
             title="Pending Actions"
