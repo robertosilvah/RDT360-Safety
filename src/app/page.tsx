@@ -25,9 +25,9 @@ import {
 } from '@/components/ui/table';
 import { useAppData } from '@/context/AppDataContext';
 import type { Incident } from '@/types';
-import { ArrowUpRight, Clock, ShieldAlert, Siren, Calendar as CalendarIcon, FileSearch, Timer } from 'lucide-react';
+import { ArrowUpRight, Clock, ShieldAlert, Siren, Calendar as CalendarIcon, FileSearch, Timer, Hourglass } from 'lucide-react';
 import Link from 'next/link';
-import { differenceInDays, format, isWithinInterval } from 'date-fns';
+import { differenceInDays, format, isWithinInterval, isAfter } from 'date-fns';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import type { DateRange } from 'react-day-picker';
@@ -36,7 +36,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { SubmissionsByTypeChart } from '@/components/dashboard/SubmissionsByTypeChart';
 
 export default function DashboardPage() {
-  const { incidents, correctiveActions, observations, investigations } = useAppData();
+  const { incidents, correctiveActions, observations, investigations, workHours } = useAppData();
   const [date, setDate] = useState<DateRange | undefined>();
   const [submissionsTypeDate, setSubmissionsTypeDate] = useState<DateRange | undefined>();
 
@@ -87,6 +87,20 @@ export default function DashboardPage() {
         daysSinceLastIncident: { value: lastIncidentDays.toString(), description: 'All areas included' }
     };
   }, [incidents]);
+
+   const hoursSinceLastAccident = useMemo(() => {
+    const accidents = incidents.filter(i => i.type === 'Accident');
+    if (accidents.length === 0) {
+        return { value: 'N/A', description: 'No accidents recorded yet' };
+    }
+    const lastAccidentDate = new Date(accidents.reduce((max, incident) => new Date(incident.date) > new Date(max.date) ? incident : max).date);
+
+    const relevantHours = workHours
+        .filter(wh => isAfter(new Date(wh.log_date), lastAccidentDate))
+        .reduce((sum, wh) => sum + wh.hours_worked, 0);
+
+    return { value: relevantHours.toLocaleString(), description: `Since ${format(lastAccidentDate, 'P')}`};
+  }, [incidents, workHours]);
 
 
   const pendingActions = useMemo(() => {
@@ -237,12 +251,18 @@ export default function DashboardPage() {
         <div className="flex items-center justify-between space-y-2">
           <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-6">
           <KpiCard
             title="Days Since Last Accident"
             value={daysSinceLastAccident.value}
             icon={<Siren className="h-4 w-4 text-muted-foreground" />}
             description={daysSinceLastAccident.description}
+          />
+           <KpiCard
+            title="Hours Since Last Accident"
+            value={hoursSinceLastAccident.value}
+            icon={<Hourglass className="h-4 w-4 text-muted-foreground" />}
+            description={hoursSinceLastAccident.description}
           />
           <KpiCard
             title="Days Since Last Incident"

@@ -1,10 +1,10 @@
 
-
-
-
-
-
-
+export type WorkHoursLog = {
+  id: string;
+  log_date: string;
+  hours_worked: number;
+  notes?: string;
+}
 
 export type Comment = {
   user: string;

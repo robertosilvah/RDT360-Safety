@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, IncidentData, ConfinedSpacePermit } from '@/types';
+import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, IncidentData, ConfinedSpacePermit, WorkHoursLog } from '@/types';
 import { db, storage } from '@/lib/firebase';
 import { collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, writeBatch, DocumentReference } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -70,6 +70,10 @@ interface AppDataContextType {
   updateBrandingSettings: (logoFile: File) => Promise<void>;
   uploadSettings: UploadSettings | null;
   updateUploadSettings: (settings: UploadSettings) => Promise<void>;
+  workHours: WorkHoursLog[];
+  addWorkHoursLog: (log: Omit<WorkHoursLog, 'id'>) => Promise<void>;
+  updateWorkHoursLog: (log: WorkHoursLog) => Promise<void>;
+  removeWorkHoursLog: (logId: string) => Promise<void>;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -92,6 +96,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [confinedSpacePermits, setConfinedSpacePermits] = useState<ConfinedSpacePermit[]>([]);
   const [brandingSettings, setBrandingSettings] = useState<BrandingSettings | null>(null);
   const [uploadSettings, setUploadSettings] = useState<UploadSettings | null>(null);
+  const [workHours, setWorkHours] = useState<WorkHoursLog[]>([]);
 
   useEffect(() => {
     const unsubscribers = [
@@ -163,6 +168,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         firebaseService.subscribeToDoc('settings', 'uploads', (settings) => {
             setUploadSettings(settings || { imageMaxSizeMB: 5, docMaxSizeMB: 10 });
         }),
+        firebaseService.subscribeToCollection<WorkHoursLog>('workHours', setWorkHours, 'id'),
     ];
     return () => unsubscribers.forEach(unsub => unsub());
   }, []);
@@ -338,7 +344,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       updateInvestigation: firebaseService.updateInvestigation,
       addCommentToInvestigation: (investigationId, comment) => {
         const investigation = investigations.find(i => i.investigation_id === investigationId);
-        if(investigation) return firebaseService.addCommentToDocument('investigations', investigationId, [...investigation.comments, comment]);
+        if(investigation) return firebaseService.addCommentToDocument('investigations', investigationId, [...investigation.documents, comment]);
         return Promise.resolve();
       },
       addDocumentToInvestigation: (investigationId, documentData) => {
@@ -357,6 +363,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       updateBrandingSettings: firebaseService.updateBrandingSettings,
       uploadSettings,
       updateUploadSettings: firebaseService.updateUploadSettings,
+      workHours,
+      addWorkHoursLog: firebaseService.addWorkHoursLog,
+      updateWorkHoursLog: firebaseService.updateWorkHoursLog,
+      removeWorkHoursLog: firebaseService.removeWorkHoursLog,
     }}>
       {children}
     </AppDataContext.Provider>

@@ -38,6 +38,7 @@ import {
   Box,
   BookCopy,
   HelpCircle,
+  Clock,
 } from 'lucide-react';
 import { Header } from './Header';
 import { Button } from './ui/button';
@@ -75,7 +76,15 @@ const menuItems = [
   { href: '/documents', label: 'Documents', icon: FileText },
   { href: '/areas', label: 'Areas', icon: Map },
   { href: '/compliance', label: 'Compliance', icon: BadgeCheck },
-  { href: '/reporting', label: 'Reporting', icon: BookCopy },
+  { 
+    label: 'Reporting',
+    icon: BookCopy,
+    subPath: ['/reporting', '/work-hours'],
+    items: [
+      { href: '/reporting', label: 'Analytics', icon: BookCopy },
+      { href: '/work-hours', label: 'Work Hours Log', icon: Clock },
+    ]
+  },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

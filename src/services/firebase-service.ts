@@ -6,7 +6,7 @@ import {
   getDocs, query, where, getDoc,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import type { Observation, CorrectiveAction, Incident, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, ConfinedSpacePermit, IncidentData, Comment } from '@/types';
+import type { Observation, CorrectiveAction, Incident, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, ConfinedSpacePermit, IncidentData, Comment, WorkHoursLog } from '@/types';
 
 // Generic subscribe to collection function
 export const subscribeToCollection = <T extends { [key: string]: any }>(
@@ -265,4 +265,14 @@ export const updateUploadSettings = async (settings: UploadSettings) => {
   await setDoc(doc(db, 'settings', 'uploads'), settings);
 };
 
-    
+// Work Hours Log Functions
+export const addWorkHoursLog = async (log: Omit<WorkHoursLog, 'id'>) => {
+  await addDoc(collection(db, 'workHours'), log);
+};
+export const updateWorkHoursLog = async (updatedLog: WorkHoursLog) => {
+  const { id, ...data } = updatedLog;
+  await updateDoc(doc(db, 'workHours', id), data);
+};
+export const removeWorkHoursLog = async (logId: string) => {
+  await deleteDoc(doc(db, 'workHours', logId));
+};
