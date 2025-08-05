@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -14,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
-import { notFound, useRouter } from 'next/navigation';
+import { notFound, useRouter, useParams } from 'next/navigation';
 import Image from 'next/image';
 import SignaturePad from 'react-signature-canvas';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
@@ -191,16 +192,20 @@ const SectionToTable = ({ text }: { text: string }) => {
   return <p className="whitespace-pre-wrap">{text}</p>;
 };
 
-export default function TalkDetailsPage({ params }: { params: { id: string } }) {
+export default function TalkDetailsPage() {
+  const params = useParams();
+  const id = Array.isArray(params.id) ? params.id[0] : params.id;
   const { toolboxTalks, brandingSettings, users } = useAppData();
   const [talk, setTalk] = useState<ToolboxTalk | null | undefined>(undefined);
   const [signatures, setSignatures] = useState<ToolboxSignature[]>([]);
   const router = useRouter();
 
   useEffect(() => {
-    const foundTalk = toolboxTalks.find(t => t.id === params.id);
-    setTalk(foundTalk);
-  }, [params.id, toolboxTalks]);
+    if (id) {
+        const foundTalk = toolboxTalks.find(t => t.id === id);
+        setTalk(foundTalk);
+    }
+  }, [id, toolboxTalks]);
 
   useEffect(() => {
     if (talk) {
