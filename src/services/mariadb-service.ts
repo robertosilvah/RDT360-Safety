@@ -114,6 +114,26 @@ export const removePredefinedChecklistItem = async (itemId: string) => {
     logAction('removePredefinedChecklistItem', { itemId });
 };
 
+export const addPredefinedHazard = async (item: any) => {
+    logAction('addPredefinedHazard', item);
+};
+export const updatePredefinedHazard = async (item: any) => {
+    logAction('updatePredefinedHazard', item);
+};
+export const removePredefinedHazard = async (itemId: string) => {
+    logAction('removePredefinedHazard', { itemId });
+};
+
+export const addPredefinedControl = async (item: any) => {
+    logAction('addPredefinedControl', item);
+};
+export const updatePredefinedControl = async (item: any) => {
+    logAction('updatePredefinedControl', item);
+};
+export const removePredefinedControl = async (itemId: string) => {
+    logAction('removePredefinedControl', { itemId });
+};
+
 export const addArea = async (area: any, parentId?: string | null) => {
     logAction('addArea', { area, parentId });
 };

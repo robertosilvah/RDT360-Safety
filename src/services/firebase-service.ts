@@ -2,13 +2,14 @@
 
 
 
+
 import { db, storage } from '@/lib/firebase';
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, writeBatch, DocumentReference,
   getDocs, query, where, getDoc,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import type { Observation, CorrectiveAction, Incident, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, ConfinedSpacePermit, IncidentData, Comment, WorkHoursLog, ToolboxTalk, ToolboxSignature } from '@/types';
+import type { Observation, CorrectiveAction, Incident, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, ConfinedSpacePermit, IncidentData, Comment, WorkHoursLog, ToolboxTalk, ToolboxSignature, PredefinedHazard, PredefinedControl } from '@/types';
 
 // Generic subscribe to collection function
 export const subscribeToCollection = <T extends { [key: string]: any }>(
@@ -165,6 +166,29 @@ export const updatePredefinedChecklistItem = async (updatedItem: PredefinedCheck
 export const removePredefinedChecklistItem = async (itemId: string) => {
   await deleteDoc(doc(db, 'predefinedChecklistItems', itemId));
 };
+
+// Predefined Hazard Functions
+export const addPredefinedHazard = async (item: Omit<PredefinedHazard, 'id'>) => {
+  await addDoc(collection(db, 'predefinedHazards'), item);
+};
+export const updatePredefinedHazard = async (updatedItem: PredefinedHazard) => {
+  await updateDoc(doc(db, 'predefinedHazards', updatedItem.id), updatedItem);
+};
+export const removePredefinedHazard = async (itemId: string) => {
+  await deleteDoc(doc(db, 'predefinedHazards', itemId));
+};
+
+// Predefined Control Functions
+export const addPredefinedControl = async (item: Omit<PredefinedControl, 'id'>) => {
+  await addDoc(collection(db, 'predefinedControls'), item);
+};
+export const updatePredefinedControl = async (updatedItem: PredefinedControl) => {
+  await updateDoc(doc(db, 'predefinedControls', updatedItem.id), updatedItem);
+};
+export const removePredefinedControl = async (itemId: string) => {
+  await deleteDoc(doc(db, 'predefinedControls', itemId));
+};
+
 
 // Area Functions
 export const addArea = async (area: Omit<Area, 'area_id' | 'children'>, parentId?: string | null) => {
