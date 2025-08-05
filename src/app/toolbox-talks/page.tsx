@@ -21,11 +21,11 @@ import { format } from 'date-fns';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Separator } from '@/components/ui/separator';
-import { generateToolboxTalkAction } from '@/app/actions';
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
 import { ChevronsUpDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
 
 const talkSectionSchema = z.object({
   na: z.boolean().default(false),
@@ -103,11 +103,12 @@ const TalkSectionInput = ({ form, fieldName, label }: {
 );
 
 const CreateTalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
-  const { addToolboxTalk, users, uploadSettings } = useAppData();
+  const { addToolboxTalk, users, uploadSettings, safetyDocs } = useAppData();
   const { toast } = useToast();
-  const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [openUserSelect, setOpenUserSelect] = useState(false);
+  
+  const toolboxDocuments = safetyDocs.filter(doc => doc.category === 'Training Material');
 
   const form = useForm<TalkFormValues>({
     resolver: zodResolver(talkFormSchema),
@@ -129,35 +130,11 @@ const CreateTalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
   
   const selectedUserIds = form.watch('assigned_to') || [];
 
-  const handleGenerateContent = async () => {
-    const topic = form.getValues('topic');
-    if (!topic) {
-        toast({
-            variant: 'destructive',
-            title: 'Topic Required',
-            description: 'Please enter a topic to generate content.',
-        });
-        return;
-    }
-    setIsGenerating(true);
-    try {
-        const result = await generateToolboxTalkAction({ topic });
-        if (result.content) {
-            form.setValue('observations', result.content, { shouldValidate: true });
-            toast({
-                title: 'Content Generated',
-                description: 'The "General Topics" field has been populated.',
-            });
-        }
-    } catch (error) {
-        console.error(error);
-        toast({
-            variant: 'destructive',
-            title: 'Generation Failed',
-            description: 'An error occurred while generating the content.',
-        });
-    } finally {
-        setIsGenerating(false);
+  const handleDocumentSelect = (docId: string) => {
+    const selectedDoc = safetyDocs.find(doc => doc.doc_id === docId);
+    if (selectedDoc) {
+      form.setValue('topic', selectedDoc.title, { shouldValidate: true });
+      form.setValue('observations', `Reference document: ${selectedDoc.title} (${selectedDoc.display_id})`, { shouldValidate: true });
     }
   };
 
@@ -194,6 +171,26 @@ const CreateTalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-4">
+           <FormItem>
+             <FormLabel>Reference Document (Optional)</FormLabel>
+             <Select onValueChange={handleDocumentSelect}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select a document to prefill content..."/>
+              </SelectTrigger>
+              <SelectContent>
+                {toolboxDocuments.map(doc => (
+                  <SelectItem key={doc.doc_id} value={doc.doc_id}>
+                    {doc.title} ({doc.display_id})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+             </Select>
+           </FormItem>
+
+          <FormField control={form.control} name="topic" render={({ field }) => (
+            <FormItem><FormLabel>Topic</FormLabel><FormControl><Input placeholder="e.g., Ladder Safety" {...field} /></FormControl><FormMessage /></FormItem>
+          )}/>
+
           <FormField control={form.control} name="title" render={({ field }) => (
             <FormItem><FormLabel>Title</FormLabel><FormControl><Input placeholder="e.g., Proper Lifting Techniques" {...field} /></FormControl><FormMessage /></FormItem>
           )} />
@@ -215,17 +212,7 @@ const CreateTalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
           </div>
           
           <Separator />
-          
-          <div className="space-y-2">
-            <FormField control={form.control} name="topic" render={({ field }) => (
-                <FormItem><FormLabel>Topic of the Day</FormLabel><FormControl><Input placeholder="Enter a topic like 'Ladder Safety'" {...field} /></FormControl><FormMessage /></FormItem>
-            )}/>
-            <Button type="button" variant="outline" size="sm" onClick={handleGenerateContent} disabled={isGenerating}>
-                {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-                Generate with AI
-            </Button>
-          </div>
-          
+
           <FormField control={form.control} name="observations" render={({ field }) => (
             <FormItem><FormLabel>General Topics / Observations</FormLabel><FormControl><Textarea placeholder="Describe the topics covered in the talk..." {...field} rows={6} /></FormControl><FormMessage /></FormItem>
           )} />
