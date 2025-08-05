@@ -300,11 +300,11 @@ const JsaFormDialog = ({
                     <div className="absolute top-2 right-2">
                       {fields.length > 1 && (<Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive" /><span className="sr-only">Remove Step</span></Button>)}
                     </div>
-                    <div className="grid grid-cols-1 gap-y-4">
-                       <FormField control={form.control} name={`steps.${index}.step_description`} render={({ field }) => (
+                     <div className="space-y-4">
+                        <FormField control={form.control} name={`steps.${index}.step_description`} render={({ field }) => (
                             <FormItem><FormLabel>Step {index + 1} Description</FormLabel><FormControl><Textarea placeholder="Describe this step of the job..." {...field} /></FormControl><FormMessage /></FormItem>
                         )}/>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
                             <FormField control={form.control} name={`steps.${index}.principal_hazard`} render={({ field }) => (
                                 <FormItem><FormLabel>Principal Hazard (Written)</FormLabel><FormControl><Input placeholder="e.g., Electrocution from 480v cables" {...field} /></FormControl><FormMessage /></FormItem>
                             )}/>
@@ -315,25 +315,26 @@ const JsaFormDialog = ({
                          <FormField control={form.control} name={`steps.${index}.controls`} render={({ field }) => (
                             <FormItem><FormLabel>Control Measures</FormLabel><FormControl><MultiSelectPopover options={predefinedControls} selected={field.value} onSelectedChange={field.onChange} placeholder="Select controls..." /></FormControl><FormMessage /></FormItem>
                         )}/>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4 items-end">
-                        <FormField control={form.control} name={`steps.${index}.severity`} render={({ field }) => (
-                            <FormItem><FormLabel>Severity</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Low">Low</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="High">High</SelectItem><SelectItem value="Critical">Critical</SelectItem></SelectContent></Select><FormMessage /></FormItem>
-                        )}/>
-                        <FormField control={form.control} name={`steps.${index}.likelihood`} render={({ field }) => (
-                            <FormItem><FormLabel>Likelihood</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Unlikely">Unlikely</SelectItem><SelectItem value="Possible">Possible</SelectItem><SelectItem value="Likely">Likely</SelectItem><SelectItem value="Certain">Certain</SelectItem></SelectContent></Select><FormMessage /></FormItem>
-                        )}/>
-                        <FormField control={form.control} name={`steps.${index}.tasks`} render={({ field }) => (
-                            <FormItem><FormLabel>Tasks</FormLabel><FormControl><Input placeholder="e.g., LOTO, Barricade" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
-                        )}/>
-                        <div className="flex flex-col items-center">
-                            <FormLabel>Risk</FormLabel>
-                            <div className={cn("h-8 w-8 rounded-full mt-2", riskColor(form.watch(`steps.${index}.severity`), form.watch(`steps.${index}.likelihood`)))} />
+                    
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end pt-2">
+                            <FormField control={form.control} name={`steps.${index}.severity`} render={({ field }) => (
+                                <FormItem><FormLabel>Severity</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Low">Low</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="High">High</SelectItem><SelectItem value="Critical">Critical</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                            )}/>
+                            <FormField control={form.control} name={`steps.${index}.likelihood`} render={({ field }) => (
+                                <FormItem><FormLabel>Likelihood</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Unlikely">Unlikely</SelectItem><SelectItem value="Possible">Possible</SelectItem><SelectItem value="Likely">Likely</SelectItem><SelectItem value="Certain">Certain</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                            )}/>
+                            <FormField control={form.control} name={`steps.${index}.tasks`} render={({ field }) => (
+                                <FormItem><FormLabel>Tasks</FormLabel><FormControl><Input placeholder="e.g., LOTO, Barricade" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
+                            )}/>
+                            <div className="flex flex-col items-center">
+                                <FormLabel>Risk</FormLabel>
+                                <div className={cn("h-8 w-8 rounded-full mt-2", riskColor(form.watch(`steps.${index}.severity`), form.watch(`steps.${index}.likelihood`)))} />
+                            </div>
                         </div>
+                         <FormField control={form.control} name={`steps.${index}.comments`} render={({ field }) => (
+                            <FormItem><FormLabel>Comments</FormLabel><FormControl><Textarea placeholder="Add any additional comments for this step..." {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
+                        )}/>
                     </div>
-                     <FormField control={form.control} name={`steps.${index}.comments`} render={({ field }) => (
-                        <FormItem className="mt-4"><FormLabel>Comments</FormLabel><FormControl><Textarea placeholder="Add any additional comments for this step..." {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
-                    )}/>
                   </Card>
                 ))}
               </div>
@@ -400,8 +401,8 @@ const JsaDetailsDialog = ({ jsa, isOpen, onOpenChange, onSign, onShare, currentU
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
-                <div className="printable-area">
+            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col printable-area">
+                <div>
                     <DialogHeader>
                         <DialogTitle className="text-2xl flex items-center justify-between gap-2">
                             <span className="flex items-center gap-2"><FileSignature /> {jsa.title}</span>
@@ -562,8 +563,10 @@ const JsaPageContent = () => {
     };
 
     const handleSignJsa = async (updatedJsa: JSA) => {
-        await updateJsa(updatedJsa);
-        toast({ title: "JSA Signed", description: `Thank you for signing.` });
+        const success = await updateJsa(updatedJsa);
+        if (success) {
+            toast({ title: "JSA Signed", description: `Thank you for signing.` });
+        }
     };
 
     const handleSaveJsa = async (data: JsaFormValues, jsaId?: string): Promise<boolean> => {
