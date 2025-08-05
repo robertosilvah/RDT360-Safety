@@ -1,6 +1,5 @@
 
 
-
 'use client';
 
 import { AppShell } from '@/components/AppShell';
@@ -37,6 +36,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
 import { ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Label } from '@/components/ui/label';
 
 const jsaStepSchema = z.object({
   step_description: z.string().min(1, { message: 'Step description cannot be empty.' }),
@@ -305,7 +305,7 @@ const JsaFormDialog = ({
                             <FormItem><FormLabel>Step {index + 1} Description</FormLabel><FormControl><Textarea placeholder="Describe this step of the job..." {...field} /></FormControl><FormMessage /></FormItem>
                         )}/>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                           <FormField control={form.control} name={`steps.${index}.principal_hazard`} render={({ field }) => (
+                            <FormField control={form.control} name={`steps.${index}.principal_hazard`} render={({ field }) => (
                                 <FormItem><FormLabel>Principal Hazard (Written)</FormLabel><FormControl><Input placeholder="e.g., Electrocution from 480v cables" {...field} /></FormControl><FormMessage /></FormItem>
                             )}/>
                             <FormField control={form.control} name={`steps.${index}.hazards`} render={({ field }) => (
@@ -324,7 +324,7 @@ const JsaFormDialog = ({
                             <FormItem><FormLabel>Likelihood</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Unlikely">Unlikely</SelectItem><SelectItem value="Possible">Possible</SelectItem><SelectItem value="Likely">Likely</SelectItem><SelectItem value="Certain">Certain</SelectItem></SelectContent></Select><FormMessage /></FormItem>
                         )}/>
                         <FormField control={form.control} name={`steps.${index}.tasks`} render={({ field }) => (
-                            <FormItem><FormLabel>Tasks</FormLabel><FormControl><Input placeholder="e.g., LOTO, Barricade" {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>Tasks</FormLabel><FormControl><Input placeholder="e.g., LOTO, Barricade" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
                         )}/>
                         <div className="flex flex-col items-center">
                             <FormLabel>Risk</FormLabel>
@@ -332,7 +332,7 @@ const JsaFormDialog = ({
                         </div>
                     </div>
                      <FormField control={form.control} name={`steps.${index}.comments`} render={({ field }) => (
-                        <FormItem className="mt-4"><FormLabel>Comments</FormLabel><FormControl><Textarea placeholder="Add any additional comments for this step..." {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem className="mt-4"><FormLabel>Comments</FormLabel><FormControl><Textarea placeholder="Add any additional comments for this step..." {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
                     )}/>
                   </Card>
                 ))}
@@ -400,37 +400,39 @@ const JsaDetailsDialog = ({ jsa, isOpen, onOpenChange, onSign, onShare, currentU
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col printable-area">
-                <DialogHeader>
-                    <DialogTitle className="text-2xl flex items-center justify-between gap-2">
-                        <span className="flex items-center gap-2"><FileSignature /> {jsa.title}</span>
-                         <div className="flex items-center gap-1 no-print">
-                            <Button type="button" variant="ghost" size="icon" onClick={onShare}><Share2 className="h-5 w-5" /><span className="sr-only">Share</span></Button>
-                            <Button type="button" variant="ghost" size="icon" onClick={handlePrint}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
-                         </div>
-                    </DialogTitle>
-                    <DialogDescription>{jsa.job_description}</DialogDescription>
-                </DialogHeader>
-                <div className="flex-1 overflow-y-auto pr-6 space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div><h3 className="font-semibold mb-2 flex items-center gap-2"><MapPin /> Area / Operation</h3><p className="text-muted-foreground">{areaPath}</p></div>
-                      <div><h3 className="font-semibold mb-2 flex items-center gap-2"><Clock /> Permit Validity</h3><p className="text-muted-foreground">{format(new Date(jsa.valid_from), "P p")} to {format(new Date(jsa.valid_to), "P p")}</p></div>
+            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+                <div className="printable-area">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl flex items-center justify-between gap-2">
+                            <span className="flex items-center gap-2"><FileSignature /> {jsa.title}</span>
+                             <div className="flex items-center gap-1 no-print">
+                                <Button type="button" variant="ghost" size="icon" onClick={onShare}><Share2 className="h-5 w-5" /><span className="sr-only">Share</span></Button>
+                                <Button type="button" variant="ghost" size="icon" onClick={handlePrint}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
+                             </div>
+                        </DialogTitle>
+                        <DialogDescription>{jsa.job_description}</DialogDescription>
+                    </DialogHeader>
+                    <div className="flex-1 overflow-y-auto pr-6 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div><h3 className="font-semibold mb-2 flex items-center gap-2"><MapPin /> Area / Operation</h3><p className="text-muted-foreground">{areaPath}</p></div>
+                          <div><h3 className="font-semibold mb-2 flex items-center gap-2"><Clock /> Permit Validity</h3><p className="text-muted-foreground">{format(new Date(jsa.valid_from), "P p")} to {format(new Date(jsa.valid_to), "P p")}</p></div>
+                        </div>
+                        <Separator />
+                        <div><h3 className="font-semibold mb-2 flex items-center gap-2"><Shield /> Required PPE</h3><div className="flex flex-wrap gap-2">{jsa.required_ppe.map((item, index) => <Badge key={index} variant="secondary">{item}</Badge>)}</div></div>
+                        <Separator />
+                        <div className="no-print">
+                            <div className="flex items-center justify-between mb-2"><h3 className="font-semibold flex items-center gap-2"><Wand2 /> AI Analysis</h3><Button size="sm" onClick={handleAiAnalysis} disabled={isAnalyzing}>{isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}Analyze JSA</Button></div>
+                            {isAnalyzing && (<div className="p-4 bg-muted/50 rounded-lg border flex items-center justify-center min-h-[100px]"><Loader2 className="h-6 w-6 animate-spin text-primary" /><p className="ml-2 text-sm text-muted-foreground">AI is reviewing the JSA...</p></div>)}
+                            {analysisResult && (<Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"><CardContent className="p-4"><p className="text-sm whitespace-pre-wrap">{analysisResult}</p></CardContent></Card>)}
+                        </div>
+                        <Separator className="no-print" />
+                        <div>
+                            <h3 className="font-semibold mb-2">Job Steps, Hazards, and Controls</h3>
+                            <div className="space-y-4">{jsa.steps.map((step, index) => (<div key={index} className="p-4 border rounded-lg bg-muted/50"><p className="font-semibold">Step {index + 1}: {step.step_description}</p><div className="mt-2 pl-4"><p className="text-sm"><strong className="text-destructive">Hazards:</strong> {step.hazards.join(', ')}</p><p className="text-sm"><strong className="text-green-600">Controls:</strong> {step.controls.join(', ')}</p></div></div>))}</div>
+                        </div>
+                        <Separator />
+                        <div><h3 className="font-semibold mb-2 flex items-center gap-2"><Users /> Signatures ({jsa.signatures.length})</h3><ul className="list-disc list-inside text-sm text-muted-foreground max-h-40 overflow-y-auto">{jsa.signatures.length > 0 ? jsa.signatures.map((sig, index) => (<li key={index}>{sig.employee_name} (Signed on {new Date(sig.sign_date).toLocaleDateString()})</li>)) : <li>No signatures yet.</li>}</ul></div>
                     </div>
-                    <Separator />
-                    <div><h3 className="font-semibold mb-2 flex items-center gap-2"><Shield /> Required PPE</h3><div className="flex flex-wrap gap-2">{jsa.required_ppe.map((item, index) => <Badge key={index} variant="secondary">{item}</Badge>)}</div></div>
-                    <Separator />
-                    <div>
-                        <div className="flex items-center justify-between mb-2"><h3 className="font-semibold flex items-center gap-2"><Wand2 /> AI Analysis</h3><Button size="sm" onClick={handleAiAnalysis} disabled={isAnalyzing}>{isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}Analyze JSA</Button></div>
-                        {isAnalyzing && (<div className="p-4 bg-muted/50 rounded-lg border flex items-center justify-center min-h-[100px]"><Loader2 className="h-6 w-6 animate-spin text-primary" /><p className="ml-2 text-sm text-muted-foreground">AI is reviewing the JSA...</p></div>)}
-                        {analysisResult && (<Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"><CardContent className="p-4"><p className="text-sm whitespace-pre-wrap">{analysisResult}</p></CardContent></Card>)}
-                    </div>
-                    <Separator />
-                    <div>
-                        <h3 className="font-semibold mb-2">Job Steps, Hazards, and Controls</h3>
-                        <div className="space-y-4">{jsa.steps.map((step, index) => (<div key={index} className="p-4 border rounded-lg bg-muted/50"><p className="font-semibold">Step {index + 1}: {step.step_description}</p><div className="mt-2 pl-4"><p className="text-sm"><strong className="text-destructive">Hazards:</strong> {step.hazards.join(', ')}</p><p className="text-sm"><strong className="text-green-600">Controls:</strong> {step.controls.join(', ')}</p></div></div>))}</div>
-                    </div>
-                    <Separator />
-                    <div><h3 className="font-semibold mb-2 flex items-center gap-2"><Users /> Signatures ({jsa.signatures.length})</h3><ul className="list-disc list-inside text-sm text-muted-foreground max-h-40 overflow-y-auto">{jsa.signatures.length > 0 ? jsa.signatures.map((sig, index) => (<li key={index}>{sig.employee_name} (Signed on {new Date(sig.sign_date).toLocaleDateString()})</li>)) : <li>No signatures yet.</li>}</ul></div>
                 </div>
                 <DialogFooter className="mt-auto pt-4 border-t !justify-between no-print">
                     <div className="text-xs text-muted-foreground">{hasSigned ? `You acknowledged this on ${new Date(jsa.signatures.find(s => s.employee_name === currentUser)!.sign_date).toLocaleDateString()}` : "Please read carefully before signing."}</div>
