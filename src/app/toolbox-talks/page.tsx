@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState } from 'react';
@@ -141,10 +142,12 @@ const CreateTalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
   const onSubmit = async (values: TalkFormValues) => {
     setIsSubmitting(true);
     try {
+      const { attachment, ...talkData } = values;
       await addToolboxTalk({
-        ...values,
+        ...talkData,
         date: new Date(values.date).toISOString(),
-      }, values.attachment);
+      }, attachment);
+
       toast({
         title: 'Toolbox Talk Created',
         description: `The talk "${values.title}" has been successfully scheduled.`,
