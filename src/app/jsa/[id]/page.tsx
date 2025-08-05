@@ -32,11 +32,11 @@ const JsaPrintPage = () => {
     const [jsa, setJsa] = useState<JSA | null | undefined>(undefined);
 
     useEffect(() => {
-        if (jsas.length > 0) {
+        if (jsas.length > 0 && areas.length > 0) {
             const foundJsa = jsas.find(j => j.jsa_id === id);
             setJsa(foundJsa || null);
         }
-    }, [id, jsas]);
+    }, [id, jsas, areas]);
     
     useEffect(() => {
         if (jsa) {
@@ -46,10 +46,10 @@ const JsaPrintPage = () => {
     }, [jsa]);
 
     const areaPath = useMemo(() => {
-        if (jsa && areas.length > 0) {
+        if (jsa?.areaId && areas.length > 0) {
             return findAreaPathById(areas, jsa.areaId);
         }
-        return '';
+        return jsa?.areaId || 'Loading...';
     }, [jsa, areas]);
 
     const riskMatrix: { [key in JSA['steps'][0]['severity']]: { [key in JSA['steps'][0]['likelihood']]: string } } = {
@@ -61,7 +61,7 @@ const JsaPrintPage = () => {
 
     if (jsa === undefined) {
         return (
-            <div className="p-8">
+            <div className="p-8 bg-white">
                 <Skeleton className="h-12 w-1/3 mb-4" />
                 <Skeleton className="h-96 w-full" />
             </div>
@@ -178,4 +178,3 @@ const JsaPrintPage = () => {
 };
 
 export default JsaPrintPage;
-

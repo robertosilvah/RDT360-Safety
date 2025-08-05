@@ -404,14 +404,14 @@ const JsaDetailsDialog = ({ jsa, isOpen, onOpenChange, onSign, onShare, currentU
     const riskMatrix: { [key in JSA['steps'][0]['severity']]: { [key in JSA['steps'][0]['likelihood']]: string } } = {
         'Low': { 'Unlikely': 'bg-green-500', 'Possible': 'bg-green-500', 'Likely': 'bg-yellow-500', 'Certain': 'bg-yellow-500' },
         'Medium': { 'Unlikely': 'bg-green-500', 'Possible': 'bg-yellow-500', 'Likely': 'bg-yellow-500', 'Certain': 'bg-red-500' },
-        'High': { 'Unlikely': 'bg-yellow-500', 'Possible': 'bg-red-500', 'Likely': 'bg-red-500', 'Certain': 'bg-red-500' },
-        'Critical': { 'Unlikely': 'bg-red-500', 'Possible': 'bg-red-500', 'Likely': 'bg-red-500', 'Certain': 'bg-red-500' },
+        'High': { 'Unlikely': 'bg-yellow-500', 'Possible': 'bg-red-500', 'Likely': 'bg-red-300', 'Certain': 'bg-red-300' },
+        'Critical': { 'Unlikely': 'bg-red-300', 'Possible': 'bg-red-300', 'Likely': 'bg-red-300', 'Certain': 'bg-red-300' },
     };
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
-                <div>
+                <div className="printable-area">
                     <DialogHeader>
                         <DialogTitle className="text-2xl flex items-center justify-between gap-2">
                             <span className="flex items-center gap-2"><FileSignature /> {jsa.title}</span>
@@ -446,8 +446,6 @@ const JsaDetailsDialog = ({ jsa, isOpen, onOpenChange, onSign, onShare, currentU
                                             <TableHead className="w-[15%]">Principal Hazard</TableHead>
                                             <TableHead className="w-[15%]">Potential Hazards</TableHead>
                                             <TableHead className="w-[15%]">Control Measures</TableHead>
-                                            <TableHead>Severity</TableHead>
-                                            <TableHead>Likelihood</TableHead>
                                             <TableHead>Risk</TableHead>
                                             <TableHead>Tasks</TableHead>
                                             <TableHead className="w-[15%]">Comments</TableHead>
@@ -460,9 +458,15 @@ const JsaDetailsDialog = ({ jsa, isOpen, onOpenChange, onSign, onShare, currentU
                                                 <TableCell className="align-top">{step.principal_hazard}</TableCell>
                                                 <TableCell className="align-top">{step.hazards.join(', ')}</TableCell>
                                                 <TableCell className="align-top">{step.controls.join(', ')}</TableCell>
-                                                <TableCell className="align-top">{step.severity}</TableCell>
-                                                <TableCell className="align-top">{step.likelihood}</TableCell>
-                                                <TableCell className="align-top"><div className={cn("h-4 w-4 rounded-full", riskMatrix[step.severity][step.likelihood])} /></TableCell>
+                                                <TableCell className="align-top">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className={cn("h-4 w-4 rounded-full border border-black", riskMatrix[step.severity]?.[step.likelihood])} />
+                                                        <div>
+                                                            <p>S: {step.severity}</p>
+                                                            <p>L: {step.likelihood}</p>
+                                                        </div>
+                                                    </div>
+                                                </TableCell>
                                                 <TableCell className="align-top">{step.tasks}</TableCell>
                                                 <TableCell className="align-top">{step.comments}</TableCell>
                                             </TableRow>
@@ -511,7 +515,7 @@ const JsaSummaryCard = ({ jsa, areaPath, onViewDetails, onEdit, onCopy }: { jsa:
                  <div className="flex items-center text-sm text-muted-foreground gap-2"><Users className="h-4 w-4" /><span>{jsa.signatures.length} Signature(s)</span></div>
             </CardContent>
             <CardFooter className="mt-auto border-t pt-4">
-                <Button className="w-full" onClick={onViewDetails}><FileSignature className="mr-2 h-4 w-4" /> Read and Sign</Button>
+                <Button className="w-full" onClick={onViewDetails}><FileSignature className="mr-2 h-4 w-4" /> View / Sign / Print</Button>
             </CardFooter>
         </Card>
     );
@@ -698,5 +702,3 @@ export default function JsaPage() {
         </Suspense>
     )
 }
-
-    
