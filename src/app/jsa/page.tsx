@@ -42,6 +42,9 @@ const jsaStepSchema = z.object({
   controls: z.array(z.string()).min(1, { message: 'Please select at least one control measure.' }),
   severity: z.enum(['Low', 'Medium', 'High', 'Critical']),
   likelihood: z.enum(['Unlikely', 'Possible', 'Likely', 'Certain']),
+  principal_hazard: z.string().optional(),
+  tasks: z.string().optional(),
+  comments: z.string().optional(),
 });
 
 const jsaFormSchema = z.object({
@@ -167,7 +170,7 @@ const JsaFormDialog = ({
     resolver: zodResolver(jsaFormSchema),
     defaultValues: {
       title: '', job_description: '', required_ppe: [], other_ppe: '', areaId: '', 
-      steps: [{ step_description: '', hazards: [], controls: [], severity: 'Low', likelihood: 'Unlikely' }], 
+      steps: [{ step_description: '', hazards: [], controls: [], severity: 'Low', likelihood: 'Unlikely', principal_hazard: '', tasks: '', comments: '' }], 
       valid_from: '', valid_to: ''
     },
   });
@@ -181,14 +184,19 @@ const JsaFormDialog = ({
                 areaId: jsa.areaId,
                 required_ppe: jsa.required_ppe.filter(ppe => PREDEFINED_PPE.some(p => p.label === ppe)),
                 other_ppe: jsa.required_ppe.filter(ppe => !PREDEFINED_PPE.some(p => p.label === ppe)).join(', '),
-                steps: jsa.steps,
+                steps: jsa.steps.map(s => ({
+                    ...s,
+                    principal_hazard: s.principal_hazard || '',
+                    tasks: s.tasks || '',
+                    comments: s.comments || '',
+                })),
                 valid_from: mode === 'copy' ? '' : format(new Date(jsa.valid_from), "yyyy-MM-dd'T'HH:mm"),
                 valid_to: mode === 'copy' ? '' : format(new Date(jsa.valid_to), "yyyy-MM-dd'T'HH:mm"),
             });
         } else {
             form.reset({
               title: '', job_description: '', required_ppe: [], other_ppe: '', areaId: '', 
-              steps: [{ step_description: '', hazards: [], controls: [], severity: 'Low', likelihood: 'Unlikely' }], 
+              steps: [{ step_description: '', hazards: [], controls: [], severity: 'Low', likelihood: 'Unlikely', principal_hazard: '', tasks: '', comments: '' }], 
               valid_from: '', valid_to: ''
             });
         }
@@ -289,8 +297,11 @@ const JsaFormDialog = ({
                     <TableHead className="w-1/6">Severity</TableHead>
                     <TableHead className="w-1/6">Likelihood</TableHead>
                     <TableHead className="min-w-[250px] w-1/4">Control Measures</TableHead>
+                    <TableHead className="w-1/6">Principal Hazard</TableHead>
+                    <TableHead className="min-w-[200px]">Tasks</TableHead>
+                    <TableHead className="min-w-[200px]">Comments</TableHead>
                     <TableHead>Risk</TableHead>
-                    <TableHead className="w-12">Action</TableHead>
+                    <TableHead className="w-12">Remove</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -321,6 +332,21 @@ const JsaFormDialog = ({
                                 <FormItem><FormControl><MultiSelectPopover options={predefinedControls} selected={field.value} onSelectedChange={field.onChange} placeholder="Select controls..." /></FormControl><FormMessage /></FormItem>
                             )}/>
                         </TableCell>
+                         <TableCell>
+                          <FormField control={form.control} name={`steps.${index}.principal_hazard`} render={({ field }) => (
+                              <FormItem><FormControl><Input placeholder="e.g., Electrocution" {...field} /></FormControl><FormMessage /></FormItem>
+                          )}/>
+                        </TableCell>
+                         <TableCell>
+                          <FormField control={form.control} name={`steps.${index}.tasks`} render={({ field }) => (
+                              <FormItem><FormControl><Textarea placeholder="e.g., LOTO" {...field} /></FormControl><FormMessage /></FormItem>
+                          )}/>
+                        </TableCell>
+                         <TableCell>
+                          <FormField control={form.control} name={`steps.${index}.comments`} render={({ field }) => (
+                              <FormItem><FormControl><Textarea placeholder="Add comments..." {...field} /></FormControl><FormMessage /></FormItem>
+                          )}/>
+                        </TableCell>
                         <TableCell>
                           <div className={cn("h-6 w-6 rounded-full", riskColor(form.watch(`steps.${index}.severity`), form.watch(`steps.${index}.likelihood`)))} />
                         </TableCell>
@@ -332,7 +358,7 @@ const JsaFormDialog = ({
                 </TableBody>
               </Table>
               </div>
-              <Button type="button" variant="outline" size="sm" onClick={() => append({ step_description: '', hazards: [], controls: [], severity: 'Low', likelihood: 'Unlikely' })} className="mt-4"><PlusCircle className="mr-2 h-4 w-4" /> Add Step</Button>
+              <Button type="button" variant="outline" size="sm" onClick={() => append({ step_description: '', hazards: [], controls: [], severity: 'Low', likelihood: 'Unlikely', principal_hazard: '', tasks: '', comments: '' })} className="mt-4"><PlusCircle className="mr-2 h-4 w-4" /> Add Step</Button>
             </div>
         </div>
         <DialogFooter><Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button><Button type="submit">Save & Close</Button></DialogFooter>

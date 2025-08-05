@@ -175,6 +175,9 @@ export type JsaStep = {
   controls: string[];
   severity: 'Low' | 'Medium' | 'High' | 'Critical';
   likelihood: 'Unlikely' | 'Possible' | 'Likely' | 'Certain';
+  principal_hazard?: string;
+  tasks?: string;
+  comments?: string;
 };
 
 export type JSA = {
