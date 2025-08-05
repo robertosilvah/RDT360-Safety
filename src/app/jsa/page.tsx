@@ -300,40 +300,43 @@ const JsaFormDialog = ({
                     <div className="absolute top-2 right-2">
                       {fields.length > 1 && (<Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive" /><span className="sr-only">Remove Step</span></Button>)}
                     </div>
-                     <div className="space-y-4">
-                        <FormField control={form.control} name={`steps.${index}.step_description`} render={({ field }) => (
-                            <FormItem><FormLabel>Step {index + 1} Description</FormLabel><FormControl><Textarea placeholder="Describe this step of the job..." {...field} /></FormControl><FormMessage /></FormItem>
-                        )}/>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-4">
+                            <FormField control={form.control} name={`steps.${index}.step_description`} render={({ field }) => (
+                                <FormItem><FormLabel>Step {index + 1} Description</FormLabel><FormControl><Textarea placeholder="Describe this step of the job..." {...field} /></FormControl><FormMessage /></FormItem>
+                            )}/>
                             <FormField control={form.control} name={`steps.${index}.principal_hazard`} render={({ field }) => (
                                 <FormItem><FormLabel>Principal Hazard (Written)</FormLabel><FormControl><Input placeholder="e.g., Electrocution from 480v cables" {...field} /></FormControl><FormMessage /></FormItem>
                             )}/>
-                            <FormField control={form.control} name={`steps.${index}.hazards`} render={({ field }) => (
+                             <FormField control={form.control} name={`steps.${index}.hazards`} render={({ field }) => (
                                 <FormItem><FormLabel>Potential Hazards (Predefined)</FormLabel><FormControl><MultiSelectPopover options={predefinedHazards} selected={field.value} onSelectedChange={field.onChange} placeholder="Select potential hazards..." /></FormControl><FormMessage /></FormItem>
                             )}/>
                         </div>
-                         <FormField control={form.control} name={`steps.${index}.controls`} render={({ field }) => (
-                            <FormItem><FormLabel>Control Measures</FormLabel><FormControl><MultiSelectPopover options={predefinedControls} selected={field.value} onSelectedChange={field.onChange} placeholder="Select controls..." /></FormControl><FormMessage /></FormItem>
-                        )}/>
-                    
-                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end pt-2">
-                            <FormField control={form.control} name={`steps.${index}.severity`} render={({ field }) => (
-                                <FormItem><FormLabel>Severity</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Low">Low</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="High">High</SelectItem><SelectItem value="Critical">Critical</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                        <div className="space-y-4">
+                             <FormField control={form.control} name={`steps.${index}.controls`} render={({ field }) => (
+                                <FormItem><FormLabel>Control Measures</FormLabel><FormControl><MultiSelectPopover options={predefinedControls} selected={field.value} onSelectedChange={field.onChange} placeholder="Select controls..." /></FormControl><FormMessage /></FormItem>
                             )}/>
-                            <FormField control={form.control} name={`steps.${index}.likelihood`} render={({ field }) => (
-                                <FormItem><FormLabel>Likelihood</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Unlikely">Unlikely</SelectItem><SelectItem value="Possible">Possible</SelectItem><SelectItem value="Likely">Likely</SelectItem><SelectItem value="Certain">Certain</SelectItem></SelectContent></Select><FormMessage /></FormItem>
-                            )}/>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end pt-2">
+                                <FormField control={form.control} name={`steps.${index}.severity`} render={({ field }) => (
+                                    <FormItem><FormLabel>Severity</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Low">Low</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="High">High</SelectItem><SelectItem value="Critical">Critical</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                                )}/>
+                                <FormField control={form.control} name={`steps.${index}.likelihood`} render={({ field }) => (
+                                    <FormItem><FormLabel>Likelihood</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Unlikely">Unlikely</SelectItem><SelectItem value="Possible">Possible</SelectItem><SelectItem value="Likely">Likely</SelectItem><SelectItem value="Certain">Certain</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                                )}/>
+                                <div className="flex flex-col items-center">
+                                    <FormLabel>Risk</FormLabel>
+                                    <div className={cn("h-8 w-8 rounded-full mt-2", riskColor(form.watch(`steps.${index}.severity`), form.watch(`steps.${index}.likelihood`)))} />
+                                </div>
+                            </div>
                             <FormField control={form.control} name={`steps.${index}.tasks`} render={({ field }) => (
                                 <FormItem><FormLabel>Tasks</FormLabel><FormControl><Input placeholder="e.g., LOTO, Barricade" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
                             )}/>
-                            <div className="flex flex-col items-center">
-                                <FormLabel>Risk</FormLabel>
-                                <div className={cn("h-8 w-8 rounded-full mt-2", riskColor(form.watch(`steps.${index}.severity`), form.watch(`steps.${index}.likelihood`)))} />
-                            </div>
                         </div>
+                        <div className="md:col-span-2">
                          <FormField control={form.control} name={`steps.${index}.comments`} render={({ field }) => (
                             <FormItem><FormLabel>Comments</FormLabel><FormControl><Textarea placeholder="Add any additional comments for this step..." {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>
                         )}/>
+                        </div>
                     </div>
                   </Card>
                 ))}
@@ -398,10 +401,17 @@ const JsaDetailsDialog = ({ jsa, isOpen, onOpenChange, onSign, onShare, currentU
             console.error(error); toast({ variant: "destructive", title: "Analysis Error", description: "An unexpected error occurred." });
         } finally { setIsAnalyzing(false); }
     };
+    
+    const riskMatrix: { [key in JSA['steps'][0]['severity']]: { [key in JSA['steps'][0]['likelihood']]: string } } = {
+        'Low': { 'Unlikely': 'bg-green-500', 'Possible': 'bg-green-500', 'Likely': 'bg-yellow-500', 'Certain': 'bg-yellow-500' },
+        'Medium': { 'Unlikely': 'bg-green-500', 'Possible': 'bg-yellow-500', 'Likely': 'bg-yellow-500', 'Certain': 'bg-red-500' },
+        'High': { 'Unlikely': 'bg-yellow-500', 'Possible': 'bg-red-500', 'Likely': 'bg-red-500', 'Certain': 'bg-red-500' },
+        'Critical': { 'Unlikely': 'bg-red-500', 'Possible': 'bg-red-500', 'Likely': 'bg-red-500', 'Certain': 'bg-red-500' },
+    };
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col printable-area">
+            <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col printable-area">
                 <div>
                     <DialogHeader>
                         <DialogTitle className="text-2xl flex items-center justify-between gap-2">
@@ -413,7 +423,7 @@ const JsaDetailsDialog = ({ jsa, isOpen, onOpenChange, onSign, onShare, currentU
                         </DialogTitle>
                         <DialogDescription>{jsa.job_description}</DialogDescription>
                     </DialogHeader>
-                    <div className="flex-1 overflow-y-auto pr-6 space-y-6">
+                    <div className="flex-1 overflow-y-auto pr-6 space-y-6 py-4">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div><h3 className="font-semibold mb-2 flex items-center gap-2"><MapPin /> Area / Operation</h3><p className="text-muted-foreground">{areaPath}</p></div>
                           <div><h3 className="font-semibold mb-2 flex items-center gap-2"><Clock /> Permit Validity</h3><p className="text-muted-foreground">{format(new Date(jsa.valid_from), "P p")} to {format(new Date(jsa.valid_to), "P p")}</p></div>
@@ -429,7 +439,38 @@ const JsaDetailsDialog = ({ jsa, isOpen, onOpenChange, onSign, onShare, currentU
                         <Separator className="no-print" />
                         <div>
                             <h3 className="font-semibold mb-2">Job Steps, Hazards, and Controls</h3>
-                            <div className="space-y-4">{jsa.steps.map((step, index) => (<div key={index} className="p-4 border rounded-lg bg-muted/50"><p className="font-semibold">Step {index + 1}: {step.step_description}</p><div className="mt-2 pl-4"><p className="text-sm"><strong className="text-destructive">Hazards:</strong> {step.hazards.join(', ')}</p><p className="text-sm"><strong className="text-green-600">Controls:</strong> {step.controls.join(', ')}</p></div></div>))}</div>
+                            <div className="overflow-x-auto">
+                                <Table className="border">
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-[20%]">Step</TableHead>
+                                            <TableHead className="w-[15%]">Principal Hazard</TableHead>
+                                            <TableHead className="w-[15%]">Potential Hazards</TableHead>
+                                            <TableHead className="w-[15%]">Control Measures</TableHead>
+                                            <TableHead>Severity</TableHead>
+                                            <TableHead>Likelihood</TableHead>
+                                            <TableHead>Risk</TableHead>
+                                            <TableHead>Tasks</TableHead>
+                                            <TableHead className="w-[15%]">Comments</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {jsa.steps.map((step, index) => (
+                                            <TableRow key={index}>
+                                                <TableCell className="font-semibold align-top">{index + 1}. {step.step_description}</TableCell>
+                                                <TableCell className="align-top">{step.principal_hazard}</TableCell>
+                                                <TableCell className="align-top">{step.hazards.join(', ')}</TableCell>
+                                                <TableCell className="align-top">{step.controls.join(', ')}</TableCell>
+                                                <TableCell className="align-top">{step.severity}</TableCell>
+                                                <TableCell className="align-top">{step.likelihood}</TableCell>
+                                                <TableCell className="align-top"><div className={cn("h-4 w-4 rounded-full", riskMatrix[step.severity][step.likelihood])} /></TableCell>
+                                                <TableCell className="align-top">{step.tasks}</TableCell>
+                                                <TableCell className="align-top">{step.comments}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
                         </div>
                         <Separator />
                         <div><h3 className="font-semibold mb-2 flex items-center gap-2"><Users /> Signatures ({jsa.signatures.length})</h3><ul className="list-disc list-inside text-sm text-muted-foreground max-h-40 overflow-y-auto">{jsa.signatures.length > 0 ? jsa.signatures.map((sig, index) => (<li key={index}>{sig.employee_name} (Signed on {new Date(sig.sign_date).toLocaleDateString()})</li>)) : <li>No signatures yet.</li>}</ul></div>
@@ -658,3 +699,5 @@ export default function JsaPage() {
         </Suspense>
     )
 }
+
+    
