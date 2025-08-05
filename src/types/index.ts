@@ -1,6 +1,7 @@
 
 
 
+
 export type TalkSection = {
   na: boolean;
   details: string;
@@ -132,11 +133,20 @@ export type CorrectiveAction = {
   comments: Comment[];
 };
 
+export const docCategories = [
+  'Policy', 'Procedure', 'Form', 'Workplace Safety', 'Electrical Safety', 
+  'Lab & Bio Safety', 'Transportation Safety', 'Machine & Tool Safety', 'Oil & Gas Safety',
+  'Fire Safety', 'Food Safety', 'HAZMAT', 'Ergonomics', 'Job Hazard & Incident Investigation',
+  'Emergency Response Planning', 'Environmental Compliance', 'OSHA', 'Human Resource',
+  'Personal Protective Equipment (PPE)'
+] as const;
+export type SafetyDocCategory = (typeof docCategories)[number];
+
 export type SafetyDoc = {
   doc_id: string;
   display_id: string;
   title: string;
-  category: 'Policy' | 'Procedure' | 'Form' | 'Training Material';
+  category: SafetyDocCategory;
   file_url: string;
   related_modules: string[];
 };

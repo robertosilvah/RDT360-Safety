@@ -1,5 +1,6 @@
 
 
+
 'use client';
 
 import React, { useState } from 'react';
@@ -109,7 +110,8 @@ const CreateTalkForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [openUserSelect, setOpenUserSelect] = useState(false);
   
-  const toolboxDocuments = safetyDocs.filter(doc => doc.category === 'Training Material');
+  const toolboxDocuments = safetyDocs.filter(doc => doc.category !== 'Policy' && doc.category !== 'Procedure' && doc.category !== 'Form');
+
 
   const form = useForm<TalkFormValues>({
     resolver: zodResolver(talkFormSchema),
@@ -334,7 +336,7 @@ export default function ToolboxTalksPage() {
           <h2 className="text-3xl font-bold tracking-tight">Toolbox Talks</h2>
           <Dialog open={isCreateOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button onClick={() => setCreateOpen(true)}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Create Talk
               </Button>
             </DialogTrigger>

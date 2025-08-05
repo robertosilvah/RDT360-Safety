@@ -7,8 +7,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { useAppData } from '@/context/AppDataContext';
 import { useToast } from '@/hooks/use-toast';
-import type { SafetyDoc } from '@/types';
-import { Upload, FileText, FileBadge, FileJson, FileQuestion } from 'lucide-react';
+import type { SafetyDoc, SafetyDocCategory } from '@/types';
+import { docCategories } from '@/types';
+import { Upload, FileText, FileBadge, FileJson, FileQuestion, BookOpen, Shield, HeartPulse, HardHat, Car, Factory, SprayCan, Utensils, Biohazard, Footprints, Users, AlertTriangle, Building, Briefcase, Hand, FileHeart } from 'lucide-react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,16 +19,34 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 
-const categoryIcons = {
+const categoryIcons: Record<SafetyDocCategory, React.ReactElement> = {
   'Policy': <FileBadge className="h-8 w-8 text-primary" />,
-  'Procedure': <FileJson className="h-8 w-8 text-accent" />,
-  'Form': <FileText className="h-8 w-8 text-yellow-500" />,
-  'Training Material': <FileQuestion className="h-8 w-8 text-blue-500" />,
+  'Procedure': <FileJson className="h-8 w-8 text-primary" />,
+  'Form': <FileText className="h-8 w-8 text-primary" />,
+  'Workplace Safety': <Shield className="h-8 w-8 text-green-500" />,
+  'Electrical Safety': <HeartPulse className="h-8 w-8 text-red-500" />,
+  'Lab & Bio Safety': <Biohazard className="h-8 w-8 text-yellow-500" />,
+  'Transportation Safety': <Car className="h-8 w-8 text-blue-500" />,
+  'Machine & Tool Safety': <Factory className="h-8 w-8 text-gray-500" />,
+  'Oil & Gas Safety': <SprayCan className="h-8 w-8 text-orange-500" />,
+  'Fire Safety': <Flame className="h-8 w-8 text-red-600" />,
+  'Food Safety': <Utensils className="h-8 w-8 text-lime-500" />,
+  'HAZMAT': <AlertTriangle className="h-8 w-8 text-yellow-400" />,
+  'Ergonomics': <Footprints className="h-8 w-8 text-purple-500" />,
+  'Job Hazard & Incident Investigation': <FileSearch className="h-8 w-8 text-indigo-500" />,
+  'Emergency Response Planning': <Building className="h-8 w-8 text-cyan-500" />,
+  'Environmental Compliance': <BookOpen className="h-8 w-8 text-teal-500" />,
+  'OSHA': <HardHat className="h-8 w-8 text-amber-600" />,
+  'Human Resource': <Users className="h-8 w-8 text-rose-500" />,
+  'Personal Protective Equipment (PPE)': <Hand className="h-8 w-8 text-pink-500" />,
 };
+
 
 const docFormSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters."),
-  category: z.enum(['Policy', 'Procedure', 'Form', 'Training Material']),
+  category: z.custom<SafetyDocCategory>((val) => docCategories.includes(val as SafetyDocCategory), {
+    message: "Invalid category selected",
+  }),
   related_modules: z.string().optional(),
 });
 
@@ -114,10 +133,9 @@ const DocumentUploadForm = ({ setOpen }: { setOpen: (open: boolean) => void }) =
                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                     <SelectContent>
-                        <SelectItem value="Policy">Policy</SelectItem>
-                        <SelectItem value="Procedure">Procedure</SelectItem>
-                        <SelectItem value="Form">Form</SelectItem>
-                        <SelectItem value="Training Material">Training Material</SelectItem>
+                        {docCategories.map(cat => (
+                            <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                        ))}
                     </SelectContent>
                 </Select>
                 <FormMessage />
@@ -185,7 +203,7 @@ export default function DocumentsPage() {
                     <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                         <CardTitle className="text-base font-medium">{doc.title}</CardTitle>
                          <div className="flex flex-col items-end gap-2">
-                            {categoryIcons[doc.category]}
+                            {categoryIcons[doc.category] || <FileQuestion className="h-8 w-8 text-gray-400" />}
                             <Badge variant="outline">{doc.display_id}</Badge>
                         </div>
                     </CardHeader>
