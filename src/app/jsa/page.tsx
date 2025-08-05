@@ -239,28 +239,32 @@ const JsaFormDialog = ({
         <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-4">
           <Card>
             <CardHeader><CardTitle>JSA Details</CardTitle></CardHeader>
-            <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <FormField name="title" control={form.control} render={({ field }) => (
-                  <FormItem><FormLabel>JSA Title</FormLabel><FormControl><Input placeholder="e.g., Operating the hydraulic press" {...field} /></FormControl><FormMessage /></FormItem>
-              )}/>
-              <FormField name="areaId" control={form.control} render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Area / Operation</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select an area or operation" /></SelectTrigger></FormControl>
-                      <SelectContent><AreaSelectOptions areas={areas} /></SelectContent>
-                    </Select><FormMessage />
-                  </FormItem>
-              )}/>
-               <FormField name="job_description" control={form.control} render={({ field }) => (
-                  <FormItem><FormLabel>Job Description</FormLabel><FormControl><Textarea placeholder="Describe the job this JSA is for..." {...field} /></FormControl><FormMessage /></FormItem>
-              )}/>
-              <FormField name="valid_from" control={form.control} render={({ field }) => (
-                  <FormItem><FormLabel>Valid From</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>
-              )}/>
-              <FormField name="valid_to" control={form.control} render={({ field }) => (
-                  <FormItem><FormLabel>Valid To</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>
-              )}/>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-6">
+                    <FormField name="title" control={form.control} render={({ field }) => (
+                        <FormItem><FormLabel>JSA Title</FormLabel><FormControl><Input placeholder="e.g., Operating the hydraulic press" {...field} /></FormControl><FormMessage /></FormItem>
+                    )}/>
+                    <FormField name="areaId" control={form.control} render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Area / Operation</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl><SelectTrigger><SelectValue placeholder="Select an area or operation" /></SelectTrigger></FormControl>
+                            <SelectContent><AreaSelectOptions areas={areas} /></SelectContent>
+                            </Select><FormMessage />
+                        </FormItem>
+                    )}/>
+                </div>
+                 <FormField name="job_description" control={form.control} render={({ field }) => (
+                    <FormItem className="flex flex-col h-full"><FormLabel>Job Description</FormLabel><FormControl><Textarea placeholder="Describe the job this JSA is for..." {...field} className="flex-grow" /></FormControl><FormMessage /></FormItem>
+                )}/>
+                <div className="grid grid-cols-2 gap-6">
+                    <FormField name="valid_from" control={form.control} render={({ field }) => (
+                        <FormItem><FormLabel>Valid From</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>
+                    )}/>
+                    <FormField name="valid_to" control={form.control} render={({ field }) => (
+                        <FormItem><FormLabel>Valid To</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>
+                    )}/>
+                </div>
             </CardContent>
           </Card>
            <Card>
