@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState } from 'react';
@@ -9,7 +10,7 @@ import { useAppData } from '@/context/AppDataContext';
 import { useToast } from '@/hooks/use-toast';
 import type { SafetyDoc, SafetyDocCategory } from '@/types';
 import { docCategories } from '@/types';
-import { Upload, FileText, FileBadge, FileJson, FileQuestion, BookOpen, Shield, HeartPulse, HardHat, Car, Factory, SprayCan, Utensils, Biohazard, Footprints, Users, AlertTriangle, Building, Briefcase, Hand, FileHeart } from 'lucide-react';
+import { Upload, FileText, FileBadge, FileJson, FileQuestion, BookOpen, Shield, HeartPulse, HardHat, Car, Factory, SprayCan, Utensils, Biohazard, Footprints, Users, AlertTriangle, Building, Briefcase, Hand, FileHeart, Flame, FileSearch } from 'lucide-react';
 import Link from 'next/link';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
