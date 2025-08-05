@@ -289,18 +289,18 @@ const JsaFormDialog = ({
 
             <div>
               <h3 className="text-lg font-medium mb-2">Job Steps, Risks, and Controls</h3>
-              <div className="relative w-full overflow-x-auto">
+              <div className="w-full overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[20%] min-w-[200px]">Step Description</TableHead>
-                    <TableHead className="w-[15%] min-w-[200px]">Potential Hazards</TableHead>
-                    <TableHead className="w-[10%] min-w-[150px]">Severity</TableHead>
-                    <TableHead className="w-[10%] min-w-[150px]">Likelihood</TableHead>
-                    <TableHead className="w-[15%] min-w-[200px]">Control Measures</TableHead>
-                    <TableHead className="w-[10%] min-w-[150px]">Principal Hazard</TableHead>
-                    <TableHead className="w-[10%] min-w-[150px]">Tasks</TableHead>
-                    <TableHead className="w-[10%] min-w-[150px]">Comments</TableHead>
+                    <TableHead className="w-[200px] min-w-[200px]">Step Description</TableHead>
+                    <TableHead className="w-[200px] min-w-[200px]">Potential Hazards</TableHead>
+                    <TableHead className="w-[150px] min-w-[150px]">Severity</TableHead>
+                    <TableHead className="w-[150px] min-w-[150px]">Likelihood</TableHead>
+                    <TableHead className="w-[200px] min-w-[200px]">Control Measures</TableHead>
+                    <TableHead className="w-[150px] min-w-[150px]">Principal Hazard</TableHead>
+                    <TableHead className="w-[200px] min-w-[200px]">Tasks</TableHead>
+                    <TableHead className="w-[200px] min-w-[200px]">Comments</TableHead>
                     <TableHead>Risk</TableHead>
                     <TableHead>Remove</TableHead>
                   </TableRow>
