@@ -293,76 +293,48 @@ const JsaFormDialog = ({
 
             <div>
               <h3 className="text-lg font-medium mb-2">Job Steps, Risks, and Controls</h3>
-              <div className="w-full overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="min-w-[200px]">Step Description</TableHead>
-                    <TableHead className="min-w-[200px]">Potential Hazards</TableHead>
-                    <TableHead className="min-w-[150px]">Severity</TableHead>
-                    <TableHead className="min-w-[150px]">Likelihood</TableHead>
-                    <TableHead className="min-w-[200px]">Control Measures</TableHead>
-                    <TableHead className="min-w-[150px]">Principal Hazard</TableHead>
-                    <TableHead className="min-w-[200px]">Tasks</TableHead>
-                    <TableHead className="min-w-[200px]">Comments</TableHead>
-                    <TableHead>Risk</TableHead>
-                    <TableHead>Remove</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                   {fields.map((field, index) => (
-                    <TableRow key={field.id} className="align-top">
-                        <TableCell>
-                          <FormField control={form.control} name={`steps.${index}.step_description`} render={({ field }) => (
-                              <FormItem><FormControl><Textarea placeholder="Describe this step..." {...field} /></FormControl><FormMessage /></FormItem>
-                          )}/>
-                        </TableCell>
-                        <TableCell>
-                           <FormField control={form.control} name={`steps.${index}.hazards`} render={({ field }) => (
-                              <FormItem><FormControl><MultiSelectPopover options={predefinedHazards} selected={field.value} onSelectedChange={field.onChange} placeholder="Select hazards..." /></FormControl><FormMessage /></FormItem>
-                          )}/>
-                        </TableCell>
-                        <TableCell>
-                           <FormField control={form.control} name={`steps.${index}.severity`} render={({ field }) => (
-                              <FormItem><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Low">Low</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="High">High</SelectItem><SelectItem value="Critical">Critical</SelectItem></SelectContent></Select><FormMessage /></FormItem>
-                          )}/>
-                        </TableCell>
-                         <TableCell>
-                           <FormField control={form.control} name={`steps.${index}.likelihood`} render={({ field }) => (
-                              <FormItem><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Unlikely">Unlikely</SelectItem><SelectItem value="Possible">Possible</SelectItem><SelectItem value="Likely">Likely</SelectItem><SelectItem value="Certain">Certain</SelectItem></SelectContent></Select><FormMessage /></FormItem>
-                          )}/>
-                        </TableCell>
-                        <TableCell>
-                          <FormField control={form.control} name={`steps.${index}.controls`} render={({ field }) => (
-                                <FormItem><FormControl><MultiSelectPopover options={predefinedControls} selected={field.value} onSelectedChange={field.onChange} placeholder="Select controls..." /></FormControl><FormMessage /></FormItem>
-                            )}/>
-                        </TableCell>
-                         <TableCell>
-                          <FormField control={form.control} name={`steps.${index}.principal_hazard`} render={({ field }) => (
-                              <FormItem><FormControl><Input placeholder="e.g., Electrocution" {...field} /></FormControl><FormMessage /></FormItem>
-                          )}/>
-                        </TableCell>
-                         <TableCell>
-                          <FormField control={form.control} name={`steps.${index}.tasks`} render={({ field }) => (
-                              <FormItem><FormControl><Textarea placeholder="e.g., LOTO" {...field} /></FormControl><FormMessage /></FormItem>
-                          )}/>
-                        </TableCell>
-                         <TableCell>
-                          <FormField control={form.control} name={`steps.${index}.comments`} render={({ field }) => (
-                              <FormItem><FormControl><Textarea placeholder="Add comments..." {...field} /></FormControl><FormMessage /></FormItem>
-                          )}/>
-                        </TableCell>
-                        <TableCell>
-                          <div className={cn("h-6 w-6 rounded-full", riskColor(form.watch(`steps.${index}.severity`), form.watch(`steps.${index}.likelihood`)))} />
-                        </TableCell>
-                        <TableCell>
-                          {fields.length > 1 && (<Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive" /><span className="sr-only">Remove Step</span></Button>)}
-                        </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              <div className="space-y-4">
+                {fields.map((field, index) => (
+                  <Card key={field.id} className="relative p-4">
+                    <div className="absolute top-2 right-2">
+                      {fields.length > 1 && (<Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive" /><span className="sr-only">Remove Step</span></Button>)}
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <FormField control={form.control} name={`steps.${index}.step_description`} render={({ field }) => (
+                            <FormItem className="md:col-span-3"><FormLabel>Step {index + 1} Description</FormLabel><FormControl><Textarea placeholder="Describe this step..." {...field} /></FormControl><FormMessage /></FormItem>
+                        )}/>
+                         <FormField control={form.control} name={`steps.${index}.hazards`} render={({ field }) => (
+                            <FormItem><FormLabel>Potential Hazards</FormLabel><FormControl><MultiSelectPopover options={predefinedHazards} selected={field.value} onSelectedChange={field.onChange} placeholder="Select hazards..." /></FormControl><FormMessage /></FormItem>
+                        )}/>
+                         <FormField control={form.control} name={`steps.${index}.principal_hazard`} render={({ field }) => (
+                            <FormItem><FormLabel>Principal Hazard</FormLabel><FormControl><Input placeholder="e.g., Electrocution" {...field} /></FormControl><FormMessage /></FormItem>
+                        )}/>
+                        <FormField control={form.control} name={`steps.${index}.controls`} render={({ field }) => (
+                            <FormItem><FormLabel>Control Measures</FormLabel><FormControl><MultiSelectPopover options={predefinedControls} selected={field.value} onSelectedChange={field.onChange} placeholder="Select controls..." /></FormControl><FormMessage /></FormItem>
+                        )}/>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4 items-end">
+                        <FormField control={form.control} name={`steps.${index}.severity`} render={({ field }) => (
+                            <FormItem><FormLabel>Severity</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Low">Low</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="High">High</SelectItem><SelectItem value="Critical">Critical</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                        )}/>
+                        <FormField control={form.control} name={`steps.${index}.likelihood`} render={({ field }) => (
+                            <FormItem><FormLabel>Likelihood</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Unlikely">Unlikely</SelectItem><SelectItem value="Possible">Possible</SelectItem><SelectItem value="Likely">Likely</SelectItem><SelectItem value="Certain">Certain</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                        )}/>
+                        <FormField control={form.control} name={`steps.${index}.tasks`} render={({ field }) => (
+                            <FormItem><FormLabel>Tasks</FormLabel><FormControl><Input placeholder="e.g., LOTO" {...field} /></FormControl><FormMessage /></FormItem>
+                        )}/>
+                        <div className="flex flex-col items-center">
+                            <FormLabel>Risk</FormLabel>
+                            <div className={cn("h-8 w-8 rounded-full mt-2", riskColor(form.watch(`steps.${index}.severity`), form.watch(`steps.${index}.likelihood`)))} />
+                        </div>
+                    </div>
+                     <FormField control={form.control} name={`steps.${index}.comments`} render={({ field }) => (
+                        <FormItem className="mt-4"><FormLabel>Comments</FormLabel><FormControl><Textarea placeholder="Add comments..." {...field} /></FormControl><FormMessage /></FormItem>
+                    )}/>
+                  </Card>
+                ))}
               </div>
+
               <Button type="button" variant="outline" size="sm" onClick={() => append({ step_description: '', hazards: [], controls: [], severity: 'Low', likelihood: 'Unlikely', principal_hazard: '', tasks: '', comments: '' })} className="mt-4"><PlusCircle className="mr-2 h-4 w-4" /> Add Step</Button>
             </div>
         </div>
