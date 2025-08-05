@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState } from 'react';
@@ -7,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAppData } from '@/context/AppDataContext';
-import { PlusCircle, Edit, Trash2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, ChevronsUpDown, Check } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -34,31 +33,98 @@ import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import type { PredefinedControl } from '@/types';
+import type { PredefinedControl, PredefinedHazard } from '@/types';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Command, CommandInput, CommandEmpty, CommandGroup, CommandItem } from '@/components/ui/command';
+import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 const controlFormSchema = z.object({
   text: z.string().min(3, { message: 'Control measure text must be at least 3 characters.' }),
-  reference: z.string().optional(),
+  reference: z.array(z.string()).optional(),
 });
 
 type ControlFormValues = z.infer<typeof controlFormSchema>;
+
+const MultiSelectPopover = ({
+  options,
+  selected,
+  onSelectedChange,
+  placeholder,
+}: {
+  options: PredefinedHazard[];
+  selected: string[];
+  onSelectedChange: (selected: string[]) => void;
+  placeholder: string;
+}) => {
+  const [open, setOpen] = useState(false);
+  
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between h-auto"
+        >
+          <div className="flex flex-wrap gap-1">
+            {selected.length > 0
+              ? selected.map(value => <Badge key={value} variant="secondary">{value}</Badge>)
+              : placeholder}
+          </div>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+        <Command>
+          <CommandInput placeholder="Search hazards..." />
+          <CommandEmpty>No item found.</CommandEmpty>
+          <CommandGroup className="max-h-60 overflow-y-auto">
+            {options.map((option) => (
+              <CommandItem
+                key={option.id}
+                onSelect={() => {
+                  const newSelected = selected.includes(option.text)
+                    ? selected.filter((item) => item !== option.text)
+                    : [...selected, option.text];
+                  onSelectedChange(newSelected);
+                }}
+              >
+                <Check
+                  className={cn(
+                    "mr-2 h-4 w-4",
+                    selected.includes(option.text) ? "opacity-100" : "opacity-0"
+                  )}
+                />
+                {option.text}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};
 
 const ControlForm = ({ 
     item, 
     onSave, 
     setOpen,
     isEdit = false,
+    predefinedHazards,
 }: { 
     item?: PredefinedControl; 
     onSave: (data: ControlFormValues, isEdit: boolean, itemId?: string) => void; 
     setOpen: (open: boolean) => void;
     isEdit?: boolean;
+    predefinedHazards: PredefinedHazard[];
 }) => {
   const form = useForm<ControlFormValues>({
     resolver: zodResolver(controlFormSchema),
     defaultValues: {
       text: item?.text || '',
-      reference: item?.reference || '',
+      reference: item?.reference || [],
     },
   });
 
@@ -93,8 +159,15 @@ const ControlForm = ({
             name="reference"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Reference (Optional)</FormLabel>
-                <FormControl><Input placeholder="e.g., H-1.1, E-5" {...field} /></FormControl>
+                <FormLabel>Hazard Reference (Optional)</FormLabel>
+                <FormControl>
+                  <MultiSelectPopover 
+                    options={predefinedHazards}
+                    selected={field.value || []}
+                    onSelectedChange={field.onChange}
+                    placeholder="Select related hazards..."
+                  />
+                </FormControl>
                 <FormMessage />
               </FormItem>
             )}
@@ -111,17 +184,21 @@ const ControlForm = ({
 
 
 export default function ControlManagementPage() {
-  const { predefinedControls, addPredefinedControl, updatePredefinedControl, removePredefinedControl } = useAppData();
+  const { predefinedControls, addPredefinedControl, updatePredefinedControl, removePredefinedControl, predefinedHazards } = useAppData();
   const [isFormOpen, setFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<PredefinedControl | undefined>(undefined);
   const { toast } = useToast();
 
   const handleSave = (data: ControlFormValues, isEdit: boolean, itemId?: string) => {
+    const controlData = {
+      text: data.text,
+      reference: data.reference || [],
+    };
     if (isEdit && itemId) {
-      updatePredefinedControl({ id: itemId, text: data.text, reference: data.reference });
+      updatePredefinedControl({ id: itemId, ...controlData });
       toast({ title: 'Item Updated', description: 'The control measure has been updated.' });
     } else {
-      addPredefinedControl({ text: data.text, reference: data.reference });
+      addPredefinedControl(controlData);
       toast({ title: 'Item Added', description: 'The new control measure has been added.' });
     }
   };
@@ -150,6 +227,7 @@ export default function ControlManagementPage() {
                 onSave={handleSave}
                 setOpen={setFormOpen}
                 isEdit={!!editingItem}
+                predefinedHazards={predefinedHazards}
               />
             </DialogContent>
           </Dialog>
@@ -159,7 +237,7 @@ export default function ControlManagementPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Control Measure Text</TableHead>
-                <TableHead>Reference</TableHead>
+                <TableHead>Hazard Reference(s)</TableHead>
                 <TableHead className="text-right w-32">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -167,7 +245,15 @@ export default function ControlManagementPage() {
               {predefinedControls.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.text}</TableCell>
-                  <TableCell>{item.reference || 'N/A'}</TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {item.reference && item.reference.length > 0 ? (
+                        item.reference.map(ref => <Badge key={ref} variant="secondary">{ref}</Badge>)
+                      ) : (
+                        <span className="text-muted-foreground">N/A</span>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => openForm(item)}>
                       <Edit className="h-4 w-4" />
