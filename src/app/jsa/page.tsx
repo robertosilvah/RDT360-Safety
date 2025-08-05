@@ -306,7 +306,7 @@ const JsaFormDialog = ({
                             <FormField control={form.control} name={`steps.${index}.step_description`} render={({ field }) => (
                                 <FormItem><FormLabel>Step {index + 1} Description</FormLabel><FormControl><Textarea placeholder="Describe this step of the job..." {...field} /></FormControl><FormMessage /></FormItem>
                             )}/>
-                            <FormField control={form.control} name={`steps.${index}.principal_hazard`} render={({ field }) => (
+                             <FormField control={form.control} name={`steps.${index}.principal_hazard`} render={({ field }) => (
                                 <FormItem><FormLabel>Principal Hazard (Written)</FormLabel><FormControl><Input placeholder="e.g., Electrocution from 480v cables" {...field} /></FormControl><FormMessage /></FormItem>
                             )}/>
                              <FormField control={form.control} name={`steps.${index}.hazards`} render={({ field }) => (
