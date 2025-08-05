@@ -2,6 +2,7 @@
 
 
 
+
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
@@ -278,10 +279,14 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     return api.addComplianceRecord({...record, display_id: displayId});
   };
 
-  const addJsa = (jsaData: Omit<JSA, 'jsa_id' | 'display_id' | 'status' | 'created_by' | 'created_date' | 'signatures'>): Promise<boolean> => {
+  const addJsa = async (jsaData: Omit<JSA, 'jsa_id' | 'display_id' | 'status' | 'created_by' | 'created_date' | 'signatures'>): Promise<boolean> => {
     const displayId = `JSA${String(jsas.length + 1).padStart(3, '0')}`;
-    return api.addJsa(jsaData, displayId);
+    return await api.addJsa(jsaData, displayId);
   };
+
+  const updateJsa = async (updatedJsa: JSA): Promise<boolean> => {
+    return await api.updateJsa(updatedJsa);
+  }
 
   const addHotWorkPermit = (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, locationName: string) => {
     const displayId = `HWP${String(hotWorkPermits.length + 1).padStart(3, '0')}`;
@@ -381,7 +386,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         if(investigation) return api.addDocumentToInvestigation(investigationId, [...investigation.documents, documentData]);
         return Promise.resolve();
       },
-      jsas, addJsa, updateJsa: api.updateJsa,
+      jsas, addJsa, updateJsa,
       hotWorkPermits, addHotWorkPermit,
       updateHotWorkPermit: api.updateHotWorkPermit,
       addCommentToHotWorkPermit,
