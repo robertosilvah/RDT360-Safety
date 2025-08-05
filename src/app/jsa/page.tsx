@@ -1,5 +1,6 @@
 
 
+
 'use client';
 
 import { AppShell } from '@/components/AppShell';
@@ -295,21 +296,23 @@ const JsaFormDialog = ({
               <h3 className="text-lg font-medium mb-2">Job Steps, Risks, and Controls</h3>
               <div className="space-y-4">
                 {fields.map((field, index) => (
-                  <Card key={field.id} className="relative p-4">
+                  <Card key={field.id} className="relative p-4 bg-muted/20">
                     <div className="absolute top-2 right-2">
                       {fields.length > 1 && (<Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive" /><span className="sr-only">Remove Step</span></Button>)}
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <FormField control={form.control} name={`steps.${index}.step_description`} render={({ field }) => (
-                            <FormItem className="md:col-span-3"><FormLabel>Step {index + 1} Description</FormLabel><FormControl><Textarea placeholder="Describe this step..." {...field} /></FormControl><FormMessage /></FormItem>
+                    <div className="grid grid-cols-1 gap-y-4">
+                       <FormField control={form.control} name={`steps.${index}.step_description`} render={({ field }) => (
+                            <FormItem><FormLabel>Step {index + 1} Description</FormLabel><FormControl><Textarea placeholder="Describe this step of the job..." {...field} /></FormControl><FormMessage /></FormItem>
                         )}/>
-                         <FormField control={form.control} name={`steps.${index}.hazards`} render={({ field }) => (
-                            <FormItem><FormLabel>Potential Hazards</FormLabel><FormControl><MultiSelectPopover options={predefinedHazards} selected={field.value} onSelectedChange={field.onChange} placeholder="Select hazards..." /></FormControl><FormMessage /></FormItem>
-                        )}/>
-                         <FormField control={form.control} name={`steps.${index}.principal_hazard`} render={({ field }) => (
-                            <FormItem><FormLabel>Principal Hazard</FormLabel><FormControl><Input placeholder="e.g., Electrocution" {...field} /></FormControl><FormMessage /></FormItem>
-                        )}/>
-                        <FormField control={form.control} name={`steps.${index}.controls`} render={({ field }) => (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <FormField control={form.control} name={`steps.${index}.principal_hazard`} render={({ field }) => (
+                                <FormItem><FormLabel>Principal Hazard (Written)</FormLabel><FormControl><Input placeholder="e.g., Electrocution from 480v cables" {...field} /></FormControl><FormMessage /></FormItem>
+                            )}/>
+                            <FormField control={form.control} name={`steps.${index}.hazards`} render={({ field }) => (
+                                <FormItem><FormLabel>Potential Hazards (Predefined)</FormLabel><FormControl><MultiSelectPopover options={predefinedHazards} selected={field.value} onSelectedChange={field.onChange} placeholder="Select potential hazards..." /></FormControl><FormMessage /></FormItem>
+                            )}/>
+                        </div>
+                         <FormField control={form.control} name={`steps.${index}.controls`} render={({ field }) => (
                             <FormItem><FormLabel>Control Measures</FormLabel><FormControl><MultiSelectPopover options={predefinedControls} selected={field.value} onSelectedChange={field.onChange} placeholder="Select controls..." /></FormControl><FormMessage /></FormItem>
                         )}/>
                     </div>
@@ -321,7 +324,7 @@ const JsaFormDialog = ({
                             <FormItem><FormLabel>Likelihood</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Unlikely">Unlikely</SelectItem><SelectItem value="Possible">Possible</SelectItem><SelectItem value="Likely">Likely</SelectItem><SelectItem value="Certain">Certain</SelectItem></SelectContent></Select><FormMessage /></FormItem>
                         )}/>
                         <FormField control={form.control} name={`steps.${index}.tasks`} render={({ field }) => (
-                            <FormItem><FormLabel>Tasks</FormLabel><FormControl><Input placeholder="e.g., LOTO" {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>Tasks</FormLabel><FormControl><Input placeholder="e.g., LOTO, Barricade" {...field} /></FormControl><FormMessage /></FormItem>
                         )}/>
                         <div className="flex flex-col items-center">
                             <FormLabel>Risk</FormLabel>
@@ -329,7 +332,7 @@ const JsaFormDialog = ({
                         </div>
                     </div>
                      <FormField control={form.control} name={`steps.${index}.comments`} render={({ field }) => (
-                        <FormItem className="mt-4"><FormLabel>Comments</FormLabel><FormControl><Textarea placeholder="Add comments..." {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem className="mt-4"><FormLabel>Comments</FormLabel><FormControl><Textarea placeholder="Add any additional comments for this step..." {...field} /></FormControl><FormMessage /></FormItem>
                     )}/>
                   </Card>
                 ))}

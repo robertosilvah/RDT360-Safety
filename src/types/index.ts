@@ -314,6 +314,7 @@ export type PredefinedHazard = {
 export type PredefinedControl = {
   id: string;
   text: string;
+  reference?: string;
 };
 
 export type BrandingSettings = {

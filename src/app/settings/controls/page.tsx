@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState } from 'react';
@@ -37,6 +38,7 @@ import type { PredefinedControl } from '@/types';
 
 const controlFormSchema = z.object({
   text: z.string().min(3, { message: 'Control measure text must be at least 3 characters.' }),
+  reference: z.string().optional(),
 });
 
 type ControlFormValues = z.infer<typeof controlFormSchema>;
@@ -56,6 +58,7 @@ const ControlForm = ({
     resolver: zodResolver(controlFormSchema),
     defaultValues: {
       text: item?.text || '',
+      reference: item?.reference || '',
     },
   });
 
@@ -85,6 +88,17 @@ const ControlForm = ({
               </FormItem>
             )}
           />
+          <FormField
+            control={form.control}
+            name="reference"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Reference (Optional)</FormLabel>
+                <FormControl><Input placeholder="e.g., H-1.1, E-5" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
         </div>
         <DialogFooter>
           <Button type="button" variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
@@ -104,10 +118,10 @@ export default function ControlManagementPage() {
 
   const handleSave = (data: ControlFormValues, isEdit: boolean, itemId?: string) => {
     if (isEdit && itemId) {
-      updatePredefinedControl({ id: itemId, text: data.text });
+      updatePredefinedControl({ id: itemId, text: data.text, reference: data.reference });
       toast({ title: 'Item Updated', description: 'The control measure has been updated.' });
     } else {
-      addPredefinedControl({ text: data.text });
+      addPredefinedControl({ text: data.text, reference: data.reference });
       toast({ title: 'Item Added', description: 'The new control measure has been added.' });
     }
   };
@@ -145,6 +159,7 @@ export default function ControlManagementPage() {
             <TableHeader>
               <TableRow>
                 <TableHead>Control Measure Text</TableHead>
+                <TableHead>Reference</TableHead>
                 <TableHead className="text-right w-32">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -152,6 +167,7 @@ export default function ControlManagementPage() {
               {predefinedControls.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell className="font-medium">{item.text}</TableCell>
+                  <TableCell>{item.reference || 'N/A'}</TableCell>
                   <TableCell className="text-right">
                     <Button variant="ghost" size="icon" onClick={() => openForm(item)}>
                       <Edit className="h-4 w-4" />
