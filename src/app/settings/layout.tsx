@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Truck, ListChecks, FolderTree, Paintbrush, Upload, Database, Shield } from 'lucide-react';
+import { Users, Truck, ListChecks, FolderTree, Paintbrush, Upload, Database, Shield, AlertTriangle, ShieldCheck } from 'lucide-react';
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
     const pathname = usePathname();
@@ -15,6 +15,8 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
         : pathname.includes('/groups') ? 'groups'
         : pathname.includes('/forklifts') ? 'forklifts' 
         : pathname.includes('/checklist') ? 'checklist' 
+        : pathname.includes('/hazards') ? 'hazards'
+        : pathname.includes('/controls') ? 'controls'
         : pathname.includes('/areas') ? 'areas'
         : pathname.includes('/branding') ? 'branding'
         : pathname.includes('/uploads') ? 'uploads'
@@ -56,7 +58,17 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
                         </TabsTrigger>
                         <TabsTrigger value="checklist" asChild>
                            <Link href="/settings/checklist">
-                               <ListChecks className="mr-2 h-4 w-4" /> Checklist Items
+                               <ListChecks className="mr-2 h-4 w-4" /> Safety Walk Items
+                           </Link>
+                        </TabsTrigger>
+                         <TabsTrigger value="hazards" asChild>
+                           <Link href="/settings/hazards">
+                               <AlertTriangle className="mr-2 h-4 w-4" /> JSA Hazards
+                           </Link>
+                        </TabsTrigger>
+                         <TabsTrigger value="controls" asChild>
+                           <Link href="/settings/controls">
+                               <ShieldCheck className="mr-2 h-4 w-4" /> JSA Controls
                            </Link>
                         </TabsTrigger>
                         <TabsTrigger value="branding" asChild>

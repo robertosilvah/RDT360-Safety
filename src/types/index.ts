@@ -2,6 +2,7 @@
 
 
 
+
 export type TalkSection = {
   na: boolean;
   details: string;
@@ -172,6 +173,8 @@ export type JsaStep = {
   step_description: string;
   hazards: string[];
   controls: string[];
+  severity: 'Low' | 'Medium' | 'High' | 'Critical';
+  likelihood: 'Unlikely' | 'Possible' | 'Likely' | 'Certain';
 };
 
 export type JSA = {
@@ -240,7 +243,7 @@ export type ConfinedSpacePermitChecklist = {
   atmospheric_testing_ok: 'Yes' | 'No';
   oxygen_level: string; // e.g., "20.9%"
   combustible_gases_level: string; // e.g., "<10% LEL"
-  toxic_gases_level: string; // e.g., "0 ppm H2S"
+  toxic_gases_level: string; // e.g., "< PEL"
 };
 
 export type ConfinedSpacePermit = {
@@ -296,6 +299,16 @@ export type User = {
 };
 
 export type PredefinedChecklistItem = {
+  id: string;
+  text: string;
+};
+
+export type PredefinedHazard = {
+  id: string;
+  text: string;
+};
+
+export type PredefinedControl = {
   id: string;
   text: string;
 };

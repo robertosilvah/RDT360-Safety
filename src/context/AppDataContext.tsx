@@ -1,10 +1,11 @@
 
 
 
+
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, IncidentData, ConfinedSpacePermit, WorkHoursLog, ToolboxTalk, ToolboxSignature } from '@/types';
+import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, IncidentData, ConfinedSpacePermit, WorkHoursLog, ToolboxTalk, ToolboxSignature, PredefinedHazard, PredefinedControl } from '@/types';
 import api from '@/services/backend';
 
 interface AppDataContextType {
@@ -40,6 +41,14 @@ interface AppDataContextType {
   addPredefinedChecklistItem: (item: Omit<PredefinedChecklistItem, 'id'>) => Promise<void>;
   updatePredefinedChecklistItem: (item: PredefinedChecklistItem) => Promise<void>;
   removePredefinedChecklistItem: (itemId: string) => Promise<void>;
+  predefinedHazards: PredefinedHazard[];
+  addPredefinedHazard: (item: Omit<PredefinedHazard, 'id'>) => Promise<void>;
+  updatePredefinedHazard: (item: PredefinedHazard) => Promise<void>;
+  removePredefinedHazard: (itemId: string) => Promise<void>;
+  predefinedControls: PredefinedControl[];
+  addPredefinedControl: (item: Omit<PredefinedControl, 'id'>) => Promise<void>;
+  updatePredefinedControl: (item: PredefinedControl) => Promise<void>;
+  removePredefinedControl: (itemId: string) => Promise<void>;
   areas: Area[];
   addArea: (area: Omit<Area, 'area_id' | 'children'>, parentId?: string | null) => Promise<void>;
   updateArea: (updatedArea: Area) => Promise<void>;
@@ -89,6 +98,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [forklifts, setForklifts] = useState<Forklift[]>([]);
   const [predefinedChecklistItems, setPredefinedChecklistItems] = useState<PredefinedChecklistItem[]>([]);
+  const [predefinedHazards, setPredefinedHazards] = useState<PredefinedHazard[]>([]);
+  const [predefinedControls, setPredefinedControls] = useState<PredefinedControl[]>([]);
   const [areas, setAreas] = useState<Area[]>([]);
   const [safetyDocs, setSafetyDocs] = useState<SafetyDoc[]>([]);
   const [complianceRecords, setComplianceRecords] = useState<ComplianceRecord[]>([]);
@@ -128,6 +139,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         api.subscribeToCollection<User>('users', setUsers, 'id'),
         api.subscribeToCollection<Forklift>('forklifts', setForklifts, 'id'),
         api.subscribeToCollection<PredefinedChecklistItem>('predefinedChecklistItems', setPredefinedChecklistItems, 'id'),
+        api.subscribeToCollection<PredefinedHazard>('predefinedHazards', setPredefinedHazards, 'id'),
+        api.subscribeToCollection<PredefinedControl>('predefinedControls', setPredefinedControls, 'id'),
         api.subscribeToCollection<Area>('areas', (allAreas) => {
             const areaMap = new Map<string, Area>();
             const rootAreas: Area[] = [];
@@ -341,6 +354,14 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       addPredefinedChecklistItem: api.addPredefinedChecklistItem,
       updatePredefinedChecklistItem: api.updatePredefinedChecklistItem,
       removePredefinedChecklistItem: api.removePredefinedChecklistItem,
+      predefinedHazards,
+      addPredefinedHazard: api.addPredefinedHazard,
+      updatePredefinedHazard: api.updatePredefinedHazard,
+      removePredefinedHazard: api.removePredefinedHazard,
+      predefinedControls,
+      addPredefinedControl: api.addPredefinedControl,
+      updatePredefinedControl: api.updatePredefinedControl,
+      removePredefinedControl: api.removePredefinedControl,
       areas, addArea,
       updateArea: api.updateArea,
       deleteArea,

@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
-import type { JSA, Area } from '@/types';
-import { PlusCircle, Users, Shield, FileSignature, Edit, UserCheck, Trash2, MapPin, Share2, Printer, Wand2, Loader2, Clock, MoreVertical, Copy } from 'lucide-react';
+import type { JSA, Area, PredefinedHazard, PredefinedControl } from '@/types';
+import { PlusCircle, Users, Shield, FileSignature, Edit, UserCheck, Trash2, MapPin, Share2, Printer, Wand2, Loader2, Clock, MoreVertical, Copy, Check } from 'lucide-react';
 import React, { useState, useEffect, Suspense } from 'react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -29,12 +29,19 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/components/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
+import { ChevronsUpDown } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const jsaStepSchema = z.object({
   step_description: z.string().min(1, { message: 'Step description cannot be empty.' }),
-  hazards: z.string().min(1, { message: 'Please list at least one hazard.' }),
-  controls: z.string().min(1, { message: 'Please list at least one control measure.' }),
+  hazards: z.array(z.string()).min(1, { message: 'Please select at least one hazard.' }),
+  controls: z.array(z.string()).min(1, { message: 'Please select at least one control measure.' }),
+  severity: z.enum(['Low', 'Medium', 'High', 'Critical']),
+  likelihood: z.enum(['Unlikely', 'Possible', 'Likely', 'Certain']),
 });
 
 const jsaFormSchema = z.object({
@@ -82,8 +89,70 @@ const AreaSelectOptions = ({ areas, level = 0 }: { areas: Area[]; level?: number
 };
 
 
+const MultiSelectPopover = ({
+  options,
+  selected,
+  onSelectedChange,
+  placeholder,
+}: {
+  options: { id: string, text: string }[];
+  selected: string[];
+  onSelectedChange: (selected: string[]) => void;
+  placeholder: string;
+}) => {
+  const [open, setOpen] = useState(false);
+  
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full justify-between h-auto min-h-10 text-wrap"
+        >
+          <div className="flex flex-wrap gap-1">
+            {selected.length > 0
+              ? selected.map(value => <Badge key={value} variant="secondary">{value}</Badge>)
+              : placeholder}
+          </div>
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+        <Command>
+          <CommandInput placeholder="Search..." />
+          <CommandEmpty>No item found.</CommandEmpty>
+          <CommandGroup className="max-h-60 overflow-y-auto">
+            {options.map((option) => (
+              <CommandItem
+                key={option.id}
+                onSelect={() => {
+                  const newSelected = selected.includes(option.text)
+                    ? selected.filter((item) => item !== option.text)
+                    : [...selected, option.text];
+                  onSelectedChange(newSelected);
+                }}
+              >
+                <Check
+                  className={cn(
+                    "mr-2 h-4 w-4",
+                    selected.includes(option.text) ? "opacity-100" : "opacity-0"
+                  )}
+                />
+                {option.text}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
+};
+
+
 const JsaFormDialog = ({
-    isOpen, onOpenChange, onSave, jsa, mode, areas
+    isOpen, onOpenChange, onSave, jsa, mode, areas, predefinedHazards, predefinedControls
 } : {
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
@@ -91,11 +160,15 @@ const JsaFormDialog = ({
     jsa: JSA | null;
     mode: 'create' | 'edit' | 'copy';
     areas: Area[];
+    predefinedHazards: PredefinedHazard[];
+    predefinedControls: PredefinedControl[];
 }) => {
   const form = useForm<JsaFormValues>({
     resolver: zodResolver(jsaFormSchema),
     defaultValues: {
-      title: '', job_description: '', required_ppe: [], other_ppe: '', areaId: '', steps: [{ step_description: '', hazards: '', controls: '' }], valid_from: '', valid_to: ''
+      title: '', job_description: '', required_ppe: [], other_ppe: '', areaId: '', 
+      steps: [{ step_description: '', hazards: [], controls: [], severity: 'Low', likelihood: 'Unlikely' }], 
+      valid_from: '', valid_to: ''
     },
   });
 
@@ -108,13 +181,15 @@ const JsaFormDialog = ({
                 areaId: jsa.areaId,
                 required_ppe: jsa.required_ppe.filter(ppe => PREDEFINED_PPE.some(p => p.label === ppe)),
                 other_ppe: jsa.required_ppe.filter(ppe => !PREDEFINED_PPE.some(p => p.label === ppe)).join(', '),
-                steps: jsa.steps.map(s => ({...s, hazards: s.hazards.join(', '), controls: s.controls.join(', ')})),
+                steps: jsa.steps,
                 valid_from: mode === 'copy' ? '' : format(new Date(jsa.valid_from), "yyyy-MM-dd'T'HH:mm"),
                 valid_to: mode === 'copy' ? '' : format(new Date(jsa.valid_to), "yyyy-MM-dd'T'HH:mm"),
             });
         } else {
             form.reset({
-              title: '', job_description: '', required_ppe: [], other_ppe: '', areaId: '', steps: [{ step_description: '', hazards: '', controls: '' }], valid_from: '', valid_to: ''
+              title: '', job_description: '', required_ppe: [], other_ppe: '', areaId: '', 
+              steps: [{ step_description: '', hazards: [], controls: [], severity: 'Low', likelihood: 'Unlikely' }], 
+              valid_from: '', valid_to: ''
             });
         }
     }
@@ -133,81 +208,131 @@ const JsaFormDialog = ({
   const dialogDescription = mode === 'edit' ? `Update the details for JSA: ${jsa?.display_id}`
     : mode === 'copy' ? `Create a new JSA based on ${jsa?.display_id}. Please update the validity dates.`
     : 'Fill in the details below. For fields that accept multiple items, please use commas.';
+    
+  const riskColor = (severity: string, likelihood: string) => {
+    const severityMap: { [key: string]: number } = { 'Low': 1, 'Medium': 2, 'High': 3, 'Critical': 4 };
+    const likelihoodMap: { [key: string]: number } = { 'Unlikely': 1, 'Possible': 2, 'Likely': 3, 'Certain': 4 };
+    const score = (severityMap[severity] || 1) * (likelihoodMap[likelihood] || 1);
+    if (score >= 9) return 'bg-red-500';
+    if (score >= 4) return 'bg-yellow-500';
+    return 'bg-green-500';
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-    <DialogContent className="max-w-4xl">
+    <DialogContent className="max-w-7xl">
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <DialogHeader>
           <DialogTitle>{dialogTitle}</DialogTitle>
           <DialogDescription>{dialogDescription}</DialogDescription>
         </DialogHeader>
-        <div className="max-h-[60vh] overflow-y-auto pr-4 space-y-4">
-            <FormField name="title" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>JSA Title</FormLabel><FormControl><Input placeholder="e.g., Operating the hydraulic press" {...field} /></FormControl><FormMessage /></FormItem>
-            )}/>
-            <FormField name="areaId" control={form.control} render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Area / Operation</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl><SelectTrigger><SelectValue placeholder="Select an area or operation" /></SelectTrigger></FormControl>
-                    <SelectContent><AreaSelectOptions areas={areas} /></SelectContent>
-                  </Select><FormMessage />
-                </FormItem>
-            )}/>
-            <FormField name="job_description" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Job Description</FormLabel><FormControl><Textarea placeholder="Describe the job this JSA is for..." {...field} /></FormControl><FormMessage /></FormItem>
-            )}/>
-             <div className="grid grid-cols-2 gap-4">
-                <FormField name="valid_from" control={form.control} render={({ field }) => (
-                    <FormItem><FormLabel>Valid From</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>
-                )}/>
-                <FormField name="valid_to" control={form.control} render={({ field }) => (
-                    <FormItem><FormLabel>Valid To</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>
-                )}/>
-            </div>
-             <FormField name="required_ppe" control={form.control} render={() => (
-                <FormItem>
-                  <div className="mb-4"><FormLabel className="text-base">Required PPE</FormLabel><FormDescription>Select all common PPE that apply.</FormDescription></div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {PREDEFINED_PPE.map((item) => (
-                      <FormField key={item.id} control={form.control} name="required_ppe" render={({ field }) => (
-                            <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
-                              <FormControl><Checkbox checked={field.value?.includes(item.label)} onCheckedChange={(checked) => checked ? field.onChange([...(field.value || []), item.label]) : field.onChange(field.value?.filter((value) => value !== item.label))}/></FormControl>
-                              <FormLabel className="font-normal">{item.label}</FormLabel>
-                            </FormItem>
-                      )}/>
-                    ))}
-                  </div><FormMessage />
-                </FormItem>
-            )}/>
-            <FormField name="other_ppe" control={form.control} render={({ field }) => (
-                <FormItem><FormLabel>Other PPE (comma-separated)</FormLabel><FormControl><Input placeholder="e.g., Face shield, Respirator" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
-            )}/>
-            <Separator />
+        <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-4">
+          <Card>
+            <CardHeader><CardTitle>JSA Details</CardTitle></CardHeader>
+            <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <FormField name="title" control={form.control} render={({ field }) => (
+                  <FormItem><FormLabel>JSA Title</FormLabel><FormControl><Input placeholder="e.g., Operating the hydraulic press" {...field} /></FormControl><FormMessage /></FormItem>
+              )}/>
+              <FormField name="areaId" control={form.control} render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Area / Operation</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Select an area or operation" /></SelectTrigger></FormControl>
+                      <SelectContent><AreaSelectOptions areas={areas} /></SelectContent>
+                    </Select><FormMessage />
+                  </FormItem>
+              )}/>
+               <FormField name="job_description" control={form.control} render={({ field }) => (
+                  <FormItem><FormLabel>Job Description</FormLabel><FormControl><Textarea placeholder="Describe the job this JSA is for..." {...field} /></FormControl><FormMessage /></FormItem>
+              )}/>
+              <FormField name="valid_from" control={form.control} render={({ field }) => (
+                  <FormItem><FormLabel>Valid From</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>
+              )}/>
+              <FormField name="valid_to" control={form.control} render={({ field }) => (
+                  <FormItem><FormLabel>Valid To</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>
+              )}/>
+            </CardContent>
+          </Card>
+           <Card>
+              <CardHeader><CardTitle>Personal Protective Equipment (PPE)</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                 <FormField name="required_ppe" control={form.control} render={() => (
+                  <FormItem>
+                    <div className="mb-4"><FormLabel className="text-base">Common PPE</FormLabel><FormDescription>Select all that apply.</FormDescription></div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {PREDEFINED_PPE.map((item) => (
+                        <FormField key={item.id} control={form.control} name="required_ppe" render={({ field }) => (
+                              <FormItem key={item.id} className="flex flex-row items-start space-x-3 space-y-0">
+                                <FormControl><Checkbox checked={field.value?.includes(item.label)} onCheckedChange={(checked) => checked ? field.onChange([...(field.value || []), item.label]) : field.onChange(field.value?.filter((value) => value !== item.label))}/></FormControl>
+                                <FormLabel className="font-normal">{item.label}</FormLabel>
+                              </FormItem>
+                        )}/>
+                      ))}
+                    </div><FormMessage />
+                  </FormItem>
+              )}/>
+              <FormField name="other_ppe" control={form.control} render={({ field }) => (
+                  <FormItem><FormLabel>Other PPE (comma-separated)</FormLabel><FormControl><Input placeholder="e.g., Face shield, Respirator" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>
+              )}/>
+            </CardContent>
+           </Card>
+
             <div>
-              <h3 className="text-lg font-medium mb-2">Job Steps</h3>
-              {fields.map((field, index) => (
-                <Card key={field.id} className="mb-4 p-4 relative bg-muted/30">
-                   <div className="space-y-4">
-                     <p className="font-semibold">Step {index + 1}</p>
-                     <FormField control={form.control} name={`steps.${index}.step_description`} render={({ field }) => (
-                        <FormItem><FormLabel>Step Description</FormLabel><FormControl><Textarea placeholder="Describe this step..." {...field} /></FormControl><FormMessage /></FormItem>
-                     )}/>
-                     <FormField control={form.control} name={`steps.${index}.hazards`} render={({ field }) => (
-                        <FormItem><FormLabel>Potential Hazards (comma-separated)</FormLabel><FormControl><Input placeholder="e.g., Pinch points, Loud noise" {...field} /></FormControl><FormMessage /></FormItem>
-                     )}/>
-                     <FormField control={form.control} name={`steps.${index}.controls`} render={({ field }) => (
-                        <FormItem><FormLabel>Control Measures (comma-separated)</FormLabel><FormControl><Input placeholder="e.g., Use two-hand controls, Wear ear protection" {...field} /></FormControl><FormMessage /></FormItem>
-                     )}/>
-                   </div>
-                   {fields.length > 1 && (
-                     <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive" /><span className="sr-only">Remove Step</span></Button>
-                   )}
-                </Card>
-              ))}
-              <Button type="button" variant="outline" size="sm" onClick={() => append({ step_description: '', hazards: '', controls: '' })}><PlusCircle className="mr-2 h-4 w-4" /> Add Step</Button>
+              <h3 className="text-lg font-medium mb-2">Job Steps, Risks, and Controls</h3>
+              <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[250px] w-1/4">Step Description</TableHead>
+                    <TableHead className="min-w-[250px] w-1/4">Potential Hazards</TableHead>
+                    <TableHead className="w-1/6">Severity</TableHead>
+                    <TableHead className="w-1/6">Likelihood</TableHead>
+                    <TableHead className="min-w-[250px] w-1/4">Control Measures</TableHead>
+                    <TableHead>Risk</TableHead>
+                    <TableHead className="w-12">Action</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                   {fields.map((field, index) => (
+                    <TableRow key={field.id}>
+                        <TableCell>
+                          <FormField control={form.control} name={`steps.${index}.step_description`} render={({ field }) => (
+                              <FormItem><FormControl><Textarea placeholder="Describe this step..." {...field} /></FormControl><FormMessage /></FormItem>
+                          )}/>
+                        </TableCell>
+                        <TableCell>
+                           <FormField control={form.control} name={`steps.${index}.hazards`} render={({ field }) => (
+                              <FormItem><FormControl><MultiSelectPopover options={predefinedHazards} selected={field.value} onSelectedChange={field.onChange} placeholder="Select hazards..." /></FormControl><FormMessage /></FormItem>
+                          )}/>
+                        </TableCell>
+                        <TableCell>
+                           <FormField control={form.control} name={`steps.${index}.severity`} render={({ field }) => (
+                              <FormItem><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Low">Low</SelectItem><SelectItem value="Medium">Medium</SelectItem><SelectItem value="High">High</SelectItem><SelectItem value="Critical">Critical</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                          )}/>
+                        </TableCell>
+                         <TableCell>
+                           <FormField control={form.control} name={`steps.${index}.likelihood`} render={({ field }) => (
+                              <FormItem><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="Unlikely">Unlikely</SelectItem><SelectItem value="Possible">Possible</SelectItem><SelectItem value="Likely">Likely</SelectItem><SelectItem value="Certain">Certain</SelectItem></SelectContent></Select><FormMessage /></FormItem>
+                          )}/>
+                        </TableCell>
+                        <TableCell>
+                          <FormField control={form.control} name={`steps.${index}.controls`} render={({ field }) => (
+                                <FormItem><FormControl><MultiSelectPopover options={predefinedControls} selected={field.value} onSelectedChange={field.onChange} placeholder="Select controls..." /></FormControl><FormMessage /></FormItem>
+                            )}/>
+                        </TableCell>
+                        <TableCell>
+                          <div className={cn("h-6 w-6 rounded-full", riskColor(form.watch(`steps.${index}.severity`), form.watch(`steps.${index}.likelihood`)))} />
+                        </TableCell>
+                        <TableCell>
+                          {fields.length > 1 && (<Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive" /><span className="sr-only">Remove Step</span></Button>)}
+                        </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={() => append({ step_description: '', hazards: [], controls: [], severity: 'Low', likelihood: 'Unlikely' })} className="mt-4"><PlusCircle className="mr-2 h-4 w-4" /> Add Step</Button>
             </div>
         </div>
         <DialogFooter><Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button><Button type="submit">Save & Close</Button></DialogFooter>
@@ -258,7 +383,7 @@ const JsaDetailsDialog = ({ jsa, isOpen, onOpenChange, onSign, onShare, currentU
         try {
             const result = await getJsaAnalysisAction({
                 title: jsa.title, jobDescription: jsa.job_description, requiredPpe: jsa.required_ppe.join(', '),
-                steps: jsa.steps.map(step => ({ step_description: step.step_description, hazards: step.hazards.join(', '), controls: step.controls.join(', ') })),
+                steps: jsa.steps.map(step => ({ ...step, step_description: step.step_description, hazards: step.hazards.join(', '), controls: step.controls.join(', ') })),
             });
             if (result.analysis) setAnalysisResult(result.analysis);
             else toast({ variant: "destructive", title: "Analysis Failed", description: "The AI analysis returned no result." });
@@ -379,7 +504,7 @@ const PageSkeleton = () => (
 
 const JsaPageContent = () => {
     const MOCKED_CURRENT_USER = "Sarah Miller";
-    const { jsas, addJsa, updateJsa, areas } = useAppData();
+    const { jsas, addJsa, updateJsa, areas, predefinedHazards, predefinedControls } = useAppData();
     const { toast } = useToast();
     const searchParams = useSearchParams();
     
@@ -437,19 +562,13 @@ const JsaPageContent = () => {
         try {
             const otherPpeItems = data.other_ppe?.split(',').map(s => s.trim()).filter(Boolean) || [];
             const allPpe = [...(data.required_ppe || []), ...otherPpeItems];
-
-            const transformedSteps = data.steps.map(step => ({
-                step_description: step.step_description,
-                hazards: step.hazards.split(',').map(s => s.trim()).filter(Boolean),
-                controls: step.controls.split(',').map(s => s.trim()).filter(Boolean),
-            }));
             
             const baseJsaData = {
                 title: data.title,
                 job_description: data.job_description,
                 areaId: data.areaId,
                 required_ppe: allPpe,
-                steps: transformedSteps,
+                steps: data.steps,
                 valid_from: new Date(data.valid_from).toISOString(),
                 valid_to: new Date(data.valid_to).toISOString(),
             };
@@ -504,6 +623,8 @@ const JsaPageContent = () => {
                 jsa={selectedJsa}
                 mode={formMode}
                 areas={areas}
+                predefinedHazards={predefinedHazards}
+                predefinedControls={predefinedControls}
             />
 
             <JsaDetailsDialog
