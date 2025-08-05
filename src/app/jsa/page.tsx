@@ -289,7 +289,7 @@ const JsaFormDialog = ({
 
             <div>
               <h3 className="text-lg font-medium mb-2">Job Steps, Risks, and Controls</h3>
-              <div className="overflow-x-auto">
+              <div className="relative w-full overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
