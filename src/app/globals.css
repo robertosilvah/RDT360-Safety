@@ -84,6 +84,18 @@
 }
 
 @media print {
+  body {
+    background-color: white !important;
+  }
+  .printable-area {
+    display: block;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
+
+@media print {
   body * {
     visibility: hidden;
   }
@@ -124,3 +136,9 @@
     justify-content: center;
   }
 }
+
+@page {
+  size: auto;
+  margin: 0.5in;
+}
+

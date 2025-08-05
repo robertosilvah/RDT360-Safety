@@ -37,6 +37,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '
 import { ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
+import Link from 'next/link';
 
 const jsaStepSchema = z.object({
   step_description: z.string().min(1, { message: 'Step description cannot be empty.' }),
@@ -386,8 +387,6 @@ const JsaDetailsDialog = ({ jsa, isOpen, onOpenChange, onSign, onShare, currentU
         }
     };
     
-    const handlePrint = () => window.print();
-
     const handleAiAnalysis = async () => {
         setIsAnalyzing(true); setAnalysisResult(null);
         try {
@@ -411,14 +410,14 @@ const JsaDetailsDialog = ({ jsa, isOpen, onOpenChange, onSign, onShare, currentU
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col printable-area">
+            <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
                 <div>
                     <DialogHeader>
                         <DialogTitle className="text-2xl flex items-center justify-between gap-2">
                             <span className="flex items-center gap-2"><FileSignature /> {jsa.title}</span>
                              <div className="flex items-center gap-1 no-print">
                                 <Button type="button" variant="ghost" size="icon" onClick={onShare}><Share2 className="h-5 w-5" /><span className="sr-only">Share</span></Button>
-                                <Button type="button" variant="ghost" size="icon" onClick={handlePrint}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
+                                <Button variant="outline" asChild><Link href={`/jsa/${jsa.jsa_id}`} target="_blank"><Printer className="mr-2 h-4 w-4" />Print</Link></Button>
                              </div>
                         </DialogTitle>
                         <DialogDescription>{jsa.job_description}</DialogDescription>

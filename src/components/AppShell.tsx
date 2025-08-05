@@ -153,7 +153,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           <SidebarMenuSub>
                             {item.items.map((subItem) => (
                               <SidebarMenuSubItem key={subItem.href}>
-                                <SidebarMenuSubButton asChild isActive={pathname === subItem.href}>
+                                <SidebarMenuSubButton asChild isActive={pathname.startsWith(subItem.href)}>
                                   <Link href={subItem.href}>
                                     <subItem.icon />
                                     <span>{subItem.label}</span>
