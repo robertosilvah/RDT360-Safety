@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { AppShell } from '@/components/AppShell';
@@ -292,21 +293,21 @@ const JsaFormDialog = ({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[250px] w-1/4">Step Description</TableHead>
-                    <TableHead className="min-w-[250px] w-1/4">Potential Hazards</TableHead>
-                    <TableHead className="w-1/6">Severity</TableHead>
-                    <TableHead className="w-1/6">Likelihood</TableHead>
-                    <TableHead className="min-w-[250px] w-1/4">Control Measures</TableHead>
-                    <TableHead className="w-1/6">Principal Hazard</TableHead>
-                    <TableHead className="min-w-[200px]">Tasks</TableHead>
-                    <TableHead className="min-w-[200px]">Comments</TableHead>
+                    <TableHead className="w-[20%] min-w-[200px]">Step Description</TableHead>
+                    <TableHead className="w-[15%] min-w-[200px]">Potential Hazards</TableHead>
+                    <TableHead className="w-[10%] min-w-[150px]">Severity</TableHead>
+                    <TableHead className="w-[10%] min-w-[150px]">Likelihood</TableHead>
+                    <TableHead className="w-[15%] min-w-[200px]">Control Measures</TableHead>
+                    <TableHead className="w-[10%] min-w-[150px]">Principal Hazard</TableHead>
+                    <TableHead className="w-[10%] min-w-[150px]">Tasks</TableHead>
+                    <TableHead className="w-[10%] min-w-[150px]">Comments</TableHead>
                     <TableHead>Risk</TableHead>
-                    <TableHead className="w-12">Remove</TableHead>
+                    <TableHead>Remove</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                    {fields.map((field, index) => (
-                    <TableRow key={field.id}>
+                    <TableRow key={field.id} className="align-top">
                         <TableCell>
                           <FormField control={form.control} name={`steps.${index}.step_description`} render={({ field }) => (
                               <FormItem><FormControl><Textarea placeholder="Describe this step..." {...field} /></FormControl><FormMessage /></FormItem>
