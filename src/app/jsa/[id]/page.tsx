@@ -385,7 +385,12 @@ const JsaDetailsDialog = ({ jsa, isOpen, onOpenChange, onSign, onShare, currentU
         }
     };
     
-    const handlePrint = () => window.print();
+    const handlePrint = () => {
+        // Wait for state to update and UI to render before printing
+        setTimeout(() => {
+            window.print();
+        }, 100);
+    };
 
     const handleAiAnalysis = async () => {
         setIsAnalyzing(true); setAnalysisResult(null);
@@ -411,7 +416,7 @@ const JsaDetailsDialog = ({ jsa, isOpen, onOpenChange, onSign, onShare, currentU
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
-                <div className="printable-area">
+                <div className="printable-area flex-1 flex flex-col min-h-0">
                     <DialogHeader>
                         <DialogTitle className="text-2xl flex items-center justify-between gap-2">
                             <span className="flex items-center gap-2"><FileSignature /> {jsa.title}</span>
@@ -600,7 +605,7 @@ const JsaPageContent = () => {
     }
 
     const handleShare = (jsaId: string) => {
-        const url = `${window.location.origin}/jsa?id=${jsaId}`;
+        const url = `${window.location.origin}/jsa/${jsaId}`;
         navigator.clipboard.writeText(url).then(() => {
             toast({ title: "Link Copied", description: "A shareable link has been copied to your clipboard." });
         });
