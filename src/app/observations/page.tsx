@@ -25,7 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
-import { Camera, Eye, Siren, UserIcon, Users, FileText, ClipboardCheck, Upload, Download, Trash2, Edit, Wrench, FilePlus2 } from 'lucide-react';
+import { Camera, Eye, Siren, User as UserIcon, Users, FileText, ClipboardCheck, Upload, Download, Trash2, Edit, Wrench, FilePlus2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -544,14 +544,12 @@ const EditObservationDialog = ({
   observation,
   isOpen,
   onOpenChange,
-  areas,
 }: {
   observation: Observation | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  areas: Area[];
 }) => {
-  const { updateObservation } = useAppData();
+  const { updateObservation, areas } = useAppData();
   const { toast } = useToast();
   const form = useForm<EditObservationFormValues>({
     resolver: zodResolver(editObservationFormSchema),
@@ -743,11 +741,11 @@ const ObservationDetailsDialog = ({
   const { user: authUser } = useAuth();
   
   const observation = observationId ? observations.find(obs => obs.observation_id === observationId) : null;
-  const currentUser = authUser ? users.find(u => u.id === authUser.uid) : null;
-  const isAdmin = currentUser?.role === 'Administrator';
-
+  
   if (!observation) return null;
   
+  const currentUser = authUser ? users.find(u => u.id === authUser.uid) : null;
+  const isAdmin = currentUser?.role === 'Administrator';
   const canEdit = isAdmin || (authUser && authUser.displayName === observation.submitted_by);
   const areaPath = findAreaPathById(areas, observation.areaId);
   
@@ -832,7 +830,7 @@ const ObservationDetailsDialog = ({
         </div>
         <DialogFooter>
             {canEdit && (
-                <Button variant="outline" onClick={() => onEditClick(observation)}>
+                <Button variant="outline" onClick={() => { onOpenChange(false); onEditClick(observation); }}>
                     <Edit className="mr-2 h-4 w-4" /> Edit
                 </Button>
             )}
@@ -1335,11 +1333,13 @@ export default function ObservationsPage() {
         
         <EditObservationDialog
             observation={editingObservation}
-            isOpen={isEditOpen}
-            onOpenChange={setEditOpen}
-            areas={areas}
+            isOpen={!!editingObservation}
+            onOpenChange={(open) => {
+              if (!open) {
+                setEditingObservation(null);
+              }
+            }}
         />
-
       </div>
     </AppShell>
   );
