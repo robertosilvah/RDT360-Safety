@@ -541,48 +541,65 @@ const ObservationForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
 };
 
 
-const EditObservationForm = ({
+const EditObservationDialog = ({
   observation,
+  isOpen,
+  onOpenChange,
   onSave,
-  onCancel,
   areas,
 }: {
-  observation: Observation;
+  observation: Observation | null;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
   onSave: (values: EditObservationFormValues) => void;
-  onCancel: () => void;
   areas: Area[];
 }) => {
   const form = useForm<EditObservationFormValues>({
     resolver: zodResolver(editObservationFormSchema),
     defaultValues: {
-      ...observation,
-      date: format(new Date(observation.date), "yyyy-MM-dd'T'HH:mm"),
+      report_type: 'Safety Concern',
+      submitted_by: '',
+      date: '',
+      areaId: '',
+      person_involved: '',
+      risk_level: 1,
+      description: '',
+      actions: '',
+      unsafe_category: 'N/A',
     },
   });
 
+  useEffect(() => {
+    if (observation) {
+      form.reset({
+        ...observation,
+        date: format(new Date(observation.date), "yyyy-MM-dd'T'HH:mm"),
+      });
+    }
+  }, [observation, form]);
+
+  if (!observation) return null;
+
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSave)} className="space-y-6">
-        <DialogHeader>
-          <DialogTitle>Edit Observation: {observation.display_id}</DialogTitle>
-          <DialogDescription>
-            Modify the details of the observation below.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-4">
-          {/* Form Fields go here, same as in ObservationForm but without action creation fields */}
-           <FormField
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSave)} className="space-y-6">
+            <DialogHeader>
+              <DialogTitle>Edit Observation: {observation.display_id}</DialogTitle>
+              <DialogDescription>
+                Modify the details of the observation below.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-4">
+              <FormField
                 control={form.control}
                 name="report_type"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Type of Safety Report</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a report type" />
-                        </SelectTrigger>
-                      </FormControl>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Select a report type" /></SelectTrigger></FormControl>
                       <SelectContent>
                         <SelectItem value="Safety Concern">Safety Concern</SelectItem>
                         <SelectItem value="Positive Observation">Positive Observation</SelectItem>
@@ -622,14 +639,8 @@ const EditObservationForm = ({
                   <FormItem>
                     <FormLabel>Area where it happened</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select an area or operation" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <AreaSelectOptions areas={areas} />
-                      </SelectContent>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Select an area or operation" /></SelectTrigger></FormControl>
+                      <SelectContent><AreaSelectOptions areas={areas} /></SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
@@ -653,17 +664,8 @@ const EditObservationForm = ({
                   <FormItem className="space-y-3">
                     <FormLabel>Risk Evaluation (1-4)</FormLabel>
                     <FormControl>
-                      <RadioGroup
-                        onValueChange={(value) => field.onChange(parseInt(value))}
-                        defaultValue={String(field.value)}
-                        className="flex space-x-4"
-                      >
-                        {[1, 2, 3, 4].map((level) => (
-                          <FormItem key={level} className="flex items-center space-x-2 space-y-0">
-                            <FormControl><RadioGroupItem value={String(level)} /></FormControl>
-                            <FormLabel className="font-normal">{riskLabels[level]}</FormLabel>
-                          </FormItem>
-                        ))}
+                      <RadioGroup onValueChange={(value) => field.onChange(parseInt(value))} defaultValue={String(field.value)} className="flex space-x-4">
+                        {[1, 2, 3, 4].map((level) => (<FormItem key={level} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={String(level)} /></FormControl><FormLabel className="font-normal">{riskLabels[level]}</FormLabel></FormItem>))}
                       </RadioGroup>
                     </FormControl>
                     <FormMessage />
@@ -699,11 +701,7 @@ const EditObservationForm = ({
                   <FormItem>
                     <FormLabel>Unsafe Behavior or Condition</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a category" />
-                        </SelectTrigger>
-                      </FormControl>
+                      <FormControl><SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger></FormControl>
                       <SelectContent>
                         <SelectItem value="Unsafe Behavior">Unsafe Behavior</SelectItem>
                         <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
@@ -714,13 +712,15 @@ const EditObservationForm = ({
                   </FormItem>
                 )}
               />
-        </div>
-        <DialogFooter>
-          <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
-          <Button type="submit">Save Changes</Button>
-        </DialogFooter>
-      </form>
-    </Form>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button type="submit">Save Changes</Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
   );
 };
 
@@ -987,8 +987,8 @@ export default function ObservationsPage() {
   const { observations, updateObservation, deleteObservation, users, areas } = useAppData();
   const { user: authUser } = useAuth();
   const [selectedObservation, setSelectedObservation] = useState<Observation | null>(null);
+  const [editingObservation, setEditingObservation] = useState<Observation | null>(null);
   const [isDetailsOpen, setDetailsOpen] = useState(false);
-  const [isEditModalOpen, setEditModalOpen] = useState(false);
   const [isNewObservationOpen, setNewObservationOpen] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1009,8 +1009,7 @@ export default function ObservationsPage() {
   
   const handleEditClick = (e: React.MouseEvent, observation: Observation) => {
     e.stopPropagation();
-    setSelectedObservation(observation);
-    setEditModalOpen(true);
+    setEditingObservation(observation);
   };
 
   const handleDelete = (e: React.MouseEvent, observationId: string) => {
@@ -1024,16 +1023,16 @@ export default function ObservationsPage() {
   };
 
   const handleUpdate = async (values: EditObservationFormValues) => {
-    if (!selectedObservation) return;
+    if (!editingObservation) return;
     const updatedObservationData: Observation = {
-      ...selectedObservation,
+      ...editingObservation,
       ...values,
       date: new Date(values.date).toISOString(),
       risk_level: values.risk_level as Observation['risk_level'],
     };
     await updateObservation(updatedObservationData);
     toast({ title: "Observation Updated", description: "The observation has been successfully updated." });
-    setEditModalOpen(false);
+    setEditingObservation(null);
   };
 
   const handleExport = () => {
@@ -1288,20 +1287,17 @@ export default function ObservationsPage() {
           areas={areas}
         />
         
-        <Dialog open={isEditModalOpen} onOpenChange={setEditModalOpen}>
-            <DialogContent className="max-w-2xl">
-                {selectedObservation && (
-                    <EditObservationForm
-                        observation={selectedObservation}
-                        onSave={handleUpdate}
-                        onCancel={() => setEditModalOpen(false)}
-                        areas={areas}
-                    />
-                )}
-            </DialogContent>
-        </Dialog>
+        <EditObservationDialog
+            observation={editingObservation}
+            isOpen={!!editingObservation}
+            onOpenChange={(open) => !open && setEditingObservation(null)}
+            onSave={handleUpdate}
+            areas={areas}
+        />
 
       </div>
     </AppShell>
   );
 }
+
+    
