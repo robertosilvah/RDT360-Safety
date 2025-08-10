@@ -63,6 +63,8 @@ const actionFormSchema = z.object({
 });
 type ActionFormValues = z.infer<typeof actionFormSchema>;
 
+const statusEnum = z.enum(['Pass', 'Fail', 'N/A'], { required_error: "Please select a status."});
+
 // Schema for the main inspection form
 const inspectionFormSchema = z.object({
   forklift_id: z.string().min(1, 'Please select a forklift.'),
@@ -70,7 +72,7 @@ const inspectionFormSchema = z.object({
   checklist: z.array(z.object({
     id: z.string(),
     question: z.string(),
-    status: z.enum(['Pass', 'Fail', 'N/A'], { required_error: "Please select a status."}),
+    status: statusEnum,
     comment: z.string().optional(),
     actionId: z.string().optional(),
   })),
@@ -192,7 +194,7 @@ const NewInspectionForm = ({ setOpen, defaultForkliftId }: { setOpen: (open: boo
         defaultValues: {
             forklift_id: defaultForkliftId || '',
             operator_name: '',
-            checklist: FORKLIFT_CHECKLIST_QUESTIONS.map(item => ({ ...item, status: 'Pass', comment: '', actionId: '' })),
+            checklist: FORKLIFT_CHECKLIST_QUESTIONS.map(item => ({ ...item, status: undefined, comment: '', actionId: '' })),
         },
     });
 
@@ -219,7 +221,7 @@ const NewInspectionForm = ({ setOpen, defaultForkliftId }: { setOpen: (open: boo
         form.reset({
             forklift_id: '',
             operator_name: '',
-            checklist: FORKLIFT_CHECKLIST_QUESTIONS.map(item => ({ ...item, status: 'Pass', comment: '', actionId: '' })),
+            checklist: FORKLIFT_CHECKLIST_QUESTIONS.map(item => ({ ...item, status: undefined, comment: '', actionId: '' })),
         });
         setOpen(false);
     };
@@ -290,7 +292,7 @@ const NewInspectionForm = ({ setOpen, defaultForkliftId }: { setOpen: (open: boo
                                     render={({ field: radioField }) => (
                                         <FormItem className="mt-2">
                                             <FormControl>
-                                                <RadioGroup onValueChange={radioField.onChange} defaultValue={radioField.value} className="flex gap-4">
+                                                <RadioGroup onValueChange={radioField.onChange} value={radioField.value} className="flex gap-4">
                                                     <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Pass" /></FormControl><FormLabel className="font-normal">Pass</FormLabel></FormItem>
                                                     <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="Fail" /></FormControl><FormLabel className="font-normal">Fail</FormLabel></FormItem>
                                                     <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="N/A" /></FormControl><FormLabel className="font-normal">N/A</FormLabel></FormItem>
