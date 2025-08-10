@@ -1345,4 +1345,3 @@ export default function ObservationsPage() {
     </AppShell>
   );
 }
-
