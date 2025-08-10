@@ -25,7 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
-import { Camera, Eye, Siren, UserIcon as User, Users, FileText, ClipboardCheck, Upload, Download, Trash2, Edit, Wrench, FilePlus2 } from 'lucide-react';
+import { Camera, Eye, Siren, User as UserIcon, Users, FileText, ClipboardCheck, Upload, Download, Trash2, Edit, Wrench, FilePlus2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -550,12 +550,29 @@ const ObservationDetailsDialog = ({
   onEdit: (observation: Observation) => void;
   onDelete: (observation: Observation) => void;
 }) => {
-  const { observations, areas, users } = useAppData();
+  const { observations, areas, users, updateObservation } = useAppData();
   const { user: authUser } = useAuth();
+  const { toast } = useToast();
   
-  // This ensures we are always looking at the most up-to-date data from the context
   const observation = isOpen && observationId ? observations.find(obs => obs.observation_id === observationId) : null;
   
+  const form = useForm<EditObservationFormValues>({
+    resolver: zodResolver(baseObservationSchema),
+  });
+
+  const [isEditing, setIsEditing] = useState(false);
+
+  useEffect(() => {
+    if (observation) {
+      form.reset({
+        ...observation,
+        date: format(new Date(observation.date), "yyyy-MM-dd'T'HH:mm"),
+      });
+      setIsEditing(false); // Reset editing mode when observation changes
+    }
+  }, [observation, form]);
+
+
   if (!observation) {
     return null;
   }
@@ -568,114 +585,247 @@ const ObservationDetailsDialog = ({
   const handleDeleteClick = () => {
     onDelete(observation);
   };
+
+  const handleUpdate = async (values: EditObservationFormValues) => {
+    const updatedObservationData: Observation = {
+      ...observation,
+      ...values,
+      date: new Date(values.date).toISOString(),
+      risk_level: values.risk_level as Observation['risk_level'],
+    };
+    await updateObservation(updatedObservationData);
+    toast({ title: "Observation Updated", description: "The observation has been successfully updated." });
+    setIsEditing(false);
+  };
   
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>Observation Details: {observation.display_id}</DialogTitle>
-          <DialogDescription>
-            {observation.report_type} reported on {format(new Date(observation.date), 'PPP p')}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">Person Documenting</p>
-                <p className="text-sm text-muted-foreground">{observation.submitted_by}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">Person Involved</p>
-                <p className="text-sm text-muted-foreground">{observation.person_involved || 'N/A'}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Eye className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">Unsafe Behavior/Condition</p>
-                <p className="text-sm text-muted-foreground">{observation.unsafe_category}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Siren className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-sm font-medium">Risk Level</p>
-                <Badge variant={riskVariant[observation.risk_level]}>
-                  {riskLabels[observation.risk_level]}
-                </Badge>
-              </div>
-            </div>
-          </div>
-          {observation.safety_walk_id && (
-            <>
-            <Separator />
-            <div className="flex items-center gap-2">
-                <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
-                <div>
-                    <p className="text-sm font-medium">Linked To</p>
-                    <Button variant="link" className="p-0 h-auto" asChild>
-                        <Link href={`/audits`}>Safety Walk: {observation.safety_walk_id}</Link>
-                    </Button>
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleUpdate)}>
+                <DialogHeader>
+                  <DialogTitle>Observation Details: {observation.display_id}</DialogTitle>
+                  <DialogDescription>
+                    {observation.report_type} reported on {format(new Date(observation.date), 'PPP p')}
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-4 py-4">
+                  {!isEditing ? (
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="flex items-center gap-2">
+                            <UserIcon className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                                <p className="text-sm font-medium">Person Documenting</p>
+                                <p className="text-sm text-muted-foreground">{observation.submitted_by}</p>
+                            </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                                <p className="text-sm font-medium">Person Involved</p>
+                                <p className="text-sm text-muted-foreground">{observation.person_involved || 'N/A'}</p>
+                            </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                            <Eye className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                                <p className="text-sm font-medium">Unsafe Behavior/Condition</p>
+                                <p className="text-sm text-muted-foreground">{observation.unsafe_category}</p>
+                            </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                            <Siren className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                                <p className="text-sm font-medium">Risk Level</p>
+                                <Badge variant={riskVariant[observation.risk_level]}>
+                                {riskLabels[observation.risk_level]}
+                                </Badge>
+                            </div>
+                            </div>
+                        </div>
+                        {observation.safety_walk_id && (
+                            <>
+                            <Separator />
+                            <div className="flex items-center gap-2">
+                                <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
+                                <div>
+                                    <p className="text-sm font-medium">Linked To</p>
+                                    <Button variant="link" className="p-0 h-auto" asChild>
+                                        <Link href={`/audits`}>Safety Walk: {observation.safety_walk_id}</Link>
+                                    </Button>
+                                </div>
+                            </div>
+                            </>
+                        )}
+                        <Separator />
+                        <div>
+                            <h4 className="font-semibold text-sm mb-2">Description</h4>
+                            <p className="text-sm text-muted-foreground">{observation.description}</p>
+                        </div>
+                        <div>
+                            <h4 className="font-semibold text-sm mb-2">Actions Taken</h4>
+                            <p className="text-sm text-muted-foreground">{observation.actions}</p>
+                        </div>
+                        {observation.imageUrl && (
+                            <div>
+                            <h4 className="font-semibold text-sm mb-2">Attached Photo</h4>
+                            <div className="relative w-full aspect-video rounded-md overflow-hidden">
+                                <Image
+                                src={observation.imageUrl}
+                                alt={`Photo for ${observation.observation_id}`}
+                                fill
+                                className="object-cover"
+                                />
+                            </div>
+                            </div>
+                        )}
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                       <FormField
+                            control={form.control}
+                            name="report_type"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Type of Safety Report</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                    <SelectValue placeholder="Select a report type" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    <SelectItem value="Safety Concern">Safety Concern</SelectItem>
+                                    <SelectItem value="Positive Observation">Positive Observation</SelectItem>
+                                    <SelectItem value="Near Miss">Near Miss</SelectItem>
+                                </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="submitted_by"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Person Documenting</FormLabel>
+                                <FormControl><Input {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="date"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Date and Time</FormLabel>
+                                <FormControl><Input type="datetime-local" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="areaId"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Area where it happened</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                    <SelectTrigger>
+                                    <SelectValue placeholder="Select an area or operation" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    <AreaSelectOptions areas={areas} />
+                                </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="risk_level"
+                            render={({ field }) => (
+                            <FormItem className="space-y-3">
+                                <FormLabel>Risk Evaluation (1-4)</FormLabel>
+                                <FormControl>
+                                <RadioGroup onValueChange={(value) => field.onChange(parseInt(value))} defaultValue={String(field.value)} className="flex space-x-4" >
+                                    {[1, 2, 3, 4].map((level) => (<FormItem key={level} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={String(level)} /></FormControl><FormLabel className="font-normal">{riskLabels[level]}</FormLabel></FormItem>))}
+                                </RadioGroup>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="description"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Brief Description</FormLabel>
+                                <FormControl><Textarea {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="actions"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Immediate Actions Taken</FormLabel>
+                                <FormControl><Textarea {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                    </div>
+                  )}
                 </div>
-            </div>
-            </>
-          )}
-          <Separator />
-          <div>
-            <h4 className="font-semibold text-sm mb-2">Description</h4>
-            <p className="text-sm text-muted-foreground">{observation.description}</p>
-          </div>
-          <div>
-            <h4 className="font-semibold text-sm mb-2">Actions Taken</h4>
-            <p className="text-sm text-muted-foreground">{observation.actions}</p>
-          </div>
-          {observation.imageUrl && (
-            <div>
-              <h4 className="font-semibold text-sm mb-2">Attached Photo</h4>
-              <div className="relative w-full aspect-video rounded-md overflow-hidden">
-                <Image
-                  src={observation.imageUrl}
-                  alt={`Photo for ${observation.observation_id}`}
-                  fill
-                  className="object-cover"
-                />
-              </div>
-            </div>
-          )}
-        </div>
-        <DialogFooter>
-          {canEdit && (
-            <Button variant="outline" onClick={() => onEdit(observation)}>
-              <Edit className="mr-2 h-4 w-4" /> Edit
-            </Button>
-          )}
-          {canEdit && (
-            <AlertDialog>
-              <AlertDialogTrigger asChild>
-                <Button variant="destructive">
-                  <Trash2 className="mr-2 h-4 w-4" /> Delete
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This will permanently delete observation <span className="font-mono">{observation.display_id}</span>. This action cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleDeleteClick}>Delete</AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          )}
-        </DialogFooter>
+                <DialogFooter>
+                    {isEditing ? (
+                        <>
+                         <Button type="button" variant="ghost" onClick={() => setIsEditing(false)}>Cancel</Button>
+                         <Button type="submit">Save Changes</Button>
+                        </>
+                    ) : (
+                        <>
+                            {canEdit && (
+                                <Button type="button" variant="outline" onClick={() => setIsEditing(true)}>
+                                    <Edit className="mr-2 h-4 w-4" /> Edit
+                                </Button>
+                            )}
+                            {canEdit && (
+                                <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                    <Button type="button" variant="destructive">
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will permanently delete observation <span className="font-mono">{observation.display_id}</span>. This action cannot be undone.
+                                    </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={handleDeleteClick}>Delete</AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                                </AlertDialog>
+                            )}
+                        </>
+                    )}
+                </DialogFooter>
+            </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
@@ -779,7 +929,7 @@ const ObservationTable: React.FC<ObservationTableProps> = ({
                   <Edit className="h-4 w-4" />
                 </Button>
               )}
-              {isAdmin && (
+              {canEdit && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
@@ -868,11 +1018,14 @@ export default function ObservationsPage() {
   const handleEditClick = (observation: Observation) => {
     setDetailsOpen(false); // Close details dialog if open
     setEditingObservation(observation);
+    setSelectedObservationId(observation.observation_id);
+    setDetailsOpen(true);
   };
   
   const handleTableEditClick = (e: React.MouseEvent, observation: Observation) => {
     e.stopPropagation();
-    setEditingObservation(observation);
+    setSelectedObservationId(observation.observation_id);
+    setDetailsOpen(true);
   };
 
   const handleDelete = (observation: Observation) => {
@@ -1124,20 +1277,9 @@ export default function ObservationsPage() {
           isOpen={isDetailsOpen}
           onOpenChange={setDetailsOpen}
           onEdit={handleEditClick}
-          onDelete={() => {
-            if (selectedObservationId) {
-              const obsToDelete = observations.find(o => o.observation_id === selectedObservationId);
-              if (obsToDelete) handleDelete(obsToDelete);
-            }
-          }}
+          onDelete={(obs) => handleDelete(obs)}
         />
         
-        <EditObservationDialog
-            observation={editingObservation}
-            isOpen={!!editingObservation}
-            onOpenChange={(open) => !open && setEditingObservation(null)}
-            areas={areas}
-        />
       </div>
     </AppShell>
   );
