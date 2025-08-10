@@ -604,7 +604,7 @@ const JsaPageContent = () => {
     }
 
     const handleShare = (jsaId: string) => {
-        const url = `${window.location.origin}/jsa/${jsaId}`;
+        const url = `${window.location.origin}/jsa?id=${jsaId}`;
         navigator.clipboard.writeText(url).then(() => {
             toast({ title: "Link Copied", description: "A shareable link has been copied to your clipboard." });
         });
@@ -614,6 +614,7 @@ const JsaPageContent = () => {
         const success = await updateJsa(updatedJsa);
         if (success) {
             toast({ title: "JSA Signed", description: `Thank you for signing.` });
+            setSelectedJsa(updatedJsa);
         }
     };
 
@@ -634,14 +635,11 @@ const JsaPageContent = () => {
 
             if (jsaId && selectedJsa) { // Editing
                 const updatedJsaData: JSA = { ...selectedJsa, ...baseJsaData };
-                await updateJsa(updatedJsaData);
-                toast({ title: "JSA Updated", description: "The JSA has been successfully updated." });
+                return await updateJsa(updatedJsaData);
             } else { // Creating or Copying
                 const newJsaData: Omit<JSA, 'jsa_id' | 'display_id' | 'status' | 'created_by' | 'created_date' | 'signatures'> = baseJsaData;
-                await addJsa(newJsaData);
-                toast({ title: "JSA Created", description: `The JSA "${data.title}" has been successfully created.` });
+                return await addJsa(newJsaData);
             }
-            return true;
         } catch (error) {
             console.error("Failed to save JSA:", error);
             toast({ variant: 'destructive', title: 'Save Failed', description: 'There was an error saving the JSA.' });
