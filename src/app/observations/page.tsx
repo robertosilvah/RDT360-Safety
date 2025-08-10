@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -594,15 +595,15 @@ const EditObservationDialog = ({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Edit Observation: {observation.display_id}</DialogTitle>
-          <DialogDescription>
-            Modify the details of the observation below.
-          </DialogDescription>
-        </DialogHeader>
-        <div className="max-h-[70vh] overflow-y-auto pr-4">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleUpdate)} className="space-y-6">
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(handleUpdate)} className="space-y-6">
+            <DialogHeader>
+              <DialogTitle>Edit Observation: {observation.display_id}</DialogTitle>
+              <DialogDescription>
+                Modify the details of the observation below.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-4">
               <FormField
                 control={form.control}
                 name="report_type"
@@ -746,13 +747,13 @@ const EditObservationDialog = ({
                   </FormItem>
                 )}
               />
-              <DialogFooter>
-                <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-                <Button type="submit">Save Changes</Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button type="submit">Save Changes</Button>
+            </DialogFooter>
+          </form>
+        </Form>
       </DialogContent>
     </Dialog>
   );
