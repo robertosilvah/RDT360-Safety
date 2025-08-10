@@ -1,8 +1,4 @@
 
-
-
-
-
 export type TalkSection = {
   na: boolean;
   details: string;
@@ -274,6 +270,7 @@ export type Forklift = {
   id: string;
   name: string;
   area: string;
+  imageUrl?: string;
 };
 
 export type ForkliftChecklistItem = {

@@ -54,6 +54,7 @@ import { Badge } from '@/components/ui/badge';
 import { useSearchParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import { isToday, format } from 'date-fns';
+import Image from 'next/image';
 
 // Schema for the corrective action creation dialog
 const actionFormSchema = z.object({
@@ -442,14 +443,27 @@ const ForkliftStatusCard = ({ forklift, inspections, onNewInspection, onViewToda
 
     return (
         <Card>
-            <button className="w-full text-left" onClick={() => onViewTodayInspections(forklift)} disabled={inspections.length === 0}>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Truck /> {forklift.id}
-                    </CardTitle>
-                    <CardDescription>{forklift.name}</CardDescription>
+            <button className="w-full text-left p-4" onClick={() => onViewTodayInspections(forklift)} disabled={inspections.length === 0}>
+                <CardHeader className="p-0 mb-4">
+                    <div className="flex items-start justify-between">
+                         <div className="space-y-1">
+                            <CardTitle className="flex items-center gap-2">
+                                <Truck /> {forklift.id}
+                            </CardTitle>
+                            <CardDescription>{forklift.name}</CardDescription>
+                         </div>
+                         <div className="w-20 h-20 relative rounded-md overflow-hidden bg-muted">
+                            {forklift.imageUrl ? (
+                                <Image src={forklift.imageUrl} alt={forklift.name} layout="fill" objectFit="cover" data-ai-hint="forklift photo"/>
+                            ) : (
+                                <div className="flex items-center justify-center h-full">
+                                    <Truck className="h-8 w-8 text-muted-foreground"/>
+                                </div>
+                            )}
+                         </div>
+                    </div>
                 </CardHeader>
-                <CardContent className="flex items-center justify-around">
+                <CardContent className="p-0 flex items-center justify-around">
                     <div className="text-center">
                         <p className="text-2xl font-bold text-green-600">{passedCount}</p>
                         <p className="text-sm text-muted-foreground">Passed</p>
@@ -460,7 +474,7 @@ const ForkliftStatusCard = ({ forklift, inspections, onNewInspection, onViewToda
                     </div>
                 </CardContent>
             </button>
-            <CardFooter>
+            <CardFooter className="p-4">
                  <Button className="w-full" onClick={() => onNewInspection(forklift.id)}>
                     <PlusCircle className="mr-2 h-4 w-4"/> Start New Inspection
                 </Button>
