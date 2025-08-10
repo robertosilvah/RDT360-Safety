@@ -229,6 +229,7 @@ const ActionDetailsDialog = ({
 }) => {
     const { correctiveActions, updateCorrectiveAction, addCommentToAction, incidents, observations } = useAppData();
     const [newComment, setNewComment] = useState('');
+    const { toast } = useToast();
     
     const currentAction = action ? correctiveActions.find(a => a.action_id === action.action_id) || null : null;
     if (!currentAction) return null;
@@ -245,7 +246,6 @@ const ActionDetailsDialog = ({
             status: values.status || actionToUpdate.status,
         };
         updateCorrectiveAction(updatedAction);
-        const { toast } = useToast();
         toast({
             title: 'Corrective Action Updated',
             description: 'The action has been updated.',
