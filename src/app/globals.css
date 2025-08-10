@@ -84,18 +84,19 @@
 }
 
 @media print {
-  body {
-    background: white;
+  body * {
+    visibility: hidden;
+  }
+  .printable-area, .printable-area * {
+    visibility: visible;
   }
   .printable-area {
-    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
   }
   .no-print {
-    display: none !important;
-  }
-  
-  /* Hide everything that is not the printable area */
-  body > *:not(.printable-area) {
     display: none;
   }
 }
