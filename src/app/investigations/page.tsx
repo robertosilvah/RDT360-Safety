@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAppData } from '@/context/AppDataContext';
 import type { Investigation, Comment, CorrectiveAction, Incident } from '@/types';
-import { PlusCircle, Upload, FileText, MessageSquare, User, Clock, Siren, Wand2, Loader2, Edit, AlertCircle, Calendar, BookOpen, ListChecks } from 'lucide-react';
+import { PlusCircle, Upload, FileText, MessageSquare, User, Clock, Siren, Wand2, Loader2, Edit, AlertCircle, Calendar, BookOpen, ListChecks, Printer } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -201,6 +201,10 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
     form.setValue('status', 'In Progress', { shouldDirty: true });
     setIsEditing(true);
   };
+  
+  const handlePrint = () => {
+    window.open(`/investigations/${currentInvestigation.investigation_id}`, '_blank');
+  };
 
   const linkedActions = correctiveActions.filter(a => a.related_to_investigation === currentInvestigation.investigation_id);
   const severityVariant: { [key in Incident['severity']]: 'default' | 'secondary' | 'destructive' } = {
@@ -213,7 +217,13 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
         <DialogHeader>
-          <DialogTitle>Investigation Details: {currentInvestigation.display_id}</DialogTitle>
+          <DialogTitle className="flex justify-between items-center">
+            <span>Investigation Details: {currentInvestigation.display_id}</span>
+            <Button variant="ghost" size="icon" type="button" onClick={handlePrint}>
+                <Printer className="h-5 w-5" />
+                <span className="sr-only">Print Investigation</span>
+            </Button>
+          </DialogTitle>
           <DialogDescription>
             For Incident <Button variant="link" asChild className="p-0 h-auto"><Link href={`/incidents`}>{incidentDetails?.display_id}</Link></Button>
           </DialogDescription>
@@ -414,7 +424,11 @@ const InvestigationsPageContent = () => {
                   const incident = incidents.find(i => i.incident_id === investigation.incident_id);
                   return (
                     <TableRow key={investigation.investigation_id} onClick={() => handleRowClick(investigation)} className="cursor-pointer">
-                      <TableCell className="font-medium">{investigation.display_id}</TableCell>
+                      <TableCell className="font-medium">
+                        <Button variant="link" asChild className="p-0 h-auto">
+                            <Link href={`/investigations?id=${investigation.investigation_id}`}>{investigation.display_id}</Link>
+                        </Button>
+                      </TableCell>
                       <TableCell>
                         <Button variant="link" asChild className="p-0 h-auto">
                           <Link href={`/incidents`}>{incident?.display_id || investigation.incident_id}</Link>
