@@ -3,12 +3,12 @@
 
 import { AppShell } from '@/components/AppShell';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import type { ConfinedSpacePermit, Area, Comment, ChecklistStatus, ConfinedSpacePermitChecklist } from '@/types';
-import { PlusCircle, Users, FileSignature, Box, Clock, UserCheck, MessageSquare, Edit, Printer } from 'lucide-react';
-import React, { useState, useEffect } from 'react';
+import { PlusCircle, Users, FileSignature, Box, Clock, UserCheck, MessageSquare, Edit, Printer, MoreVertical, Copy, Search } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +26,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Label } from '@/components/ui/label';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const checklistStatusEnum = z.enum(['Yes', 'No', 'N/A'], { required_error: "This check is required." });
 
@@ -375,12 +377,74 @@ const PermitDetailsDialog = ({
   )
 }
 
+const PermitSummaryCard = ({ permit, onViewDetails, onEdit, onCopy }: { permit: ConfinedSpacePermit; onViewDetails: () => void; onEdit: () => void; onCopy: () => void; }) => {
+    return (
+        <Card className="flex flex-col">
+            <CardHeader>
+                <CardTitle className="flex items-start justify-between">
+                    <span className="pr-4">Permit {permit.display_id}</span>
+                     <DropdownMenu>
+                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 flex-shrink-0"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={onViewDetails}><FileSignature className="mr-2"/>View Details</DropdownMenuItem>
+                            <DropdownMenuItem onClick={onEdit}><Edit className="mr-2"/>Edit</DropdownMenuItem>
+                            <DropdownMenuItem onClick={onCopy}><Copy className="mr-2"/>Copy</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </CardTitle>
+                <CardDescription className="line-clamp-2 h-10">{permit.locationName}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+                <div className="flex items-center text-sm text-muted-foreground gap-2 pt-1"><Clock className="h-4 w-4" /><span>Expires: {format(new Date(permit.permit_expires), "P")}</span></div>
+                <div className="flex items-center text-sm text-muted-foreground gap-2"><User className="h-4 w-4" /><span>Supervisor: {permit.supervisor}</span></div>
+            </CardContent>
+            <CardFooter className="mt-auto border-t pt-4">
+                <Button className="w-full" onClick={onViewDetails}><FileSignature className="mr-2 h-4 w-4" /> View / Sign / Print</Button>
+            </CardFooter>
+        </Card>
+    );
+}
+
 export default function ConfinedSpacePermitsPage() {
-    const { user: currentUser } = useAuth();
     const { confinedSpacePermits, addConfinedSpacePermit, updateConfinedSpacePermit, addCommentToConfinedSpacePermit, areas } = useAppData();
     const { toast } = useToast();
     const [isDialogOpen, setDialogOpen] = useState(false);
     const [selectedPermit, setSelectedPermit] = useState<ConfinedSpacePermit | null>(null);
+    const [formMode, setFormMode] = useState<'create' | 'edit' | 'copy'>('create');
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const calculateStatus = (permit: ConfinedSpacePermit): ConfinedSpacePermit['status'] | 'Expired' => {
+        if (permit.status !== 'Active') return permit.status;
+        if (new Date(permit.permit_expires) < new Date()) return 'Expired';
+        return 'Active';
+    }
+
+     const { activePermits, archivedPermits } = useMemo(() => {
+        const active: ConfinedSpacePermit[] = [];
+        const archived: ConfinedSpacePermit[] = [];
+        confinedSpacePermits.forEach(p => {
+            if (calculateStatus(p) === 'Active') active.push(p);
+            else archived.push(p);
+        });
+        return { activePermits: active, archivedPermits: archived };
+    }, [confinedSpacePermits]);
+
+    const filteredArchivedPermits = useMemo(() => {
+        if (!searchTerm) return archivedPermits;
+        return archivedPermits.filter(p => 
+            p.display_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.locationName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            p.supervisor.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [archivedPermits, searchTerm]);
+
+    const statusVariant: { [key in ConfinedSpacePermit['status'] | 'Expired']: 'default' | 'destructive' | 'outline' | 'secondary' } = {
+        Active: 'default',
+        Expired: 'destructive',
+        Closed: 'outline',
+        Draft: 'secondary',
+        Denied: 'destructive'
+    };
 
     const handleAddPermit = async (permit: Omit<ConfinedSpacePermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, locationName: string): Promise<boolean> => {
         try { await addConfinedSpacePermit(permit, locationName); return true; } catch (error) { console.error("Failed to add Permit:", error); toast({ variant: 'destructive', title: 'Save Failed' }); return false; }
@@ -388,20 +452,15 @@ export default function ConfinedSpacePermitsPage() {
     const handleUpdatePermit = async (permit: ConfinedSpacePermit): Promise<boolean> => {
         try { await updateConfinedSpacePermit(permit); return true; } catch (error) { console.error("Failed to update Permit:", error); toast({ variant: 'destructive', title: 'Update Failed' }); return false; }
     };
-    const handleAddCommentToPermit = async (permitId: string, comment: Comment) => { await addCommentToConfinedSpacePermit(permitId, comment); };
-    const handleOpenDialog = (permit?: ConfinedSpacePermit) => { setSelectedPermit(permit || null); setDialogOpen(true); };
+    const handleAddCommentToPermit = (permitId: string, comment: Comment) => addCommentToConfinedSpacePermit(permitId, comment);
+    
+    const handleOpenDialog = (permit?: ConfinedSpacePermit, mode: 'create' | 'edit' | 'copy' = 'create') => {
+        setSelectedPermit(permit || null);
+        setFormMode(mode);
+        setDialogOpen(true);
+    };
 
-    const calculateStatus = (permit: ConfinedSpacePermit): { text: ConfinedSpacePermit['status'] | 'Expired', variant: 'default' | 'destructive' | 'outline' | 'secondary' } => {
-        if (permit.status === 'Denied') return { text: 'Denied', variant: 'destructive' };
-        if (permit.status === 'Closed') return { text: 'Closed', variant: 'outline' };
-        if (permit.status === 'Draft') return { text: 'Draft', variant: 'secondary' };
-        if (new Date(permit.permit_expires) < new Date()) return { text: 'Expired', variant: 'destructive' };
-        return { text: 'Active', variant: 'default' };
-    }
-
-    const currentSelectedPermit = selectedPermit
-        ? confinedSpacePermits.find(p => p.permit_id === selectedPermit.permit_id) || null
-        : null;
+    const currentSelectedPermit = selectedPermit ? confinedSpacePermits.find(p => p.permit_id === selectedPermit.permit_id) || null : null;
 
     return (
         <AppShell>
@@ -411,28 +470,73 @@ export default function ConfinedSpacePermitsPage() {
                     <Button onClick={() => handleOpenDialog()}><PlusCircle className="mr-2 h-4 w-4" /> Create Permit</Button>
                 </div>
                 <p className="text-muted-foreground">Create and manage permits for entry into confined spaces.</p>
-                <Card>
-                    <CardHeader><CardTitle>Issued Permits</CardTitle></CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader><TableRow><TableHead>Permit ID</TableHead><TableHead>Location</TableHead><TableHead>Supervisor</TableHead><TableHead>Expires</TableHead><TableHead>Status</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
-                            <TableBody>
-                                {confinedSpacePermits.length > 0 ? confinedSpacePermits.map((permit) => {
-                                    const status = calculateStatus(permit);
-                                    return (
-                                    <TableRow key={permit.permit_id} className="cursor-pointer" onClick={() => handleOpenDialog(permit)}>
-                                        <TableCell><Badge variant="outline">{permit.display_id}</Badge></TableCell>
-                                        <TableCell className="font-medium">{permit.locationName}</TableCell>
-                                        <TableCell>{permit.supervisor}</TableCell>
-                                        <TableCell>{format(new Date(permit.permit_expires), 'P p')}</TableCell>
-                                        <TableCell><Badge variant={status.variant}>{status.text}</Badge></TableCell>
-                                        <TableCell><Button variant="ghost" size="sm">View</Button></TableCell>
-                                    </TableRow>
-                                )}) : (<TableRow><TableCell colSpan={6} className="text-center">No confined space permits found.</TableCell></TableRow>)}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
+                
+                <Tabs defaultValue="active" className="space-y-4">
+                    <TabsList>
+                        <TabsTrigger value="active">Active Permits</TabsTrigger>
+                        <TabsTrigger value="archived">Archived & Drafts</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="active">
+                         <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+                            {activePermits.map((permit) => (
+                                <PermitSummaryCard 
+                                    key={permit.permit_id} 
+                                    permit={permit}
+                                    onViewDetails={() => handleOpenDialog(permit, 'edit')}
+                                    onEdit={() => handleOpenDialog(permit, 'edit')}
+                                    onCopy={() => handleOpenDialog(permit, 'copy')}
+                                />
+                            ))}
+                        </div>
+                        {activePermits.length === 0 && (
+                            <div className="text-center text-muted-foreground py-12">No active permits found.</div>
+                        )}
+                    </TabsContent>
+                    <TabsContent value="archived">
+                        <Card>
+                             <CardHeader>
+                                <CardTitle>Archived Permits</CardTitle>
+                                <CardDescription>A log of all expired, denied, closed or draft permits. You can copy them to create new versions.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="mb-4">
+                                    <div className="relative">
+                                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                        <Input 
+                                            placeholder="Search by ID, location, or supervisor..." 
+                                            className="pl-8 w-full md:w-1/3"
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                                <Table>
+                                    <TableHeader><TableRow><TableHead>Permit ID</TableHead><TableHead>Location</TableHead><TableHead>Supervisor</TableHead><TableHead>Expires</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                                    <TableBody>
+                                        {filteredArchivedPermits.map((permit) => {
+                                            const status = calculateStatus(permit);
+                                            return (
+                                            <TableRow key={permit.permit_id}>
+                                                <TableCell><Badge variant="outline">{permit.display_id}</Badge></TableCell>
+                                                <TableCell className="font-medium">{permit.locationName}</TableCell>
+                                                <TableCell>{permit.supervisor}</TableCell>
+                                                <TableCell>{format(new Date(permit.permit_expires), 'P p')}</TableCell>
+                                                <TableCell><Badge variant={statusVariant[status]}>{status}</Badge></TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(permit, 'edit')}>View</Button>
+                                                    <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(permit, 'copy')}>Copy</Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        )})}
+                                        {filteredArchivedPermits.length === 0 && (
+                                            <TableRow><TableCell colSpan={6} className="text-center">No archived permits match your search.</TableCell></TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                </Tabs>
             </div>
             <Dialog open={isDialogOpen} onOpenChange={(open) => { if(!open) setSelectedPermit(null); setDialogOpen(open); }}>
                 <DialogContent className="max-w-5xl">
@@ -442,3 +546,4 @@ export default function ConfinedSpacePermitsPage() {
         </AppShell>
     );
 }
+
