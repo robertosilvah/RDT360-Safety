@@ -861,6 +861,7 @@ const ObservationDetailsDialog = ({
   );
 };
 
+
 // Helper function to parse a single CSV row, handling quoted fields.
 const parseCsvRow = (row: string): string[] => {
   const values: string[] = [];
@@ -1336,7 +1337,3 @@ export default function ObservationsPage() {
     </AppShell>
   );
 }
-
-    
-
-    
