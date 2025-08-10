@@ -541,70 +541,37 @@ const ObservationForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
 };
 
 
-const EditObservationDialog = ({
+const EditObservationForm = ({
   observation,
-  isOpen,
-  onOpenChange,
+  onSave,
+  onCancel,
   areas,
 }: {
-  observation: Observation | null;
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
+  observation: Observation;
+  onSave: (values: EditObservationFormValues) => void;
+  onCancel: () => void;
   areas: Area[];
 }) => {
-  const { updateObservation } = useAppData();
-  const { toast } = useToast();
   const form = useForm<EditObservationFormValues>({
     resolver: zodResolver(editObservationFormSchema),
     defaultValues: {
-      report_type: 'Safety Concern',
-      submitted_by: '',
-      date: '',
-      areaId: '',
-      person_involved: '',
-      risk_level: 1,
-      description: '',
-      actions: '',
-      unsafe_category: 'N/A',
+      ...observation,
+      date: format(new Date(observation.date), "yyyy-MM-dd'T'HH:mm"),
     },
   });
 
-  useEffect(() => {
-    if (observation) {
-      form.reset({
-        ...observation,
-        date: format(new Date(observation.date), "yyyy-MM-dd'T'HH:mm"),
-      });
-    }
-  }, [observation, form]);
-
-  if (!observation) return null;
-
-  const handleUpdate = async (values: EditObservationFormValues) => {
-    const updatedObservationData: Observation = {
-      ...observation,
-      ...values,
-      date: new Date(values.date).toISOString(),
-      risk_level: values.risk_level as Observation['risk_level'],
-    };
-    await updateObservation(updatedObservationData);
-    toast({ title: "Observation Updated", description: "The observation has been successfully updated." });
-    onOpenChange(false);
-  };
-
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleUpdate)} className="space-y-6">
-            <DialogHeader>
-              <DialogTitle>Edit Observation: {observation.display_id}</DialogTitle>
-              <DialogDescription>
-                Modify the details of the observation below.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-4">
-              <FormField
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSave)} className="space-y-6">
+        <DialogHeader>
+          <DialogTitle>Edit Observation: {observation.display_id}</DialogTitle>
+          <DialogDescription>
+            Modify the details of the observation below.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-4">
+          {/* Form Fields go here, same as in ObservationForm but without action creation fields */}
+           <FormField
                 control={form.control}
                 name="report_type"
                 render={({ field }) => (
@@ -747,17 +714,16 @@ const EditObservationDialog = ({
                   </FormItem>
                 )}
               />
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit">Save Changes</Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
+        </div>
+        <DialogFooter>
+          <Button type="button" variant="ghost" onClick={onCancel}>Cancel</Button>
+          <Button type="submit">Save Changes</Button>
+        </DialogFooter>
+      </form>
+    </Form>
   );
 };
+
 
 const ObservationDetailsDialog = ({
   observation,
@@ -1018,11 +984,11 @@ const ObservationTable: React.FC<ObservationTableProps> = ({
 }
 
 export default function ObservationsPage() {
-  const { observations, deleteObservation, users, areas } = useAppData();
+  const { observations, updateObservation, deleteObservation, users, areas } = useAppData();
   const { user: authUser } = useAuth();
   const [selectedObservation, setSelectedObservation] = useState<Observation | null>(null);
-  const [editingObservation, setEditingObservation] = useState<Observation | null>(null);
   const [isDetailsOpen, setDetailsOpen] = useState(false);
+  const [isEditModalOpen, setEditModalOpen] = useState(false);
   const [isNewObservationOpen, setNewObservationOpen] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1043,7 +1009,8 @@ export default function ObservationsPage() {
   
   const handleEditClick = (e: React.MouseEvent, observation: Observation) => {
     e.stopPropagation();
-    setEditingObservation(observation);
+    setSelectedObservation(observation);
+    setEditModalOpen(true);
   };
 
   const handleDelete = (e: React.MouseEvent, observationId: string) => {
@@ -1054,6 +1021,19 @@ export default function ObservationsPage() {
         description: 'The observation has been permanently removed.',
         variant: 'destructive',
     });
+  };
+
+  const handleUpdate = async (values: EditObservationFormValues) => {
+    if (!selectedObservation) return;
+    const updatedObservationData: Observation = {
+      ...selectedObservation,
+      ...values,
+      date: new Date(values.date).toISOString(),
+      risk_level: values.risk_level as Observation['risk_level'],
+    };
+    await updateObservation(updatedObservationData);
+    toast({ title: "Observation Updated", description: "The observation has been successfully updated." });
+    setEditModalOpen(false);
   };
 
   const handleExport = () => {
@@ -1307,12 +1287,20 @@ export default function ObservationsPage() {
           onOpenChange={setDetailsOpen}
           areas={areas}
         />
-        <EditObservationDialog
-          observation={editingObservation}
-          isOpen={!!editingObservation}
-          onOpenChange={(open) => !open && setEditingObservation(null)}
-          areas={areas}
-        />
+        
+        <Dialog open={isEditModalOpen} onOpenChange={setEditModalOpen}>
+            <DialogContent className="max-w-2xl">
+                {selectedObservation && (
+                    <EditObservationForm
+                        observation={selectedObservation}
+                        onSave={handleUpdate}
+                        onCancel={() => setEditModalOpen(false)}
+                        areas={areas}
+                    />
+                )}
+            </DialogContent>
+        </Dialog>
+
       </div>
     </AppShell>
   );
