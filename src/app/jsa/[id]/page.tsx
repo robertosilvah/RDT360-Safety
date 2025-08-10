@@ -30,9 +30,10 @@ const JsaPrintPage = () => {
     const id = params.id as string;
     const { jsas, areas, brandingSettings } = useAppData();
     const [jsa, setJsa] = useState<JSA | null | undefined>(undefined);
+    const [isReadyToPrint, setIsReadyToPrint] = useState(false);
 
     useEffect(() => {
-        if (jsas.length > 0 && areas.length > 0) {
+        if (id && jsas.length > 0 && areas.length > 0) {
             const foundJsa = jsas.find(j => j.jsa_id === id);
             setJsa(foundJsa || null);
         }
@@ -40,10 +41,18 @@ const JsaPrintPage = () => {
     
     useEffect(() => {
         if (jsa) {
-            // Delay print slightly to ensure all content is rendered
-            setTimeout(() => window.print(), 500);
+            // Content is ready, trigger print
+            setIsReadyToPrint(true);
         }
     }, [jsa]);
+
+    useEffect(() => {
+        if (isReadyToPrint) {
+            // Delay print slightly to ensure all content is rendered in the DOM
+            const timer = setTimeout(() => window.print(), 500);
+            return () => clearTimeout(timer);
+        }
+    }, [isReadyToPrint]);
 
     const areaPath = useMemo(() => {
         if (jsa?.areaId && areas.length > 0) {
@@ -142,7 +151,7 @@ const JsaPrintPage = () => {
                                     <TableCell className="align-top text-xs">{step.controls.join(', ')}</TableCell>
                                     <TableCell className="align-top text-xs">
                                         <div className="flex items-center gap-2">
-                                           <div className={cn("h-4 w-4 rounded-full border border-black", riskMatrix[step.severity][step.likelihood])} />
+                                           <div className={cn("h-4 w-4 rounded-full border border-black", riskMatrix[step.severity]?.[step.likelihood])} />
                                            <div>
                                                <p>S: {step.severity}</p>
                                                <p>L: {step.likelihood}</p>
