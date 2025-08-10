@@ -89,7 +89,6 @@ const MultiSelectPopover = ({
                     ? selected.filter((item) => item !== option.text)
                     : [...selected, option.text];
                   onSelectedChange(newSelected);
-                  setOpen(false);
                 }}
               >
                 <Check
