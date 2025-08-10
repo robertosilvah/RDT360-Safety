@@ -412,20 +412,19 @@ const JsaDetailsDialog = ({ jsa, isOpen, onOpenChange, onSign, onShare, currentU
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-6xl h-[90vh] flex flex-col">
-                <div className="printable-area flex-1 flex flex-col min-h-0">
-                    <DialogHeader>
+            <DialogContent className="max-w-6xl h-[90vh] flex flex-col print:shadow-none">
+                <div className="flex-1 flex flex-col min-h-0 printable-area">
+                    <DialogHeader className="no-print">
                         <DialogTitle className="text-2xl flex items-center justify-between gap-2">
                             <span className="flex items-center gap-2"><FileSignature /> {jsa.title}</span>
-                             <div className="flex items-center gap-1 no-print">
+                             <div className="flex items-center gap-1">
                                 <Button type="button" variant="ghost" size="icon" onClick={onShare}><Share2 className="h-5 w-5" /><span className="sr-only">Share</span></Button>
-                                <Button type="button" variant="ghost" size="icon" onClick={handlePrint}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
                              </div>
                         </DialogTitle>
                         <DialogDescription>{jsa.job_description}</DialogDescription>
                     </DialogHeader>
                     
-                    <div className="flex-1 overflow-y-auto pr-6 space-y-6 py-4">
+                    <div className="flex-1 overflow-y-auto pr-6 space-y-6 py-4 print:overflow-visible print:h-auto">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div><h3 className="font-semibold mb-2 flex items-center gap-2"><MapPin /> Area / Operation</h3><p className="text-muted-foreground">{areaPath}</p></div>
                           <div><h3 className="font-semibold mb-2 flex items-center gap-2"><Clock /> Permit Validity</h3><p className="text-muted-foreground">{format(new Date(jsa.valid_from), "P p")} to {format(new Date(jsa.valid_to), "P p")}</p></div>
@@ -482,8 +481,9 @@ const JsaDetailsDialog = ({ jsa, isOpen, onOpenChange, onSign, onShare, currentU
                         <div><h3 className="font-semibold mb-2 flex items-center gap-2"><Users /> Signatures ({jsa.signatures.length})</h3><ul className="list-disc list-inside text-sm text-muted-foreground max-h-40 overflow-y-auto">{jsa.signatures.length > 0 ? jsa.signatures.map((sig, index) => (<li key={index}>{sig.employee_name} (Signed on {new Date(sig.sign_date).toLocaleDateString()})</li>)) : <li>No signatures yet.</li>}</ul></div>
                     </div>
                     
-                    <DialogFooter className="mt-auto pt-4 border-t !justify-end no-print">
-                        <div className="flex items-center gap-2">
+                    <DialogFooter className="mt-auto pt-4 border-t !justify-between no-print">
+                       <Button type="button" variant="ghost" onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print</Button>
+                       <div className="flex items-center gap-2">
                            <div className="text-xs text-muted-foreground">{hasSigned ? `You acknowledged this on ${new Date(jsa.signatures.find(s => s.employee_name === currentUser)!.sign_date).toLocaleDateString()}` : "Please read carefully before signing."}</div>
                            <Input className="w-48" placeholder="Enter your name" value={signatureName} onChange={(e) => setSignatureName(e.target.value)} disabled={hasSigned}/>
                            <Button onClick={handleSign} disabled={hasSigned || !signatureName.trim()}><UserCheck className="mr-2 h-4 w-4" />{hasSigned ? 'Acknowledged' : 'Acknowledge and Sign'}</Button>
@@ -614,40 +614,17 @@ const JsaPageContent = () => {
     };
 
     const handleSignJsa = async (updatedJsa: JSA) => {
-        const success = await updateJsa(updatedJsa);
-        if (success) {
-            toast({ title: "JSA Signed", description: `Thank you for signing.` });
-            setSelectedJsa(updatedJsa);
-        }
+        await updateJsa(updatedJsa);
+        toast({ title: "JSA Signed", description: `Thank you for signing.` });
     };
 
     const handleSaveJsa = async (data: JsaFormValues, jsaId?: string): Promise<boolean> => {
-        try {
-            const otherPpeItems = data.other_ppe?.split(',').map(s => s.trim()).filter(Boolean) || [];
-            const allPpe = [...(data.required_ppe || []), ...otherPpeItems];
-            
-            const baseJsaData = {
-                title: data.title,
-                job_description: data.job_description,
-                areaId: data.areaId,
-                required_ppe: allPpe,
-                steps: data.steps,
-                valid_from: new Date(data.valid_from).toISOString(),
-                valid_to: new Date(data.valid_to).toISOString(),
-            };
-
-            if (jsaId && selectedJsa) { // Editing
-                const updatedJsaData: JSA = { ...selectedJsa, ...baseJsaData };
-                return await updateJsa(updatedJsaData);
-            } else { // Creating or Copying
-                const newJsaData: Omit<JSA, 'jsa_id' | 'display_id' | 'status' | 'created_by' | 'created_date' | 'signatures'> = baseJsaData;
-                return await addJsa(newJsaData);
-            }
-        } catch (error) {
-            console.error("Failed to save JSA:", error);
-            toast({ variant: 'destructive', title: 'Save Failed', description: 'There was an error saving the JSA.' });
-            return false;
+        const success = jsaId && selectedJsa ? await updateJsa({ ...selectedJsa, ...data }) : await addJsa(data);
+        if (success) {
+            toast({ title: jsaId ? "JSA Updated" : "JSA Created", description: `The JSA "${data.title}" has been saved.` });
+            return true;
         }
+        return false;
     };
     
     return (

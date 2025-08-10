@@ -84,14 +84,19 @@
 }
 
 @media print {
+  body {
+    background: white;
+  }
   .printable-area {
-    color: black !important;
-    background: white !important;
-    border: none !important;
-    box-shadow: none !important;
+    display: block !important;
   }
   .no-print {
     display: none !important;
+  }
+  
+  /* Hide everything that is not the printable area */
+  body > *:not(.printable-area) {
+    display: none;
   }
 }
 
