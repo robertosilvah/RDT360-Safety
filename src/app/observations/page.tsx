@@ -540,33 +540,21 @@ const ObservationForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
   );
 };
 
-
 const EditObservationDialog = ({
   observation,
   isOpen,
   onOpenChange,
-  onSave,
   areas,
 }: {
   observation: Observation | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onSave: (values: EditObservationFormValues) => void;
   areas: Area[];
 }) => {
+  const { updateObservation } = useAppData();
+  const { toast } = useToast();
   const form = useForm<EditObservationFormValues>({
     resolver: zodResolver(editObservationFormSchema),
-    defaultValues: {
-      report_type: 'Safety Concern',
-      submitted_by: '',
-      date: '',
-      areaId: '',
-      person_involved: '',
-      risk_level: 1,
-      description: '',
-      actions: '',
-      unsafe_category: 'N/A',
-    },
   });
 
   useEffect(() => {
@@ -578,13 +566,26 @@ const EditObservationDialog = ({
     }
   }, [observation, form]);
 
-  if (!observation) return null;
+  const handleUpdate = async (values: EditObservationFormValues) => {
+    if (!observation) return;
+    const updatedObservationData: Observation = {
+      ...observation,
+      ...values,
+      date: new Date(values.date).toISOString(),
+      risk_level: values.risk_level as Observation['risk_level'],
+    };
+    await updateObservation(updatedObservationData);
+    toast({ title: "Observation Updated", description: "The observation has been successfully updated." });
+    onOpenChange(false);
+  };
+
+  if (!isOpen || !observation) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSave)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(handleUpdate)} className="space-y-6">
             <DialogHeader>
               <DialogTitle>Edit Observation: {observation.display_id}</DialogTitle>
               <DialogDescription>
@@ -730,11 +731,19 @@ const ObservationDetailsDialog = ({
   isOpen,
   onOpenChange,
   areas,
+  onEditClick,
+  onDeleteClick,
+  canEdit,
+  isAdmin,
 }: {
   observation: Observation | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   areas: Area[];
+  onEditClick: (observation: Observation) => void;
+  onDeleteClick: (observationId: string) => void;
+  canEdit: boolean;
+  isAdmin: boolean;
 }) => {
   if (!observation) return null;
 
@@ -819,6 +828,34 @@ const ObservationDetailsDialog = ({
             </div>
           )}
         </div>
+        <DialogFooter>
+            {canEdit && (
+                <Button variant="outline" onClick={() => onEditClick(observation)}>
+                    <Edit className="mr-2 h-4 w-4" /> Edit
+                </Button>
+            )}
+            {isAdmin && (
+                <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                        <Button variant="destructive">
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                This will permanently delete observation <span className="font-mono">{observation.display_id}</span>. This action cannot be undone.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => onDeleteClick(observation.observation_id)}>Delete</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            )}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -984,7 +1021,7 @@ const ObservationTable: React.FC<ObservationTableProps> = ({
 }
 
 export default function ObservationsPage() {
-  const { observations, updateObservation, deleteObservation, users, areas } = useAppData();
+  const { observations, deleteObservation, users, areas } = useAppData();
   const { user: authUser } = useAuth();
   const [selectedObservation, setSelectedObservation] = useState<Observation | null>(null);
   const [editingObservation, setEditingObservation] = useState<Observation | null>(null);
@@ -1012,29 +1049,26 @@ export default function ObservationsPage() {
     setEditingObservation(observation);
   };
 
-  const handleDelete = (e: React.MouseEvent, observationId: string) => {
-    e.stopPropagation();
+  const handleDetailsEditClick = (observation: Observation) => {
+    setDetailsOpen(false);
+    setEditingObservation(observation);
+  };
+
+  const handleDeleteClick = (observationId: string) => {
     deleteObservation(observationId);
     toast({
-        title: 'Observation Deleted',
-        description: 'The observation has been permanently removed.',
-        variant: 'destructive',
+      title: 'Observation Deleted',
+      description: 'The observation has been permanently removed.',
+      variant: 'destructive',
     });
+    setDetailsOpen(false); // Close details dialog after deletion
   };
-
-  const handleUpdate = async (values: EditObservationFormValues) => {
-    if (!editingObservation) return;
-    const updatedObservationData: Observation = {
-      ...editingObservation,
-      ...values,
-      date: new Date(values.date).toISOString(),
-      risk_level: values.risk_level as Observation['risk_level'],
-    };
-    await updateObservation(updatedObservationData);
-    toast({ title: "Observation Updated", description: "The observation has been successfully updated." });
-    setEditingObservation(null);
+  
+  const handleTableDelete = (e: React.MouseEvent, observationId: string) => {
+    e.stopPropagation();
+    handleDeleteClick(observationId);
   };
-
+  
   const handleExport = () => {
     const headers = [
       'observation_id', 'report_type', 'submitted_by', 'date', 'areaId', 
@@ -1262,7 +1296,7 @@ export default function ObservationsPage() {
                 currentUser={currentUser}
                 onRowClick={handleRowClick}
                 onEditClick={handleEditClick}
-                onDelete={handleDelete}
+                onDelete={handleTableDelete}
             />
           </TabsContent>
           <TabsContent value="my" className="mt-4">
@@ -1275,7 +1309,7 @@ export default function ObservationsPage() {
                   currentUser={currentUser}
                   onRowClick={handleRowClick}
                   onEditClick={handleEditClick}
-                  onDelete={handleDelete}
+                  onDelete={handleTableDelete}
               />
           </TabsContent>
         </Tabs>
@@ -1285,13 +1319,16 @@ export default function ObservationsPage() {
           isOpen={isDetailsOpen}
           onOpenChange={setDetailsOpen}
           areas={areas}
+          onEditClick={handleDetailsEditClick}
+          onDeleteClick={handleDeleteClick}
+          canEdit={isAdmin || (!!currentUser && !!selectedObservation && currentUser.displayName === selectedObservation.submitted_by)}
+          isAdmin={isAdmin}
         />
         
         <EditObservationDialog
             observation={editingObservation}
             isOpen={!!editingObservation}
             onOpenChange={(open) => !open && setEditingObservation(null)}
-            onSave={handleUpdate}
             areas={areas}
         />
 
@@ -1299,5 +1336,7 @@ export default function ObservationsPage() {
     </AppShell>
   );
 }
+
+    
 
     
