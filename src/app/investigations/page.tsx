@@ -51,7 +51,7 @@ const NewActionForm = ({ investigationId, onActionAdded }: { investigationId: st
   });
 
   const onSubmit = (values: any) => {
-    const newAction: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'> = {
+    const newAction: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments' | 'created_date' | 'completion_date' | 'type'> = {
       description: values.description,
       responsible_person: values.responsible_person,
       due_date: new Date(values.due_date).toISOString(),
@@ -160,7 +160,26 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
   };
 
   const handleSubmit = (values: InvestigationFormValues) => {
-    const updatedInvestigation = { ...currentInvestigation, ...values };
+    let updatedInvestigation = { ...currentInvestigation, ...values, comments: [...currentInvestigation.comments] };
+
+    const logs: string[] = [];
+    if(values.status !== currentInvestigation.status) {
+        logs.push(`Status changed from ${currentInvestigation.status} to ${values.status}.`);
+    }
+    if(values.root_cause !== currentInvestigation.root_cause) logs.push(`Root cause was edited.`);
+    if(values.contributing_factors !== currentInvestigation.contributing_factors) logs.push(`Contributing factors were edited.`);
+    if(values.events_history !== currentInvestigation.events_history) logs.push(`Events history was edited.`);
+    if(values.lessons_learned !== currentInvestigation.lessons_learned) logs.push(`Lessons learned were edited.`);
+    if(values.action_plan !== currentInvestigation.action_plan) logs.push(`Action plan was edited.`);
+
+    if (logs.length > 0) {
+        updatedInvestigation.comments.push({
+            user: 'System Log',
+            comment: logs.join('\n'),
+            date: new Date().toISOString()
+        });
+    }
+
     updateInvestigation(updatedInvestigation);
     toast({ title: 'Investigation Updated' });
     onOpenChange(false);
@@ -340,15 +359,18 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
           <div className="md:col-span-1 flex flex-col gap-4 border-l pl-6">
             <h3 className="text-lg font-semibold flex items-center gap-2"><MessageSquare className="h-5 w-5" /> Comments</h3>
             <div className="flex-1 space-y-4 overflow-y-auto pr-2">
-              {currentInvestigation.comments.map((comment, index) => (
-                <div key={index} className="flex gap-3">
-                  <Avatar><AvatarImage src={`https://placehold.co/40x40.png?text=${comment.user.charAt(0)}`} /><AvatarFallback>{comment.user.charAt(0)}</AvatarFallback></Avatar>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-center"><p className="font-semibold text-sm">{comment.user}</p><p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(comment.date), { addSuffix: true })}</p></div>
-                    <p className="text-sm text-muted-foreground bg-secondary p-3 rounded-lg mt-1">{comment.comment}</p>
+              {currentInvestigation.comments.map((comment, index) => {
+                const getAvatarInitials = (name: string) => name === 'System Log' ? 'SL' : name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+                return (
+                  <div key={index} className="flex gap-3">
+                    <Avatar><AvatarImage src={comment.user !== 'System Log' ? `https://placehold.co/40x40.png?text=${getAvatarInitials(comment.user)}` : undefined} /><AvatarFallback>{getAvatarInitials(comment.user)}</AvatarFallback></Avatar>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center"><p className="font-semibold text-sm">{comment.user}</p><p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(comment.date), { addSuffix: true })}</p></div>
+                      <p className="text-sm text-muted-foreground bg-secondary p-3 rounded-lg mt-1 whitespace-pre-wrap">{comment.comment}</p>
+                    </div>
                   </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
             <div className="flex flex-col gap-2 mt-auto">
               <Textarea placeholder={isLocked ? "Comments are locked." : "Add a comment..."} value={newComment} onChange={(e) => setNewComment(e.target.value)} rows={2} disabled={isLocked} />
