@@ -553,16 +553,21 @@ const ObservationDetailsDialog = ({
   const { observations, areas, users } = useAppData();
   const { user: authUser } = useAuth();
   
+  // This ensures we are always looking at the most up-to-date data from the context
   const observation = isOpen && observationId ? observations.find(obs => obs.observation_id === observationId) : null;
-  const currentUser = authUser ? users.find(u => u.id === authUser.uid) : null;
   
   if (!observation) {
     return null;
   }
   
+  const currentUser = authUser ? users.find(u => u.id === authUser.uid) : null;
   const isAdmin = currentUser?.role === 'Administrator';
-  const canEdit = isAdmin || (authUser && observation && authUser.displayName === observation.submitted_by);
+  const canEdit = isAdmin || (authUser && authUser.displayName === observation.submitted_by);
   const areaPath = findAreaPathById(areas, observation.areaId);
+
+  const handleDeleteClick = () => {
+    onDelete(observation);
+  };
   
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -649,7 +654,7 @@ const ObservationDetailsDialog = ({
               <Edit className="mr-2 h-4 w-4" /> Edit
             </Button>
           )}
-          {isAdmin && (
+          {canEdit && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
                 <Button variant="destructive">
@@ -665,7 +670,7 @@ const ObservationDetailsDialog = ({
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => onDelete(observation)}>Delete</AlertDialogAction>
+                  <AlertDialogAction onClick={handleDeleteClick}>Delete</AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
@@ -1119,22 +1124,20 @@ export default function ObservationsPage() {
           isOpen={isDetailsOpen}
           onOpenChange={setDetailsOpen}
           onEdit={handleEditClick}
-          onDelete={handleDelete}
+          onDelete={() => {
+            if (selectedObservationId) {
+              const obsToDelete = observations.find(o => o.observation_id === selectedObservationId);
+              if (obsToDelete) handleDelete(obsToDelete);
+            }
+          }}
         />
         
-        {editingObservation && (
-            <Dialog open={!!editingObservation} onOpenChange={(open) => !open && setEditingObservation(null)}>
-                <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                    <DialogTitle>Edit Observation: {editingObservation.display_id}</DialogTitle>
-                    <DialogDescription>
-                        Modify the details of the observation below.
-                    </DialogDescription>
-                </DialogHeader>
-                {/* Simplified form for editing */}
-                </DialogContent>
-            </Dialog>
-        )}
+        <EditObservationDialog
+            observation={editingObservation}
+            isOpen={!!editingObservation}
+            onOpenChange={(open) => !open && setEditingObservation(null)}
+            areas={areas}
+        />
       </div>
     </AppShell>
   );
