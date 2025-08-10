@@ -84,36 +84,32 @@
 }
 
 @media print {
-  body {
-    background: white !important;
-    color: black !important;
-  }
-
-  .no-print, .no-print * {
-    display: none !important;
+  body * {
+    visibility: hidden;
   }
   
   .printable-area, .printable-area * {
     visibility: visible;
   }
 
-   .printable-area {
+  .printable-area {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
     height: auto;
     padding: 1rem;
-    color: black;
+    color: black !important;
     background: white !important;
     border: none !important;
     box-shadow: none !important;
   }
-  
+
   .qr-code-printable-area, .qr-code-printable-area * {
     visibility: visible;
   }
-   .qr-code-printable-area {
+
+  .qr-code-printable-area {
     position: absolute;
     left: 0;
     top: 0;
@@ -127,6 +123,7 @@
     justify-content: center;
   }
 }
+
 
 @page {
   size: auto;
