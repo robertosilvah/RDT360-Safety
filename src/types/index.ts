@@ -126,7 +126,7 @@ export type CorrectiveAction = {
   created_date: string;
   completion_date?: string;
   type: 'Preventive' | 'Reactive' | 'Other';
-  status: 'Pending' | 'In Progress' | 'Completed' | 'Overdue';
+  status: 'Pending' | 'In Progress' | 'Completed' | 'Overdue' | 'On Hold';
   responsible_person: string;
   description: string;
   comments: Comment[];

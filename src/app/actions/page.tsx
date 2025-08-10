@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { CorrectiveAction, Incident, Observation, Comment } from '@/types';
-import { PlusCircle, Siren, Eye, MessageSquare, User, Clock, CheckCircle, AlertTriangle, List, Truck, FileSearch, UserSquare, KanbanSquare as KanbanSquareIcon, Paperclip } from 'lucide-react';
+import { PlusCircle, Siren, Eye, MessageSquare, User, Clock, CheckCircle, AlertTriangle, List, Truck, FileSearch, UserSquare, KanbanSquare as KanbanSquareIcon, Paperclip, PauseCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
@@ -20,7 +21,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { KanbanSquare } from 'lucide-react';
 import { useAppData } from '@/context/AppDataContext';
@@ -33,7 +34,7 @@ const actionFormSchema = z.object({
   due_date: z.string().refine((val) => val && !isNaN(Date.parse(val)), {
     message: 'Please enter a valid date.',
   }),
-  status: z.enum(['Pending', 'In Progress', 'Completed', 'Overdue']).optional(),
+  status: z.enum(['Pending', 'In Progress', 'Completed', 'Overdue', 'On Hold']).optional(),
   linkType: z.enum(['incident', 'observation']).optional(),
   linked_id: z.string().optional(),
 });
@@ -152,6 +153,7 @@ const ActionForm = ({
                     <SelectContent>
                         <SelectItem value="Pending">Pending</SelectItem>
                         <SelectItem value="In Progress">In Progress</SelectItem>
+                        <SelectItem value="On Hold">On Hold</SelectItem>
                         <SelectItem value="Completed">Completed</SelectItem>
                         <SelectItem value="Overdue">Overdue</SelectItem>
                     </SelectContent>
@@ -227,6 +229,7 @@ const ActionDetailsDialog = ({
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
 }) => {
+    const { user } = useAuth();
     const { correctiveActions, updateCorrectiveAction, addCommentToAction, incidents, observations, uploadSettings } = useAppData();
     const [newComment, setNewComment] = useState('');
     const [imageFile, setImageFile] = useState<File | null>(null);
@@ -256,7 +259,32 @@ const ActionDetailsDialog = ({
             responsible_person: values.responsible_person,
             due_date: values.due_date ? new Date(values.due_date).toISOString() : actionToUpdate.due_date,
             status: values.status || actionToUpdate.status,
+            comments: [...actionToUpdate.comments], // Start with existing comments
         };
+        
+        const logs: string[] = [];
+
+        if(updatedAction.status !== actionToUpdate.status) {
+            logs.push(`Status changed from ${actionToUpdate.status} to ${updatedAction.status}.`);
+        }
+        if(format(parseISO(updatedAction.due_date), 'yyyy-MM-dd') !== format(parseISO(actionToUpdate.due_date), 'yyyy-MM-dd')) {
+            logs.push(`Due date changed from ${format(parseISO(actionToUpdate.due_date), 'P')} to ${format(parseISO(updatedAction.due_date), 'P')}.`);
+        }
+        if(updatedAction.responsible_person !== actionToUpdate.responsible_person) {
+            logs.push(`Responsible person changed from ${actionToUpdate.responsible_person} to ${updatedAction.responsible_person}.`);
+        }
+        if(updatedAction.description !== actionToUpdate.description) {
+            logs.push(`Description was edited.`);
+        }
+
+        if (logs.length > 0) {
+            updatedAction.comments.push({
+                user: 'System Log',
+                comment: logs.join('\n'),
+                date: new Date().toISOString()
+            });
+        }
+        
         updateCorrectiveAction(updatedAction);
         toast({
             title: 'Corrective Action Updated',
@@ -289,6 +317,8 @@ const ActionDetailsDialog = ({
         }
     };
     
+    const getAvatarInitials = (name: string) => name === 'System Log' ? 'SL' : name.split(' ').map(n => n[0]).join('').substring(0,2).toUpperCase();
+    
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
             <DialogContent className="max-w-3xl">
@@ -302,15 +332,15 @@ const ActionDetailsDialog = ({
                            {currentAction.comments.map((comment, index) => (
                                 <div key={index} className="flex gap-3">
                                 <Avatar>
-                                    <AvatarImage src={`https://placehold.co/40x40.png?text=${comment.user.charAt(0)}`} />
-                                    <AvatarFallback>{comment.user.charAt(0)}</AvatarFallback>
+                                    <AvatarImage src={comment.user !== 'System Log' ? `https://placehold.co/40x40.png?text=${getAvatarInitials(comment.user)}` : undefined} />
+                                    <AvatarFallback>{getAvatarInitials(comment.user)}</AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1">
                                     <div className="flex justify-between items-center">
                                     <p className="font-semibold text-sm">{comment.user}</p>
                                     <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(comment.date), { addSuffix: true })}</p>
                                     </div>
-                                    <div className="text-sm text-muted-foreground bg-secondary p-3 rounded-lg mt-1 space-y-2">
+                                    <div className="text-sm text-muted-foreground bg-secondary p-3 rounded-lg mt-1 space-y-2 whitespace-pre-wrap">
                                       <p>{comment.comment}</p>
                                       {comment.imageUrl && (
                                         <div className="relative aspect-video rounded-md overflow-hidden">
@@ -347,6 +377,7 @@ const statusVariant: { [key in CorrectiveAction['status']]: 'destructive' | 'sec
   'Pending': 'secondary',
   'In Progress': 'default',
   'Completed': 'outline',
+  'On Hold': 'outline',
 };
 
 const statusIcons: { [key in CorrectiveAction['status']]: React.ElementType } = {
@@ -354,6 +385,7 @@ const statusIcons: { [key in CorrectiveAction['status']]: React.ElementType } = 
   'In Progress': Siren,
   'Completed': CheckCircle,
   'Overdue': AlertTriangle,
+  'On Hold': PauseCircle,
 }
 
 const KanbanCard = ({ action, onClick }: { action: CorrectiveAction; onClick: () => void }) => {
@@ -377,7 +409,7 @@ const KanbanCard = ({ action, onClick }: { action: CorrectiveAction; onClick: ()
     );
 };
 
-const kanbanStatuses: CorrectiveAction['status'][] = ['Pending', 'In Progress', 'Overdue', 'Completed'];
+const kanbanStatuses: CorrectiveAction['status'][] = ['Pending', 'In Progress', 'On Hold', 'Overdue', 'Completed'];
 
 const CorrectiveActionsView = ({
     actions,

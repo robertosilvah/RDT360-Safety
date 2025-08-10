@@ -1,9 +1,11 @@
 
+
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, IncidentData, ConfinedSpacePermit, WorkHoursLog, ToolboxTalk, ToolboxSignature, PredefinedHazard, PredefinedControl } from '@/types';
 import api from '@/services/backend';
+import { parseISO } from 'date-fns';
 
 interface AppDataContextType {
   observations: Observation[];
@@ -124,7 +126,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
                 }
                 const derivedCreatedDate = action.created_date || action.due_date;
                 let finalStatus = action.status;
-                if (finalStatus !== 'Completed' && new Date(action.due_date) < now) {
+                if (finalStatus !== 'Completed' && finalStatus !== 'On Hold' && parseISO(action.due_date) < now) {
                     finalStatus = 'Overdue';
                 }
                 return { ...action, type: derivedType, created_date: derivedCreatedDate, status: finalStatus };
