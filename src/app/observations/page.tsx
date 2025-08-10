@@ -25,7 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
-import { Camera, Eye, Siren, User as UserIcon, Users, FileText, ClipboardCheck, Upload, Download, Trash2, Edit, Wrench, FilePlus2 } from 'lucide-react';
+import { Camera, Eye, Siren, UserIcon, Users, FileText, ClipboardCheck, Upload, Download, Trash2, Edit, Wrench, FilePlus2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -727,30 +727,27 @@ const EditObservationDialog = ({
 
 
 const ObservationDetailsDialog = ({
-  observationId,
+  observation,
   isOpen,
   onOpenChange,
   onEditClick,
   onDeleteClick,
   isAdmin,
 }: {
-  observationId: string | null;
+  observation: Observation | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onEditClick: (observation: Observation) => void;
   onDeleteClick: (observation: Observation) => void;
   isAdmin: boolean;
 }) => {
-  const { observations, users, areas } = useAppData();
+  const { areas } = useAppData();
   const { user: authUser } = useAuth();
-  
-  const observation = observationId ? observations.find(obs => obs.observation_id === observationId) : null;
 
   if (!observation) return null;
   
   const canEdit = isAdmin || (authUser && authUser.displayName === observation.submitted_by);
   const areaPath = findAreaPathById(areas, observation.areaId);
-
   
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -1027,8 +1024,10 @@ const ObservationTable: React.FC<ObservationTableProps> = ({
 export default function ObservationsPage() {
   const { observations, deleteObservation, users, areas } = useAppData();
   const { user: authUser } = useAuth();
-  const [selectedObservationId, setSelectedObservationId] = useState<string | null>(null);
+  const [selectedObservation, setSelectedObservation] = useState<Observation | null>(null);
   const [editingObservation, setEditingObservation] = useState<Observation | null>(null);
+  const [isDetailsOpen, setDetailsOpen] = useState(false);
+  const [isEditOpen, setEditOpen] = useState(false);
   const [isNewObservationOpen, setNewObservationOpen] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1043,17 +1042,20 @@ export default function ObservationsPage() {
   );
 
   const handleRowClick = (observation: Observation) => {
-    setSelectedObservationId(observation.observation_id);
+    setSelectedObservation(observation);
+    setDetailsOpen(true);
   };
   
   const handleEditClick = (e: React.MouseEvent, observation: Observation) => {
     e.stopPropagation();
     setEditingObservation(observation);
+    setEditOpen(true);
   };
 
   const handleDetailsEditClick = (observation: Observation) => {
-    setSelectedObservationId(null);
+    setDetailsOpen(false);
     setEditingObservation(observation);
+    setEditOpen(true);
   };
   
   const handleDetailsDeleteClick = (observation: Observation) => {
@@ -1063,7 +1065,7 @@ export default function ObservationsPage() {
         description: 'The observation has been permanently removed.',
         variant: 'destructive',
       });
-      setSelectedObservationId(null);
+      setDetailsOpen(false);
   };
   
   const handleTableDelete = (e: React.MouseEvent, observationId: string) => {
@@ -1322,13 +1324,9 @@ export default function ObservationsPage() {
         </Tabs>
         
         <ObservationDetailsDialog
-          observationId={selectedObservationId}
-          isOpen={!!selectedObservationId}
-          onOpenChange={(open) => {
-            if (!open) {
-              setSelectedObservationId(null);
-            }
-          }}
+          observation={selectedObservation}
+          isOpen={isDetailsOpen}
+          onOpenChange={setDetailsOpen}
           onEditClick={handleDetailsEditClick}
           onDeleteClick={handleDetailsDeleteClick}
           isAdmin={isAdmin}
@@ -1336,8 +1334,8 @@ export default function ObservationsPage() {
         
         <EditObservationDialog
             observation={editingObservation}
-            isOpen={!!editingObservation}
-            onOpenChange={(open) => !open && setEditingObservation(null)}
+            isOpen={isEditOpen}
+            onOpenChange={setEditOpen}
             areas={areas}
         />
 
