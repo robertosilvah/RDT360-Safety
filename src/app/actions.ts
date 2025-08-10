@@ -100,20 +100,31 @@ const escapeSqlValue = (value: any): string => {
     return `'${value.toString().replace(/'/g, "''")}'`;
 };
 
-const generateCreateTableSql = (tableName: string, sampleDoc?: Record<string, any>): string => {
-    let columns = '`id` VARCHAR(255) PRIMARY KEY';
-    if (sampleDoc) {
-      // Use Object.keys on the sample document to define columns
-      for (const key in sampleDoc) {
-          if (key === 'id') continue;
-          let type = 'TEXT';
-          const value = sampleDoc[key];
-          if (typeof value === 'number') type = 'FLOAT';
-          if (typeof value === 'boolean') type = 'TINYINT(1)';
-          columns += `,\n  \`${key}\` ${type}`;
-      }
+const generateCreateTableSql = (tableName: string, allData: Record<string, any>[]): string => {
+    if (allData.length === 0) {
+        return `CREATE TABLE IF NOT EXISTS \`${tableName}\` (\n  \`id\` VARCHAR(255) PRIMARY KEY\n);\n\n`;
     }
-    // If there's no sampleDoc (collection is empty), it will just create the table with the primary key.
+
+    const allKeys = new Set<string>();
+    allData.forEach(doc => {
+        Object.keys(doc).forEach(key => allKeys.add(key));
+    });
+
+    let columns = '`id` VARCHAR(255) PRIMARY KEY';
+    
+    allKeys.forEach(key => {
+        if (key === 'id') return;
+
+        // Find the first non-null/undefined value for this key to infer type
+        const sampleValue = allData.find(doc => doc[key] !== null && doc[key] !== undefined)?.[key];
+        
+        let type = 'TEXT'; // Default type
+        if (typeof sampleValue === 'number') type = 'FLOAT';
+        else if (typeof sampleValue === 'boolean') type = 'TINYINT(1)';
+        
+        columns += `,\n  \`${key}\` ${type}`;
+    });
+
     return `CREATE TABLE IF NOT EXISTS \`${tableName}\` (\n  ${columns}\n);\n\n`;
 };
 
@@ -134,7 +145,7 @@ export async function exportDatabaseToSqlAction(): Promise<string> {
       const data = await getCollectionData(name);
       
       sqlOutput += `-- Data for collection: ${name}\n`;
-      sqlOutput += generateCreateTableSql(name, data.length > 0 ? data[0] : undefined);
+      sqlOutput += generateCreateTableSql(name, data);
 
       if (data.length > 0) {
           data.forEach(doc => {
