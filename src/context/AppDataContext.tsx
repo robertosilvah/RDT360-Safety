@@ -5,6 +5,7 @@
 
 
 
+
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
@@ -114,10 +115,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [uploadSettings, setUploadSettings] = useState<UploadSettings | null>(null);
   const [workHours, setWorkHours] = useState<WorkHoursLog[]>([]);
   const [toolboxTalks, setToolboxTalks] = useState<ToolboxTalk[]>([]);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   useEffect(() => {
     const unsubscribers = [
-        api.subscribeToCollection<Observation>('observations', setObservations, 'observation_id'),
+        api.subscribeToCollection<Observation>('observations', (data) => { setObservations(data); setIsDataLoaded(true); }, 'observation_id'),
         api.subscribeToCollection<CorrectiveAction>('correctiveActions', (actions) => {
             const now = new Date();
             const processedActions = actions.map(action => {
@@ -197,16 +199,16 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   }, []);
   
   useEffect(() => {
-    if (users.length > 0) {
+    if (isDataLoaded && users.length > 0) {
       api.ensureAdminUserExists();
     }
-  }, [users]);
+  }, [isDataLoaded, users]);
 
   useEffect(() => {
-    if (jsas.length > 0) {
+    if (isDataLoaded && jsas.length > 0) {
         api.ensureSampleJsaExists();
     }
-  }, [jsas]);
+  }, [isDataLoaded, jsas]);
 
   const addObservation = (observation: Omit<Observation, 'observation_id' | 'display_id' | 'status'>) => {
     const displayId = `OBS${String(observations.length + 1).padStart(3, '0')}`;

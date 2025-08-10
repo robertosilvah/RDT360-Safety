@@ -7,12 +7,12 @@ import { getAuth } from "firebase/auth";
 // Your web app's Firebase configuration
 // This is a public configuration and is safe to be exposed on the client-side.
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyA58WZHhyhX-JZ2UlFdIfsiR6_rMP1vRfU",
+  authDomain: "rdt360-safety.firebaseapp.com",
+  projectId: "rdt360-safety",
+  storageBucket: "rdt360-safety.appspot.com",
+  messagingSenderId: "949644180482",
+  appId: "1:949644180482:web:58393615e49c106502fb1b"
 };
 
 // Initialize Firebase
