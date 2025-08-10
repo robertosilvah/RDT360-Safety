@@ -74,7 +74,7 @@ const inspectionFormSchema = z.object({
   checklist: z.array(z.object({
     id: z.string(),
     question: z.string(),
-    status: statusEnum,
+    status: statusEnum.optional(),
     comment: z.string().optional(),
     actionId: z.string().optional(),
   })),
@@ -431,32 +431,35 @@ const ForkliftInspectionDetailsDialog = ({
     )
 }
 
-const ForkliftStatusCard = ({ forklift, inspections, onNewInspection }: {
+const ForkliftStatusCard = ({ forklift, inspections, onNewInspection, onViewTodayInspections }: {
     forklift: Forklift;
     inspections: ForkliftInspection[];
     onNewInspection: (forkliftId: string) => void;
+    onViewTodayInspections: (forklift: Forklift) => void;
 }) => {
     const passedCount = inspections.filter(i => i.checklist.every(c => c.status === 'Pass' || c.status === 'N/A')).length;
     const failedCount = inspections.length - passedCount;
 
     return (
         <Card>
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                    <Truck /> {forklift.id}
-                </CardTitle>
-                <CardDescription>{forklift.name}</CardDescription>
-            </CardHeader>
-            <CardContent className="flex items-center justify-around">
-                <div className="text-center">
-                    <p className="text-2xl font-bold text-green-600">{passedCount}</p>
-                    <p className="text-sm text-muted-foreground">Passed</p>
-                </div>
-                 <div className="text-center">
-                    <p className="text-2xl font-bold text-red-600">{failedCount}</p>
-                    <p className="text-sm text-muted-foreground">Failed</p>
-                </div>
-            </CardContent>
+            <button className="w-full text-left" onClick={() => onViewTodayInspections(forklift)} disabled={inspections.length === 0}>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <Truck /> {forklift.id}
+                    </CardTitle>
+                    <CardDescription>{forklift.name}</CardDescription>
+                </CardHeader>
+                <CardContent className="flex items-center justify-around">
+                    <div className="text-center">
+                        <p className="text-2xl font-bold text-green-600">{passedCount}</p>
+                        <p className="text-sm text-muted-foreground">Passed</p>
+                    </div>
+                    <div className="text-center">
+                        <p className="text-2xl font-bold text-red-600">{failedCount}</p>
+                        <p className="text-sm text-muted-foreground">Failed</p>
+                    </div>
+                </CardContent>
+            </button>
             <CardFooter>
                  <Button className="w-full" onClick={() => onNewInspection(forklift.id)}>
                     <PlusCircle className="mr-2 h-4 w-4"/> Start New Inspection
@@ -497,6 +500,7 @@ function ForkliftInspectionPageContent() {
     const [isDetailsOpen, setDetailsOpen] = useState(false);
     const [forkliftIdToInspect, setForkliftIdToInspect] = useState<string | undefined>(undefined);
     const [historyFilter, setHistoryFilter] = useState('all');
+    const [todayInspectionsForklift, setTodayInspectionsForklift] = useState<Forklift | null>(null);
 
     const searchParams = useSearchParams();
 
@@ -517,6 +521,10 @@ function ForkliftInspectionPageContent() {
         setForkliftIdToInspect(forkliftId);
         setCreateOpen(true);
     };
+    
+    const handleViewTodayInspections = (forklift: Forklift) => {
+        setTodayInspectionsForklift(forklift);
+    }
 
     const { todayInspections, pastInspections } = useMemo(() => {
         const today: ForkliftInspection[] = [];
@@ -553,6 +561,7 @@ function ForkliftInspectionPageContent() {
                                 forklift={forklift}
                                 inspections={todayInspections.filter(i => i.forklift_id === forklift.id)}
                                 onNewInspection={handleNewInspection}
+                                onViewTodayInspections={handleViewTodayInspections}
                             />
                         ))}
                     </div>
@@ -630,6 +639,42 @@ function ForkliftInspectionPageContent() {
                     isOpen={isDetailsOpen}
                     onOpenChange={setDetailsOpen}
                 />
+                
+                 <Dialog open={!!todayInspectionsForklift} onOpenChange={(open) => !open && setTodayInspectionsForklift(null)}>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Today's Inspections for {todayInspectionsForklift?.id}</DialogTitle>
+                            <DialogDescription>Select an inspection to view its details.</DialogDescription>
+                        </DialogHeader>
+                        <div className="max-h-[60vh] overflow-y-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>ID</TableHead>
+                                        <TableHead>Operator</TableHead>
+                                        <TableHead>Time</TableHead>
+                                        <TableHead>Result</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {todayInspections
+                                        .filter(insp => insp.forklift_id === todayInspectionsForklift?.id)
+                                        .map(insp => {
+                                            const hasFailedItems = insp.checklist.some(item => item.status === 'Fail');
+                                            return (
+                                                <TableRow key={insp.inspection_id} onClick={() => handleRowClick(insp)} className="cursor-pointer">
+                                                    <TableCell>{insp.display_id}</TableCell>
+                                                    <TableCell>{insp.operator_name}</TableCell>
+                                                    <TableCell>{format(new Date(insp.date), 'p')}</TableCell>
+                                                    <TableCell>{hasFailedItems ? <Badge variant="destructive">Fail</Badge> : <Badge variant="default">Pass</Badge>}</TableCell>
+                                                </TableRow>
+                                            )
+                                        })}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </DialogContent>
+                </Dialog>
             </div>
         </AppShell>
     );
