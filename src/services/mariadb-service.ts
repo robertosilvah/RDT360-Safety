@@ -94,6 +94,10 @@ export const updateCorrectiveAction = async (action: any) => {
     logAction('updateCorrectiveAction', action);
 };
 
+export const addCommentToAction = async (actionId: string, commentData: Omit<Comment, 'date' | 'user'>, imageFile?: File | null) => {
+    logAction('addCommentToAction', { actionId, commentData, imageFileName: imageFile?.name });
+};
+
 export const addIncident = async (incident: any) => {
     logAction('addIncident', incident);
 };

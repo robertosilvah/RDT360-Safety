@@ -1,4 +1,5 @@
 
+
 export type TalkSection = {
   na: boolean;
   details: string;
@@ -44,6 +45,7 @@ export type Comment = {
   user: string;
   comment: string;
   date: string;
+  imageUrl?: string;
 };
 
 export type Investigation = {

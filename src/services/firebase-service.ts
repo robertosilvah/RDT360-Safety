@@ -5,6 +5,7 @@
 
 
 
+
 import { db, storage } from '@/lib/firebase';
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, writeBatch, DocumentReference,
@@ -124,6 +125,31 @@ export const addCorrectiveAction = async (action: Omit<CorrectiveAction, 'action
 export const updateCorrectiveAction = async (updatedAction: CorrectiveAction) => {
   const { action_id, ...data } = updatedAction;
   await updateDoc(doc(db, 'correctiveActions', action_id), data as { [x: string]: any });
+};
+
+export const addCommentToAction = async (actionId: string, commentData: Omit<Comment, 'date' | 'user'>, imageFile?: File | null) => {
+    const actionRef = doc(db, 'correctiveActions', actionId);
+    const actionSnap = await getDoc(actionRef);
+    if (!actionSnap.exists()) return;
+
+    let imageUrl: string | undefined = undefined;
+    if (imageFile) {
+        const storageRef = ref(storage, `action-comments/${actionId}/${Date.now()}-${imageFile.name}`);
+        await uploadBytes(storageRef, imageFile);
+        imageUrl = await getDownloadURL(storageRef);
+    }
+
+    const newComment: Comment = {
+        ...commentData,
+        imageUrl,
+        user: 'Safety Manager', // Replace with actual current user
+        date: new Date().toISOString(),
+    };
+
+    const currentComments = actionSnap.data().comments || [];
+    await updateDoc(actionRef, {
+        comments: [...currentComments, newComment]
+    });
 };
 
 // Incident Functions

@@ -1,13 +1,13 @@
 
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { CorrectiveAction, Incident, Observation, Comment } from '@/types';
-import { PlusCircle, Siren, Eye, MessageSquare, User, Clock, CheckCircle, AlertTriangle, List, Truck, FileSearch, UserSquare, KanbanSquare as KanbanSquareIcon } from 'lucide-react';
+import { PlusCircle, Siren, Eye, MessageSquare, User, Clock, CheckCircle, AlertTriangle, List, Truck, FileSearch, UserSquare, KanbanSquare as KanbanSquareIcon, Paperclip } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
@@ -25,6 +25,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { KanbanSquare } from 'lucide-react';
 import { useAppData } from '@/context/AppDataContext';
 import { useAuth } from '@/context/AuthContext';
+import Image from 'next/image';
 
 const actionFormSchema = z.object({
   description: z.string().min(10, 'Description must be at least 10 characters.'),
@@ -54,7 +55,6 @@ const ActionForm = ({
   incidents: Incident[];
   observations: Observation[];
 }) => {
-  const { toast } = useToast();
   const form = useForm<ActionFormValues>({
     resolver: zodResolver(actionFormSchema),
     defaultValues: {
@@ -227,11 +227,23 @@ const ActionDetailsDialog = ({
     isOpen: boolean;
     onOpenChange: (open: boolean) => void;
 }) => {
-    const { correctiveActions, updateCorrectiveAction, addCommentToAction, incidents, observations } = useAppData();
+    const { correctiveActions, updateCorrectiveAction, addCommentToAction, incidents, observations, uploadSettings } = useAppData();
     const [newComment, setNewComment] = useState('');
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const imageInputRef = useRef<HTMLInputElement>(null);
     const { toast } = useToast();
     
     const currentAction = action ? correctiveActions.find(a => a.action_id === action.action_id) || null : null;
+    
+    useEffect(() => {
+        if (!isOpen) {
+            setNewComment('');
+            setImageFile(null);
+            setImagePreview(null);
+        }
+    }, [isOpen]);
+
     if (!currentAction) return null;
 
     const handleSave = (values: ActionFormValues) => {
@@ -253,11 +265,29 @@ const ActionDetailsDialog = ({
     }
 
     const handleAddComment = () => {
-        if(newComment.trim()) {
-            addCommentToAction(currentAction.action_id, { user: 'Safety Manager', comment: newComment.trim(), date: new Date().toISOString() });
+        if(newComment.trim() || imageFile) {
+            const comment: Omit<Comment, 'date' | 'user'> = {
+                comment: newComment.trim(),
+            };
+            addCommentToAction(currentAction.action_id, comment, imageFile);
             setNewComment('');
+            setImageFile(null);
+            setImagePreview(null);
         }
     }
+
+    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            const maxSizeMB = uploadSettings?.imageMaxSizeMB || 5;
+            if (file.size > maxSizeMB * 1024 * 1024) {
+                toast({ variant: 'destructive', title: 'File too large', description: `Image must be smaller than ${maxSizeMB}MB.` });
+                return;
+            }
+            setImageFile(file);
+            setImagePreview(URL.createObjectURL(file));
+        }
+    };
     
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -268,7 +298,7 @@ const ActionDetailsDialog = ({
                     </div>
                     <div className="md:col-span-1 space-y-4 pt-2">
                         <h3 className="text-lg font-semibold flex items-center gap-2"><MessageSquare className="h-5 w-5" /> Comments</h3>
-                        <div className="space-y-4 max-h-[calc(70vh-150px)] overflow-y-auto pr-2">
+                        <div className="space-y-4 max-h-[calc(70vh-220px)] overflow-y-auto pr-2">
                            {currentAction.comments.map((comment, index) => (
                                 <div key={index} className="flex gap-3">
                                 <Avatar>
@@ -280,14 +310,30 @@ const ActionDetailsDialog = ({
                                     <p className="font-semibold text-sm">{comment.user}</p>
                                     <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(comment.date), { addSuffix: true })}</p>
                                     </div>
-                                    <p className="text-sm text-muted-foreground bg-secondary p-3 rounded-lg mt-1">{comment.comment}</p>
+                                    <div className="text-sm text-muted-foreground bg-secondary p-3 rounded-lg mt-1 space-y-2">
+                                      <p>{comment.comment}</p>
+                                      {comment.imageUrl && (
+                                        <div className="relative aspect-video rounded-md overflow-hidden">
+                                           <Image src={comment.imageUrl} alt="Comment attachment" fill className="object-cover" />
+                                        </div>
+                                      )}
+                                    </div>
                                 </div>
                                 </div>
                             ))}
                         </div>
                         <div className="flex flex-col gap-2">
+                            {imagePreview && (
+                                <div className="relative aspect-video rounded-md overflow-hidden">
+                                    <Image src={imagePreview} alt="Comment preview" fill className="object-cover" />
+                                </div>
+                            )}
                             <Textarea placeholder="Add a comment..." value={newComment} onChange={(e) => setNewComment(e.target.value)} rows={2}/>
-                            <Button size="sm" onClick={handleAddComment} disabled={!newComment.trim()}>Add Comment</Button>
+                            <div className="flex justify-between items-center">
+                                <Button size="sm" variant="ghost" type="button" onClick={() => imageInputRef.current?.click()}><Paperclip className="h-4 w-4" /></Button>
+                                <input type="file" ref={imageInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
+                                <Button size="sm" onClick={handleAddComment} disabled={!newComment.trim() && !imageFile}>Add Comment</Button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -465,7 +511,7 @@ export default function CorrectiveActionsPage() {
   }, [allActions, user]);
 
   const handleSaveAction = (values: ActionFormValues) => {
-      const newAction: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'> = {
+      const newAction: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments' | 'created_date' | 'completion_date' | 'type'> = {
         description: values.description,
         responsible_person: values.responsible_person,
         due_date: new Date(values.due_date).toISOString(),

@@ -13,7 +13,7 @@ interface AppDataContextType {
   correctiveActions: CorrectiveAction[];
   addCorrectiveAction: (action: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'| 'created_date' | 'completion_date' | 'type'>) => Promise<void>;
   updateCorrectiveAction: (updatedAction: CorrectiveAction) => Promise<void>;
-  addCommentToAction: (actionId: string, comment: Comment) => Promise<void>;
+  addCommentToAction: (actionId: string, comment: Omit<Comment, 'date' | 'user'>, imageFile?: File | null) => Promise<void>;
   incidents: Incident[];
   addIncident: (incidentData: IncidentData) => Promise<void>;
   deleteIncident: (incidentId: string) => Promise<void>;
@@ -323,6 +323,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const addToolboxSignature = async (talkId: string, signature: Omit<ToolboxSignature, 'id' | 'toolbox_talk_id'>) => {
       await api.addToolboxSignature(talkId, { ...signature, toolbox_talk_id: talkId });
   };
+  
+  const addCommentToAction = (actionId: string, comment: Omit<Comment, 'date' | 'user'>, imageFile?: File | null) => {
+      return api.addCommentToAction(actionId, comment, imageFile);
+  };
 
   return (
     <AppDataContext.Provider value={{
@@ -330,11 +334,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       updateObservation: api.updateObservation, 
       deleteObservation: api.deleteObservation,
       correctiveActions, addCorrectiveAction, updateCorrectiveAction,
-      addCommentToAction: (actionId, comment) => {
-          const action = correctiveActions.find(a => a.action_id === actionId);
-          if (action) return api.addCommentToDocument('correctiveActions', actionId, [...action.comments, comment]);
-          return Promise.resolve();
-      },
+      addCommentToAction,
       incidents, addIncident, deleteIncident: api.deleteIncident, createInvestigationForIncident,
       updateIncident: api.updateIncident,
       addCommentToIncident: (incidentId, comment) => {
