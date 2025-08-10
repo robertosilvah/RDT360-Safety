@@ -3,6 +3,7 @@
 
 
 
+
 import { db, storage } from '@/lib/firebase';
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, writeBatch, DocumentReference,
@@ -52,6 +53,52 @@ export const ensureAdminUserExists = async () => {
     };
     await setDoc(adminDocRef, adminUser);
   }
+};
+
+export const ensureSampleJsaExists = async () => {
+    const jsaDocRef = doc(db, 'jsas', 'JSA000');
+    const docSnap = await getDoc(jsaDocRef);
+    if (!docSnap.exists()) {
+        const sampleJsa: Omit<JSA, 'jsa_id'> = {
+            display_id: 'JSA000',
+            title: 'Análisis de Trabajo Seguro para Soldadura',
+            job_description: 'Realizar soldadura de arco en la estación de fabricación A.',
+            areaId: 'AREA03',
+            required_ppe: ['Casco de soldadura', 'Guantes de cuero', 'Delantal de cuero', 'Respirador'],
+            steps: [
+                {
+                    step_description: 'Preparar el área de trabajo',
+                    hazards: ['Materiales inflamables', 'Tropiezos y caídas'],
+                    controls: ['Retirar todos los combustibles a 10 metros', 'Asegurar una buena limpieza'],
+                    severity: 'High',
+                    likelihood: 'Possible',
+                },
+                {
+                    step_description: 'Inspeccionar el equipo de soldadura',
+                    hazards: ['Descarga eléctrica', 'Equipo defectuoso'],
+                    controls: ['Verificar cables y conexiones', 'Asegurar una correcta conexión a tierra'],
+                    severity: 'Critical',
+                    likelihood: 'Unlikely',
+                },
+                {
+                    step_description: 'Realizar la soldadura',
+                    hazards: ['Quemaduras', 'Exposición a humos', 'Radiación UV'],
+                    controls: ['Usar todo el EPP', 'Asegurar ventilación por extracción local', 'Usar pantallas de soldadura'],
+                    severity: 'High',
+                    likelihood: 'Likely',
+                }
+            ],
+            created_by: 'Safety Manager',
+            created_date: new Date('2023-10-01T09:00:00Z').toISOString(),
+            valid_from: new Date('2023-10-01T09:00:00Z').toISOString(),
+            valid_to: new Date('2024-10-01T09:00:00Z').toISOString(),
+            status: 'Active',
+            signatures: [
+                { employee_name: 'Admin User', sign_date: new Date('2023-10-01T09:30:00Z').toISOString() }
+            ]
+        };
+        await setDoc(jsaDocRef, sampleJsa);
+    }
 };
 
 // Observation Functions

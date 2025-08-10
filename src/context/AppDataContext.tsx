@@ -4,6 +4,7 @@
 
 
 
+
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
@@ -200,6 +201,12 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       api.ensureAdminUserExists();
     }
   }, [users]);
+
+  useEffect(() => {
+    if (jsas.length > 0) {
+        api.ensureSampleJsaExists();
+    }
+  }, [jsas]);
 
   const addObservation = (observation: Omit<Observation, 'observation_id' | 'display_id' | 'status'>) => {
     const displayId = `OBS${String(observations.length + 1).padStart(3, '0')}`;
