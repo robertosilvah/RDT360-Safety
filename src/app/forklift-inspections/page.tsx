@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, Suspense, useEffect } from 'react';
+import React, { useState, Suspense, useEffect, useMemo } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { Button } from '@/components/ui/button';
 import {
@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  CardFooter
 } from '@/components/ui/card';
 import {
   Table,
@@ -46,12 +47,13 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useToast } from '@/hooks/use-toast';
 import { useAppData } from '@/context/AppDataContext';
 import { FORKLIFT_CHECKLIST_QUESTIONS } from '@/lib/mockData';
-import type { ForkliftInspection } from '@/types';
-import { PlusCircle, AlertTriangle, Printer } from 'lucide-react';
+import type { Forklift, ForkliftInspection } from '@/types';
+import { PlusCircle, AlertTriangle, Printer, Truck, CheckCircle, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { useSearchParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
+import { isToday, format } from 'date-fns';
 
 // Schema for the corrective action creation dialog
 const actionFormSchema = z.object({
@@ -429,6 +431,41 @@ const ForkliftInspectionDetailsDialog = ({
     )
 }
 
+const ForkliftStatusCard = ({ forklift, inspections, onNewInspection }: {
+    forklift: Forklift;
+    inspections: ForkliftInspection[];
+    onNewInspection: (forkliftId: string) => void;
+}) => {
+    const passedCount = inspections.filter(i => i.checklist.every(c => c.status === 'Pass' || c.status === 'N/A')).length;
+    const failedCount = inspections.length - passedCount;
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Truck /> {forklift.id}
+                </CardTitle>
+                <CardDescription>{forklift.name}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex items-center justify-around">
+                <div className="text-center">
+                    <p className="text-2xl font-bold text-green-600">{passedCount}</p>
+                    <p className="text-sm text-muted-foreground">Passed</p>
+                </div>
+                 <div className="text-center">
+                    <p className="text-2xl font-bold text-red-600">{failedCount}</p>
+                    <p className="text-sm text-muted-foreground">Failed</p>
+                </div>
+            </CardContent>
+            <CardFooter>
+                 <Button className="w-full" onClick={() => onNewInspection(forklift.id)}>
+                    <PlusCircle className="mr-2 h-4 w-4"/> Start New Inspection
+                </Button>
+            </CardFooter>
+        </Card>
+    );
+}
+
 const PageSkeleton = () => (
     <AppShell>
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -454,45 +491,92 @@ const PageSkeleton = () => (
 );
 
 function ForkliftInspectionPageContent() {
-    const { forkliftInspections } = useAppData();
+    const { forkliftInspections, forklifts } = useAppData();
     const [isCreateOpen, setCreateOpen] = useState(false);
     const [selectedInspection, setSelectedInspection] = useState<ForkliftInspection | null>(null);
     const [isDetailsOpen, setDetailsOpen] = useState(false);
+    const [forkliftIdToInspect, setForkliftIdToInspect] = useState<string | undefined>(undefined);
+    const [historyFilter, setHistoryFilter] = useState('all');
+
     const searchParams = useSearchParams();
-    const forkliftIdFromUrl = searchParams.get('forklift_id');
 
     useEffect(() => {
+        const forkliftIdFromUrl = searchParams.get('forklift_id');
         if (forkliftIdFromUrl) {
+            setForkliftIdToInspect(forkliftIdFromUrl);
             setCreateOpen(true);
         }
-    }, [forkliftIdFromUrl]);
+    }, [searchParams]);
 
     const handleRowClick = (inspection: ForkliftInspection) => {
         setSelectedInspection(inspection);
         setDetailsOpen(true);
     };
 
+    const handleNewInspection = (forkliftId: string) => {
+        setForkliftIdToInspect(forkliftId);
+        setCreateOpen(true);
+    };
+
+    const { todayInspections, pastInspections } = useMemo(() => {
+        const today: ForkliftInspection[] = [];
+        const past: ForkliftInspection[] = [];
+        forkliftInspections.forEach(insp => {
+            if (isToday(new Date(insp.date))) {
+                today.push(insp);
+            } else {
+                past.push(insp);
+            }
+        });
+        return { todayInspections: today, pastInspections: past };
+    }, [forkliftInspections]);
+    
+    const filteredHistory = useMemo(() => {
+        if (historyFilter === 'all') return pastInspections;
+        return pastInspections.filter(i => i.forklift_id === historyFilter);
+    }, [pastInspections, historyFilter]);
+
+
     return (
         <AppShell>
-            <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
+            <div className="flex-1 space-y-8 p-4 md:p-8 pt-6">
                 <div className="flex items-center justify-between space-y-2">
                     <h2 className="text-3xl font-bold tracking-tight">Forklift Inspections</h2>
-                    <Dialog open={isCreateOpen} onOpenChange={setCreateOpen}>
-                        <DialogTrigger asChild>
-                            <Button>
-                                <PlusCircle className="mr-2 h-4 w-4" /> Start New Inspection
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
-                           <NewInspectionForm setOpen={setCreateOpen} defaultForkliftId={forkliftIdFromUrl || undefined} />
-                        </DialogContent>
-                    </Dialog>
                 </div>
                 
+                <div>
+                    <h3 className="text-2xl font-semibold tracking-tight mb-4">Today's Status</h3>
+                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                        {forklifts.map(forklift => (
+                            <ForkliftStatusCard
+                                key={forklift.id}
+                                forklift={forklift}
+                                inspections={todayInspections.filter(i => i.forklift_id === forklift.id)}
+                                onNewInspection={handleNewInspection}
+                            />
+                        ))}
+                    </div>
+                </div>
+
                 <Card>
                     <CardHeader>
-                        <CardTitle>Inspection History</CardTitle>
-                        <CardDescription>A log of the most recent forklift inspections. Click a row to view details.</CardDescription>
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <CardTitle>Inspection History</CardTitle>
+                                <CardDescription>A log of all past forklift inspections.</CardDescription>
+                            </div>
+                            <Select value={historyFilter} onValueChange={setHistoryFilter}>
+                                <SelectTrigger className="w-[200px]">
+                                    <SelectValue placeholder="Filter by forklift..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Forklifts</SelectItem>
+                                    {forklifts.map(fl => (
+                                        <SelectItem key={fl.id} value={fl.id}>{fl.id} - {fl.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <Table>
@@ -506,7 +590,7 @@ function ForkliftInspectionPageContent() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {forkliftInspections.map(insp => {
+                                {filteredHistory.map(insp => {
                                     const failedItems = insp.checklist.filter(item => item.status === 'Fail');
                                     return (
                                         <TableRow key={insp.inspection_id} onClick={() => handleRowClick(insp)} className="cursor-pointer">
@@ -531,6 +615,15 @@ function ForkliftInspectionPageContent() {
                         </Table>
                     </CardContent>
                 </Card>
+
+                 <Dialog open={isCreateOpen} onOpenChange={(open) => {
+                     setCreateOpen(open);
+                     if (!open) setForkliftIdToInspect(undefined);
+                 }}>
+                    <DialogContent className="max-w-2xl">
+                        <NewInspectionForm setOpen={setCreateOpen} defaultForkliftId={forkliftIdToInspect} />
+                    </DialogContent>
+                </Dialog>
 
                 <ForkliftInspectionDetailsDialog
                     inspection={selectedInspection}
