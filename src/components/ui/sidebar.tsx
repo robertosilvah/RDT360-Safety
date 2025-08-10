@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -57,7 +58,7 @@ const SidebarProvider = React.forwardRef<
 >(
   (
     {
-      defaultOpen = true,
+      defaultOpen,
       open: openProp,
       onOpenChange: setOpenProp,
       className,
@@ -88,6 +89,17 @@ const SidebarProvider = React.forwardRef<
       },
       [setOpenProp, open]
     )
+    
+    React.useEffect(() => {
+        if (defaultOpen === undefined) {
+          const cookie = document.cookie
+            .split("; ")
+            .find((row) => row.startsWith(`${SIDEBAR_COOKIE_NAME}=`))
+          if (cookie) {
+            setOpen(cookie.split("=")[1] === "true")
+          }
+        }
+      }, [defaultOpen, setOpen])
 
     // Helper to toggle the sidebar.
     const toggleSidebar = React.useCallback(() => {

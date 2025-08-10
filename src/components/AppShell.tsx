@@ -49,6 +49,7 @@ import { useAppData } from '@/context/AppDataContext';
 import Image from 'next/image';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const menuItems = [
   { href: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -94,6 +95,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { brandingSettings } = useAppData();
   const [openSections, setOpenSections] = React.useState<Record<string, boolean>>({});
+  const isMobile = useIsMobile();
 
   React.useEffect(() => {
     const newOpenSections: Record<string, boolean> = {};
@@ -110,7 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={!isMobile}>
       <Sidebar>
         <SidebarHeader>
           <div className="flex items-center gap-2">
