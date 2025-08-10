@@ -358,7 +358,7 @@ const ForkliftInspectionDetailsDialog = ({
     if (!inspection) return null;
 
     const handlePrint = () => {
-        window.print();
+        window.open(`/forklift-inspections/${inspection.inspection_id}`, '_blank');
     };
 
     const statusVariant: { [key in 'Pass' | 'Fail' | 'N/A']: 'outline' | 'destructive' | 'secondary' } = {
@@ -369,11 +369,11 @@ const ForkliftInspectionDetailsDialog = ({
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-3xl printable-area">
+            <DialogContent className="max-w-3xl">
                 <DialogHeader>
                     <DialogTitle className="flex justify-between items-center">
                         <span>Inspection Details: {inspection.display_id}</span>
-                         <Button type="button" variant="ghost" size="icon" onClick={handlePrint} className="no-print">
+                         <Button type="button" variant="ghost" size="icon" onClick={handlePrint}>
                             <Printer className="h-5 w-5" />
                             <span className="sr-only">Print</span>
                         </Button>

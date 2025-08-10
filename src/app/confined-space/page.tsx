@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import type { ConfinedSpacePermit, Area, Comment, ChecklistStatus, ConfinedSpacePermitChecklist } from '@/types';
-import { PlusCircle, Users, FileSignature, Box, Clock, UserCheck, MessageSquare, Edit } from 'lucide-react';
+import { PlusCircle, Users, FileSignature, Box, Clock, UserCheck, MessageSquare, Edit, Printer } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -284,6 +284,12 @@ const PermitDetailsDialog = ({
     }
   };
 
+  const handlePrint = () => {
+    if (permit) {
+      window.open(`/confined-space/${permit.permit_id}`, '_blank');
+    }
+  };
+
   const isFormLocked = !isCreateMode && (permit?.status === 'Closed' || permit?.status === 'Denied');
   const isDraft = !isCreateMode && permit?.status === 'Draft';
   const isViewMode = isFormLocked || (!isDraft && !isCreateMode);
@@ -292,7 +298,18 @@ const PermitDetailsDialog = ({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <DialogHeader><DialogTitle>{isCreateMode ? 'Create New Confined Space Permit' : `Confined Space Permit: ${permit.display_id}`}</DialogTitle><DialogDescription>{isCreateMode ? 'Fill in details to issue a new permit.' : `Details for permit in ${permit.locationName}`}</DialogDescription></DialogHeader>
+        <DialogHeader>
+            <DialogTitle className="flex justify-between items-center">
+                <span>{isCreateMode ? 'Create New Confined Space Permit' : `Confined Space Permit: ${permit.display_id}`}</span>
+                {!isCreateMode && (
+                    <Button variant="ghost" size="icon" type="button" onClick={handlePrint} className="no-print">
+                        <Printer className="h-5 w-5" />
+                        <span className="sr-only">Print Permit</span>
+                    </Button>
+                )}
+            </DialogTitle>
+            <DialogDescription>{isCreateMode ? 'Fill in details to issue a new permit.' : `Details for permit in ${permit.locationName}`}</DialogDescription>
+        </DialogHeader>
         <div className="max-h-[70vh] overflow-y-auto pr-2">
          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
            <div className="md:col-span-2 space-y-6">

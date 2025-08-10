@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import type { HotWorkPermit, HotWorkPermitChecklist, Area, Comment, ChecklistStatus } from '@/types';
-import { PlusCircle, Users, FileSignature, Flame, Clock, CheckSquare, Trash2, UserCheck, Edit, MessageSquare, FilePenLine } from 'lucide-react';
+import { PlusCircle, Users, FileSignature, Flame, Clock, CheckSquare, Trash2, UserCheck, Edit, MessageSquare, FilePenLine, Printer } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -421,6 +421,12 @@ const PermitDetailsDialog = ({
     }
   };
 
+  const handlePrint = () => {
+    if (permit) {
+      window.open(`/hot-work/${permit.permit_id}`, '_blank');
+    }
+  };
+
   const isFormLocked = !isCreateMode && (permit?.status === 'Closed' || permit?.status === 'Denied');
   const isDraft = !isCreateMode && permit?.status === 'Draft';
   const isViewMode = isFormLocked || (!isDraft && !isCreateMode);
@@ -434,7 +440,15 @@ const PermitDetailsDialog = ({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
         <DialogHeader>
-          <DialogTitle>{isCreateMode ? 'Create New Hot Work Permit' : `Hot Work Permit: ${permit.display_id}`}</DialogTitle>
+          <DialogTitle className="flex justify-between items-center">
+            <span>{isCreateMode ? 'Create New Hot Work Permit' : `Hot Work Permit: ${permit.display_id}`}</span>
+            {!isCreateMode && (
+                <Button variant="ghost" size="icon" type="button" onClick={handlePrint} className="no-print">
+                    <Printer className="h-5 w-5" />
+                    <span className="sr-only">Print Permit</span>
+                </Button>
+            )}
+          </DialogTitle>
           <DialogDescription>
             {isCreateMode ? 'Fill in the details below to issue a new permit.' : `Details for permit in ${permit.locationName}`}
           </DialogDescription>
