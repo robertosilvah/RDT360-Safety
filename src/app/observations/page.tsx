@@ -732,22 +732,22 @@ const ObservationDetailsDialog = ({
   onOpenChange,
   onEditClick,
   onDeleteClick,
+  isAdmin,
 }: {
   observationId: string | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onEditClick: (observation: Observation) => void;
   onDeleteClick: (observation: Observation) => void;
+  isAdmin: boolean;
 }) => {
-  const { observations, users, areas, deleteObservation } = useAppData();
+  const { observations, users, areas } = useAppData();
   const { user: authUser } = useAuth();
   
-  const observation = observations.find(obs => obs.observation_id === observationId);
+  const observation = observationId ? observations.find(obs => obs.observation_id === observationId) : null;
 
   if (!observation) return null;
   
-  const currentUser = users.find(u => u.id === authUser?.uid) || null;
-  const isAdmin = currentUser?.role === 'Administrator';
   const canEdit = isAdmin || (authUser && authUser.displayName === observation.submitted_by);
   const areaPath = findAreaPathById(areas, observation.areaId);
 
@@ -1331,6 +1331,7 @@ export default function ObservationsPage() {
           }}
           onEditClick={handleDetailsEditClick}
           onDeleteClick={handleDetailsDeleteClick}
+          isAdmin={isAdmin}
         />
         
         <EditObservationDialog
@@ -1344,3 +1345,4 @@ export default function ObservationsPage() {
     </AppShell>
   );
 }
+
