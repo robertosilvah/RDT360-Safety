@@ -1,3 +1,4 @@
+
 // services/mariadb.js
 // This is a mock implementation for the MariaDB local API.
 // In a real application, these functions would make fetch requests to your local API endpoints.

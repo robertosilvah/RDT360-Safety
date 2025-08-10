@@ -1,3 +1,4 @@
+
 // config.ts
 
 // This function should only be called on the client side.
