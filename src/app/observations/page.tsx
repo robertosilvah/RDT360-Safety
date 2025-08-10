@@ -731,15 +731,16 @@ const ObservationDetailsDialog = ({
   isOpen,
   onOpenChange,
   onEditClick,
+  onDeleteClick,
 }: {
   observationId: string | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onEditClick: (observation: Observation) => void;
+  onDeleteClick: (observation: Observation) => void;
 }) => {
   const { observations, users, areas, deleteObservation } = useAppData();
   const { user: authUser } = useAuth();
-  const { toast } = useToast();
   
   const observation = observations.find(obs => obs.observation_id === observationId);
 
@@ -750,15 +751,6 @@ const ObservationDetailsDialog = ({
   const canEdit = isAdmin || (authUser && authUser.displayName === observation.submitted_by);
   const areaPath = findAreaPathById(areas, observation.areaId);
 
-  const handleDelete = () => {
-    deleteObservation(observation.observation_id);
-    toast({
-      title: 'Observation Deleted',
-      description: 'The observation has been permanently removed.',
-      variant: 'destructive',
-    });
-    onOpenChange(false);
-  };
   
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -861,7 +853,7 @@ const ObservationDetailsDialog = ({
                         </AlertDialogHeader>
                         <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDelete}>Delete</AlertDialogAction>
+                            <AlertDialogAction onClick={() => onDeleteClick(observation)}>Delete</AlertDialogAction>
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
@@ -1062,6 +1054,16 @@ export default function ObservationsPage() {
   const handleDetailsEditClick = (observation: Observation) => {
     setSelectedObservationId(null);
     setEditingObservation(observation);
+  };
+  
+  const handleDetailsDeleteClick = (observation: Observation) => {
+      deleteObservation(observation.observation_id);
+      toast({
+        title: 'Observation Deleted',
+        description: 'The observation has been permanently removed.',
+        variant: 'destructive',
+      });
+      setSelectedObservationId(null);
   };
   
   const handleTableDelete = (e: React.MouseEvent, observationId: string) => {
@@ -1328,6 +1330,7 @@ export default function ObservationsPage() {
             }
           }}
           onEditClick={handleDetailsEditClick}
+          onDeleteClick={handleDetailsDeleteClick}
         />
         
         <EditObservationDialog
