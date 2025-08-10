@@ -727,22 +727,24 @@ const EditObservationDialog = ({
 
 
 const ObservationDetailsDialog = ({
-  observation,
+  observationId,
   isOpen,
   onOpenChange,
   onEditClick,
   onDeleteClick,
-  isAdmin,
 }: {
-  observation: Observation | null;
+  observationId: string | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   onEditClick: (observation: Observation) => void;
   onDeleteClick: (observation: Observation) => void;
-  isAdmin: boolean;
 }) => {
-  const { areas } = useAppData();
+  const { observations, areas, users } = useAppData();
   const { user: authUser } = useAuth();
+  
+  const observation = observationId ? observations.find(obs => obs.observation_id === observationId) : null;
+  const currentUser = authUser ? users.find(u => u.id === authUser.uid) : null;
+  const isAdmin = currentUser?.role === 'Administrator';
 
   if (!observation) return null;
   
@@ -1024,7 +1026,7 @@ const ObservationTable: React.FC<ObservationTableProps> = ({
 export default function ObservationsPage() {
   const { observations, deleteObservation, users, areas } = useAppData();
   const { user: authUser } = useAuth();
-  const [selectedObservation, setSelectedObservation] = useState<Observation | null>(null);
+  const [selectedObservationId, setSelectedObservationId] = useState<string | null>(null);
   const [editingObservation, setEditingObservation] = useState<Observation | null>(null);
   const [isDetailsOpen, setDetailsOpen] = useState(false);
   const [isEditOpen, setEditOpen] = useState(false);
@@ -1042,7 +1044,7 @@ export default function ObservationsPage() {
   );
 
   const handleRowClick = (observation: Observation) => {
-    setSelectedObservation(observation);
+    setSelectedObservationId(observation.observation_id);
     setDetailsOpen(true);
   };
   
@@ -1324,12 +1326,11 @@ export default function ObservationsPage() {
         </Tabs>
         
         <ObservationDetailsDialog
-          observation={selectedObservation}
+          observationId={selectedObservationId}
           isOpen={isDetailsOpen}
           onOpenChange={setDetailsOpen}
           onEditClick={handleDetailsEditClick}
           onDeleteClick={handleDetailsDeleteClick}
-          isAdmin={isAdmin}
         />
         
         <EditObservationDialog
