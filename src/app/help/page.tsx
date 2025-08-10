@@ -97,6 +97,19 @@ const dataModel = [
     ]
   },
   {
+    name: 'Toolbox Talks',
+    description: 'Manages toolbox safety talks, including topics, dates, leaders, and attendance.',
+    relations: [
+      { to: 'Users', text: 'Talks are assigned to specific users for attendance.' },
+      { to: 'Toolbox Signatures', text: 'Each talk has multiple signatures from attendees.' },
+    ]
+  },
+  {
+    name: 'Work Hours Log',
+    description: 'Stores logs of total person-hours worked over specific periods, used for calculating safety metrics.',
+    relations: []
+  },
+  {
     name: 'Safety Docs',
     description: 'A central repository for documents like policies, procedures, and forms.',
     relations: []
