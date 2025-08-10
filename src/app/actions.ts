@@ -133,7 +133,7 @@ export async function exportDatabaseToSqlAction(): Promise<string> {
       const data = await getCollectionData(name);
       
       sqlOutput += `-- Data for collection: ${name}\n`;
-      sqlOutput += generateCreateTableSql(name, data[0]);
+      sqlOutput += generateCreateTableSql(name, data.length > 0 ? data[0] : undefined);
 
       if (data.length > 0) {
           data.forEach(doc => {
