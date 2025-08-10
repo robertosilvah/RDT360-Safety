@@ -595,10 +595,10 @@ const EditObservationDialog = ({
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Edit Observation: {observation.display_id}</DialogTitle>
-          <DialogDescription>
-            Modify the details of the observation below.
-          </DialogDescription>
+            <DialogTitle>Edit Observation: {observation.display_id}</DialogTitle>
+            <DialogDescription>
+                Modify the details of the observation below.
+            </DialogDescription>
         </DialogHeader>
         <div className="max-h-[70vh] overflow-y-auto pr-4">
           <Form {...form}>
@@ -773,15 +773,14 @@ const ObservationDetailsDialog = ({
 }) => {
   const { observations, areas, users } = useAppData();
   const { user: authUser } = useAuth();
-  
+
   const observation = observationId ? observations.find(obs => obs.observation_id === observationId) : null;
-  
   const currentUser = authUser ? users.find(u => u.id === authUser.uid) : null;
   const isAdmin = currentUser?.role === 'Administrator';
-  const canEdit = isAdmin || (authUser && observation && authUser.displayName === observation.submitted_by);
   
   if (!observation) return null;
   
+  const canEdit = isAdmin || (authUser && observation && authUser.displayName === observation.submitted_by);
   const areaPath = findAreaPathById(areas, observation.areaId);
   
   return (
@@ -864,32 +863,32 @@ const ObservationDetailsDialog = ({
           )}
         </div>
         <DialogFooter>
-            {canEdit && (
-                 <Button variant="outline" onClick={() => { onOpenChange(false); onEditClick(observation); }}>
-                    <Edit className="mr-2 h-4 w-4" /> Edit
+          {canEdit && (
+            <Button variant="outline" onClick={() => { onOpenChange(false); onEditClick(observation); }}>
+              <Edit className="mr-2 h-4 w-4" /> Edit
+            </Button>
+          )}
+          {isAdmin && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive">
+                  <Trash2 className="mr-2 h-4 w-4" /> Delete
                 </Button>
-            )}
-             {isAdmin && (
-                <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                        <Button variant="destructive">
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                        </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                This will permanently delete observation <span className="font-mono">{observation.display_id}</span>. This action cannot be undone.
-                            </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => onDeleteClick(observation)}>Delete</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            )}
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete observation <span className="font-mono">{observation.display_id}</span>. This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => onDeleteClick(observation)}>Delete</AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -1062,6 +1061,7 @@ export default function ObservationsPage() {
   const [selectedObservationId, setSelectedObservationId] = useState<string | null>(null);
   const [editingObservation, setEditingObservation] = useState<Observation | null>(null);
   const [isDetailsOpen, setDetailsOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [isNewObservationOpen, setNewObservationOpen] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -1083,11 +1083,13 @@ export default function ObservationsPage() {
   const handleEditClick = (e: React.MouseEvent, observation: Observation) => {
     e.stopPropagation();
     setEditingObservation(observation);
+    setIsEditOpen(true);
   };
 
   const handleDetailsEditClick = (observation: Observation) => {
     setDetailsOpen(false);
     setEditingObservation(observation);
+    setIsEditOpen(true);
   };
   
   const handleDetailsDeleteClick = (observation: Observation) => {
@@ -1306,28 +1308,6 @@ export default function ObservationsPage() {
             <TabsTrigger value="my">My Observations</TabsTrigger>
           </TabsList>
           <TabsContent value="all" className="mt-4">
-             <div className="flex items-center justify-end space-x-2 py-4">
-                {isAdmin && (
-                    <>
-                        <input
-                            type="file"
-                            ref={fileInputRef}
-                            className="hidden"
-                            accept=".csv"
-                            onChange={handleFileImport}
-                        />
-                        <Button variant="outline" size="sm" onClick={handleImportClick} disabled={isSubmitting}>
-                            {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                            Import
-                        </Button>
-                    </>
-                )}
-                {canExport && (
-                   <Button variant="outline" size="sm" onClick={handleExport}>
-                        <Download className="mr-2 h-4 w-4" /> Export
-                    </Button>
-                )}
-            </div>
             <ObservationTable
                 observations={observations}
                 title="All Observations"
@@ -1365,8 +1345,8 @@ export default function ObservationsPage() {
         
         <EditObservationDialog
           observation={editingObservation}
-          isOpen={!!editingObservation}
-          onOpenChange={(open) => !open && setEditingObservation(null)}
+          isOpen={isEditOpen}
+          onOpenChange={setIsEditOpen}
           areas={areas}
         />
       </div>
