@@ -412,18 +412,31 @@ const JsaDetailsDialog = ({ jsa, isOpen, onOpenChange, onSign, onShare, currentU
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-6xl h-[90vh] flex flex-col printable-area print:shadow-none">
-                <DialogHeader>
+            <style jsx global>{`
+                @media print {
+                  body > *:not(.printable-area) {
+                    display: none;
+                  }
+                  .printable-area {
+                    display: block;
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                  }
+                }
+            `}</style>
+            <DialogContent className="max-w-6xl h-[90vh] flex flex-col printable-area">
+                <DialogHeader className="no-print">
                     <DialogTitle className="text-2xl flex items-center justify-between gap-2">
                         <span className="flex items-center gap-2"><FileSignature /> {jsa.title}</span>
-                         <div className="flex items-center gap-1 no-print">
+                         <div className="flex items-center gap-1">
                             <Button type="button" variant="ghost" size="icon" onClick={onShare}><Share2 className="h-5 w-5" /><span className="sr-only">Share</span></Button>
                          </div>
                     </DialogTitle>
                     <DialogDescription>{jsa.job_description}</DialogDescription>
                 </DialogHeader>
                 
-                <div className="flex-1 overflow-y-auto pr-6 space-y-6 py-4 print:overflow-visible print:h-auto">
+                <div className="flex-1 overflow-y-auto pr-6 space-y-6 py-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div><h3 className="font-semibold mb-2 flex items-center gap-2"><MapPin /> Area / Operation</h3><p className="text-muted-foreground">{areaPath}</p></div>
                       <div><h3 className="font-semibold mb-2 flex items-center gap-2"><Clock /> Permit Validity</h3><p className="text-muted-foreground">{format(new Date(jsa.valid_from), "P p")} to {format(new Date(jsa.valid_to), "P p")}</p></div>
