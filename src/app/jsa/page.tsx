@@ -412,13 +412,14 @@ const JsaDetailsDialog = ({ jsa, isOpen, onOpenChange, onSign, onShare, currentU
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-6xl max-h-[90vh] flex flex-col">
-                <div className="printable-area flex flex-col flex-1 min-h-0">
+            <DialogContent className="max-w-6xl h-[90vh] flex flex-col">
+                <div className="printable-area flex-1 flex flex-col min-h-0">
                     <DialogHeader>
                         <DialogTitle className="text-2xl flex items-center justify-between gap-2">
                             <span className="flex items-center gap-2"><FileSignature /> {jsa.title}</span>
                              <div className="flex items-center gap-1 no-print">
                                 <Button type="button" variant="ghost" size="icon" onClick={onShare}><Share2 className="h-5 w-5" /><span className="sr-only">Share</span></Button>
+                                <Button type="button" variant="ghost" size="icon" onClick={handlePrint}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
                              </div>
                         </DialogTitle>
                         <DialogDescription>{jsa.job_description}</DialogDescription>
@@ -481,8 +482,7 @@ const JsaDetailsDialog = ({ jsa, isOpen, onOpenChange, onSign, onShare, currentU
                         <div><h3 className="font-semibold mb-2 flex items-center gap-2"><Users /> Signatures ({jsa.signatures.length})</h3><ul className="list-disc list-inside text-sm text-muted-foreground max-h-40 overflow-y-auto">{jsa.signatures.length > 0 ? jsa.signatures.map((sig, index) => (<li key={index}>{sig.employee_name} (Signed on {new Date(sig.sign_date).toLocaleDateString()})</li>)) : <li>No signatures yet.</li>}</ul></div>
                     </div>
                     
-                    <DialogFooter className="mt-auto pt-4 border-t !justify-between no-print">
-                        <Button type="button" variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4" />Print</Button>
+                    <DialogFooter className="mt-auto pt-4 border-t !justify-end no-print">
                         <div className="flex items-center gap-2">
                            <div className="text-xs text-muted-foreground">{hasSigned ? `You acknowledged this on ${new Date(jsa.signatures.find(s => s.employee_name === currentUser)!.sign_date).toLocaleDateString()}` : "Please read carefully before signing."}</div>
                            <Input className="w-48" placeholder="Enter your name" value={signatureName} onChange={(e) => setSignatureName(e.target.value)} disabled={hasSigned}/>

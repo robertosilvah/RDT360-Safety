@@ -85,27 +85,29 @@
 
 @media print {
   body {
-    background-color: white !important;
+    background: white !important;
     color: black !important;
-  }
-  
-  .no-print,
-  [data-sidebar='sidebar'],
-  header {
-    display: none !important;
   }
 
-  .printable-area {
-    display: block !important;
-    position: static !important;
-    width: 100% !important;
-    height: auto !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    color: black !important;
+  .no-print, .no-print * {
+    display: none !important;
+  }
+  
+  .printable-area, .printable-area * {
+    visibility: visible;
+  }
+
+   .printable-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: auto;
+    padding: 1rem;
+    color: black;
     background: white !important;
-    box-shadow: none !important;
     border: none !important;
+    box-shadow: none !important;
   }
   
   .qr-code-printable-area, .qr-code-printable-area * {
