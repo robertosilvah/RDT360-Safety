@@ -5,22 +5,55 @@
 
 import type { Observation, CorrectiveAction, Incident, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, ConfinedSpacePermit, IncidentData, Comment, WorkHoursLog, ToolboxTalk, ToolboxSignature } from '@/types';
 
+// IMPORTANT: When you are ready to connect to your real MariaDB backend,
+// you will need to replace the mock functions below with actual API calls.
+
+// 1. Set your backend API's base URL. It's best to use an environment variable.
+const API_BASE_URL = process.env.NEXT_PUBLIC_MARIADB_API_URL || 'http://localhost:3001/api';
+
 const logAction = (action: string, data?: any) => {
     console.log(`[MariaDB Mock] Action: ${action}`, data || '');
-    // In a real scenario, you'd probably want to return mock data.
-    // For now, we'll return empty arrays or promises that resolve to void.
 };
 
+// --- EXAMPLE: Real Implementation vs. Mock ---
+
+// This is a generic function to fetch all incidents.
+// Use this as a template for your other "getter" functions.
+const getIncidents = async (): Promise<Incident[]> => {
+    // REAL IMPLEMENTATION (uncomment when your backend is ready)
+    /*
+    try {
+        const response = await fetch(`${API_BASE_URL}/incidents`);
+        if (!response.ok) {
+            throw new Error(`API call failed: ${response.statusText}`);
+        }
+        const data: Incident[] = await response.json();
+        return data;
+    } catch (error) {
+        console.error('Failed to fetch incidents:', error);
+        return []; // Return an empty array on error
+    }
+    */
+
+    // MOCK IMPLEMENTATION (remove this part when you go live)
+    console.log('[MariaDB Mock] Fetching all incidents...');
+    return Promise.resolve([]); // Return an empty array for the mock
+};
+
+
+// --- Functions to be fully implemented ---
+// You will need to replace the content of these functions with real API calls.
+
 export const subscribeToCollection = (collectionName: string, callback: (data: any[]) => void) => {
-    logAction('subscribeToCollection', { collectionName });
-    // Simulate an initial empty state and do not update further.
+    logAction('subscribeToCollection (not supported in API model, use direct fetches)', { collectionName });
+    // In a REST API model, you typically fetch data directly instead of subscribing.
+    // For example, you might call a function like `getIncidents()` here.
     callback([]); 
-    // Return a dummy unsubscribe function.
     return () => {}; 
 };
 
 export const subscribeToDoc = (collectionName: string, docId: string, callback: (data: any | null) => void) => {
-    logAction('subscribeToDoc', { collectionName, docId });
+    logAction('subscribeToDoc (not supported in API model)', { collectionName, docId });
     callback(null);
     return () => {};
 };
