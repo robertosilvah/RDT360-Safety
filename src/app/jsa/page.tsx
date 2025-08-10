@@ -1,3 +1,4 @@
+
 'use client';
 
 import { AppShell } from '@/components/AppShell';
@@ -6,8 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Separator } from '@/components/ui/separator';
 import type { JSA, Area, PredefinedHazard, PredefinedControl } from '@/types';
-import { PlusCircle, Users, Shield, FileSignature, Edit, UserCheck, Trash2, MapPin, Share2, Printer, Wand2, Loader2, Clock, MoreVertical, Copy, Check } from 'lucide-react';
-import React, { useState, useEffect, Suspense } from 'react';
+import { PlusCircle, Users, Shield, FileSignature, Edit, UserCheck, Trash2, MapPin, Share2, Printer, Wand2, Loader2, Clock, MoreVertical, Copy, Check, Search } from 'lucide-react';
+import React, { useState, useEffect, Suspense, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +38,7 @@ import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import Link from 'next/link';
 import Image from 'next/image';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 
 const jsaStepSchema = z.object({
@@ -370,130 +372,161 @@ const findAreaPathById = (areas: Area[], id: string, path: string[] = []): strin
 
 
 const JsaDetailsDialog = ({ jsa, isOpen, onOpenChange, onSign, onShare, currentUser, areaPath }: { jsa: JSA | null; isOpen: boolean; onOpenChange: (open: boolean) => void; onSign: (updatedJsa: JSA) => Promise<void>; onShare: () => void; currentUser: string; areaPath: string; }) => {
-    const { toast } = useToast();
-    const [signatureName, setSignatureName] = useState(currentUser);
-    const [isAnalyzing, setIsAnalyzing] = useState(false);
-    const [analysisResult, setAnalysisResult] = useState<string | null>(null);
+  const { toast } = useToast();
+  const [signatureName, setSignatureName] = useState(currentUser);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisResult, setAnalysisResult] = useState<string | null>(null);
 
-    useEffect(() => { if (isOpen) setAnalysisResult(null); }, [isOpen]);
+  useEffect(() => {
+    if (isOpen) {
+      setAnalysisResult(null);
+    }
+  }, [isOpen]);
 
-    if (!jsa) return null;
+  if (!jsa) return null;
 
-    const hasSigned = jsa.signatures.some(s => s.employee_name === currentUser);
+  const hasSigned = jsa.signatures.some(s => s.employee_name === currentUser);
 
-    const handleSign = () => {
-        if (signatureName.trim() && !hasSigned) {
-            const updatedJsa = { ...jsa, signatures: [...jsa.signatures, { employee_name: signatureName.trim(), sign_date: new Date().toISOString() }] };
-            onSign(updatedJsa);
-        }
-    };
-    
-    const handlePrint = () => {
-        window.open(`/jsa/${jsa.jsa_id}`, '_blank');
-    };
+  const handleSign = () => {
+    if (signatureName.trim() && !hasSigned) {
+      const updatedJsa = { ...jsa, signatures: [...jsa.signatures, { employee_name: signatureName.trim(), sign_date: new Date().toISOString() }] };
+      onSign(updatedJsa);
+    }
+  };
 
-    const handleAiAnalysis = async () => {
-        setIsAnalyzing(true); setAnalysisResult(null);
-        try {
-            const result = await getJsaAnalysisAction({
-                title: jsa.title, jobDescription: jsa.job_description, requiredPpe: jsa.required_ppe.join(', '),
-                steps: jsa.steps.map(step => ({ ...step, step_description: step.step_description, hazards: step.hazards.join(', '), controls: step.controls.join(', ') })),
-            });
-            if (result.analysis) setAnalysisResult(result.analysis);
-            else toast({ variant: "destructive", title: "Analysis Failed", description: "The AI analysis returned no result." });
-        } catch (error) {
-            console.error(error); toast({ variant: "destructive", title: "Analysis Error", description: "An unexpected error occurred." });
-        } finally { setIsAnalyzing(false); }
-    };
-    
-    const riskMatrix: { [key in JSA['steps'][0]['severity']]: { [key in JSA['steps'][0]['likelihood']]: string } } = {
-        'Low': { 'Unlikely': 'bg-green-500', 'Possible': 'bg-green-500', 'Likely': 'bg-yellow-500', 'Certain': 'bg-yellow-500' },
-        'Medium': { 'Unlikely': 'bg-green-500', 'Possible': 'bg-yellow-500', 'Likely': 'bg-yellow-500', 'Certain': 'bg-red-500' },
-        'High': { 'Unlikely': 'bg-yellow-500', 'Possible': 'bg-red-500', 'Likely': 'bg-red-300', 'Certain': 'bg-red-300' },
-        'Critical': { 'Unlikely': 'bg-red-300', 'Possible': 'bg-red-300', 'Likely': 'bg-red-300', 'Certain': 'bg-red-300' },
-    };
+  const handlePrint = () => {
+    window.open(`/jsa/${jsa.jsa_id}`, '_blank');
+  };
 
-    return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-6xl flex flex-col h-[90vh]">
-                <DialogHeader>
-                    <DialogTitle className="text-2xl flex items-center justify-between gap-2">
-                        <span className="flex items-center gap-2"><FileSignature /> {jsa.title}</span>
-                         <div className="flex items-center gap-1">
-                            <Button type="button" variant="ghost" size="icon" onClick={onShare}><Share2 className="h-5 w-5" /><span className="sr-only">Share</span></Button>
-                            <Button type="button" variant="ghost" size="icon" onClick={handlePrint}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
-                         </div>
-                    </DialogTitle>
-                    <DialogDescription>{jsa.job_description}</DialogDescription>
-                </DialogHeader>
-                
-                <div className="flex-1 overflow-y-auto pr-6 space-y-6 py-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div><h3 className="font-semibold mb-2 flex items-center gap-2"><MapPin /> Area / Operation</h3><p className="text-muted-foreground">{areaPath}</p></div>
-                      <div><h3 className="font-semibold mb-2 flex items-center gap-2"><Clock /> Permit Validity</h3><p className="text-muted-foreground">{format(new Date(jsa.valid_from), "P p")} to {format(new Date(jsa.valid_to), "P p")}</p></div>
-                    </div>
-                    <Separator />
-                    <div><h3 className="font-semibold mb-2 flex items-center gap-2"><Shield /> Required PPE</h3><div className="flex flex-wrap gap-2">{jsa.required_ppe.map((item, index) => <Badge key={index} variant="secondary">{item}</Badge>)}</div></div>
-                    <Separator />
-                    <div>
-                        <div className="flex items-center justify-between mb-2"><h3 className="font-semibold flex items-center gap-2"><Wand2 /> AI Analysis</h3><Button size="sm" onClick={handleAiAnalysis} disabled={isAnalyzing}>{isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}Analyze JSA</Button></div>
-                        {isAnalyzing && (<div className="p-4 bg-muted/50 rounded-lg border flex items-center justify-center min-h-[100px]"><Loader2 className="h-6 w-6 animate-spin text-primary" /><p className="ml-2 text-sm text-muted-foreground">AI is reviewing the JSA...</p></div>)}
-                        {analysisResult && (<Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"><CardContent className="p-4"><p className="text-sm whitespace-pre-wrap">{analysisResult}</p></CardContent></Card>)}
-                    </div>
-                    <Separator />
-                    <div>
-                        <h3 className="font-semibold mb-2">Job Steps, Hazards, and Controls</h3>
-                        <div className="overflow-x-auto">
-                            <Table className="border">
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead className="w-[20%]">Step</TableHead>
-                                        <TableHead className="w-[15%]">Principal Hazard</TableHead>
-                                        <TableHead className="w-[15%]">Potential Hazards</TableHead>
-                                        <TableHead className="w-[15%]">Control Measures</TableHead>
-                                        <TableHead>Risk</TableHead>
-                                        <TableHead>Tasks</TableHead>
-                                        <TableHead className="w-[15%]">Comments</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {jsa.steps.map((step, index) => (
-                                        <TableRow key={index}>
-                                            <TableCell className="font-semibold align-top">{index + 1}. {step.step_description}</TableCell>
-                                            <TableCell className="align-top">{step.principal_hazard}</TableCell>
-                                            <TableCell className="align-top">{step.hazards.join(', ')}</TableCell>
-                                            <TableCell className="align-top">{step.controls.join(', ')}</TableCell>
-                                            <TableCell className="align-top">
-                                                <div className="flex items-center gap-2">
-                                                    <div className={cn("h-4 w-4 rounded-full border border-black", riskMatrix[step.severity]?.[step.likelihood])} />
-                                                    <div>
-                                                        <p>S: {step.severity}</p>
-                                                        <p>L: {step.likelihood}</p>
-                                                    </div>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell className="align-top">{step.tasks}</TableCell>
-                                            <TableCell className="align-top">{step.comments}</TableCell>
-                                        </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
+  const handleAiAnalysis = async () => {
+    setIsAnalyzing(true);
+    setAnalysisResult(null);
+    try {
+      const result = await getJsaAnalysisAction({
+        title: jsa.title,
+        jobDescription: jsa.job_description,
+        requiredPpe: jsa.required_ppe.join(', '),
+        steps: jsa.steps.map(step => ({
+          step_description: step.step_description,
+          hazards: step.hazards.join(', '),
+          controls: step.controls.join(', '),
+        })),
+      });
+      if (result.analysis) {
+        setAnalysisResult(result.analysis);
+      } else {
+        toast({ variant: 'destructive', title: 'Analysis Failed', description: 'The AI analysis returned no result.' });
+      }
+    } catch (error) {
+      console.error(error);
+      toast({ variant: 'destructive', title: 'Analysis Error', description: 'An unexpected error occurred.' });
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const riskMatrix: { [key in JSA['steps'][0]['severity']]: { [key in JSA['steps'][0]['likelihood']]: string } } = {
+    'Low': { 'Unlikely': 'bg-green-500', 'Possible': 'bg-green-500', 'Likely': 'bg-yellow-500', 'Certain': 'bg-yellow-500' },
+    'Medium': { 'Unlikely': 'bg-green-500', 'Possible': 'bg-yellow-500', 'Likely': 'bg-yellow-500', 'Certain': 'bg-red-500' },
+    'High': { 'Unlikely': 'bg-yellow-500', 'Possible': 'bg-red-500', 'Likely': 'bg-red-300', 'Certain': 'bg-red-300' },
+    'Critical': { 'Unlikely': 'bg-red-300', 'Possible': 'bg-red-300', 'Likely': 'bg-red-300', 'Certain': 'bg-red-300' },
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-6xl flex flex-col h-[90vh]">
+        <DialogHeader className="no-print">
+          <DialogTitle className="text-2xl flex items-center justify-between gap-2">
+            <span className="flex items-center gap-2"><FileSignature /> {jsa.title}</span>
+            <div className="flex items-center gap-1">
+              <Button type="button" variant="ghost" size="icon" onClick={onShare}><Share2 className="h-5 w-5" /><span className="sr-only">Share</span></Button>
+              <Button type="button" variant="ghost" size="icon" onClick={handlePrint}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
+            </div>
+          </DialogTitle>
+          <DialogDescription>{jsa.job_description}</DialogDescription>
+        </DialogHeader>
+        
+        <div className="printable-area flex-1 overflow-y-auto pr-6 space-y-6 py-4">
+          <style>
+            {`
+              @media print {
+                .no-print, .no-print * {
+                  display: none !important;
+                }
+                .printable-area {
+                  overflow: visible !important;
+                  height: auto !important;
+                  padding-right: 0 !important;
+                }
+              }
+            `}
+          </style>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div><h3 className="font-semibold mb-2 flex items-center gap-2"><MapPin /> Area / Operation</h3><p className="text-muted-foreground">{areaPath}</p></div>
+            <div><h3 className="font-semibold mb-2 flex items-center gap-2"><Clock /> Permit Validity</h3><p className="text-muted-foreground">{format(new Date(jsa.valid_from), 'P p')} to {format(new Date(jsa.valid_to), 'P p')}</p></div>
+          </div>
+          <Separator />
+          <div><h3 className="font-semibold mb-2 flex items-center gap-2"><Shield /> Required PPE</h3><div className="flex flex-wrap gap-2">{jsa.required_ppe.map((item, index) => <Badge key={index} variant="secondary">{item}</Badge>)}</div></div>
+          <Separator />
+          <div className="no-print">
+            <div className="flex items-center justify-between mb-2"><h3 className="font-semibold flex items-center gap-2"><Wand2 /> AI Analysis</h3><Button size="sm" onClick={handleAiAnalysis} disabled={isAnalyzing}>{isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}Analyze JSA</Button></div>
+            {isAnalyzing && (<div className="p-4 bg-muted/50 rounded-lg border flex items-center justify-center min-h-[100px]"><Loader2 className="h-6 w-6 animate-spin text-primary" /><p className="ml-2 text-sm text-muted-foreground">AI is reviewing the JSA...</p></div>)}
+            {analysisResult && (<Card className="bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800"><CardContent className="p-4"><p className="text-sm whitespace-pre-wrap">{analysisResult}</p></CardContent></Card>)}
+          </div>
+          <Separator className="no-print" />
+          <div>
+            <h3 className="font-semibold mb-2">Job Steps, Hazards, and Controls</h3>
+            <div className="overflow-x-auto">
+              <Table className="border">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[20%]">Step</TableHead>
+                    <TableHead className="w-[15%]">Principal Hazard</TableHead>
+                    <TableHead className="w-[15%]">Potential Hazards</TableHead>
+                    <TableHead className="w-[15%]">Control Measures</TableHead>
+                    <TableHead>Risk</TableHead>
+                    <TableHead>Tasks</TableHead>
+                    <TableHead className="w-[15%]">Comments</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {jsa.steps.map((step, index) => (
+                    <TableRow key={index}>
+                      <TableCell className="font-semibold align-top">{index + 1}. {step.step_description}</TableCell>
+                      <TableCell className="align-top">{step.principal_hazard}</TableCell>
+                      <TableCell className="align-top">{step.hazards.join(', ')}</TableCell>
+                      <TableCell className="align-top">{step.controls.join(', ')}</TableCell>
+                      <TableCell className="align-top">
+                        <div className="flex items-center gap-2">
+                          <div className={cn("h-4 w-4 rounded-full border border-black", riskMatrix[step.severity]?.[step.likelihood])} />
+                          <div>
+                            <p>S: {step.severity}</p>
+                            <p>L: {step.likelihood}</p>
+                          </div>
                         </div>
-                    </div>
-                    <Separator />
-                    <div><h3 className="font-semibold mb-2 flex items-center gap-2"><Users /> Signatures ({jsa.signatures.length})</h3><ul className="list-disc list-inside text-sm text-muted-foreground max-h-40 overflow-y-auto">{jsa.signatures.length > 0 ? jsa.signatures.map((sig, index) => (<li key={index}>{sig.employee_name} (Signed on {new Date(sig.sign_date).toLocaleDateString()})</li>)) : <li>No signatures yet.</li>}</ul></div>
-                </div>
-                
-                <DialogFooter className="mt-auto pt-4 border-t !justify-between">
-                   <div className="text-xs text-muted-foreground">{hasSigned ? `You acknowledged this on ${new Date(jsa.signatures.find(s => s.employee_name === currentUser)!.sign_date).toLocaleDateString()}` : "Please read carefully before signing."}</div>
-                   <div className="flex items-center gap-2">
-                       <Input className="w-48" placeholder="Enter your name" value={signatureName} onChange={(e) => setSignatureName(e.target.value)} disabled={hasSigned}/>
-                       <Button onClick={handleSign} disabled={hasSigned || !signatureName.trim()}><UserCheck className="mr-2 h-4 w-4" />{hasSigned ? 'Acknowledged' : 'Acknowledge and Sign'}</Button>
-                    </div>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
+                      </TableCell>
+                      <TableCell className="align-top">{step.tasks}</TableCell>
+                      <TableCell className="align-top">{step.comments}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+          <Separator />
+          <div><h3 className="font-semibold mb-2 flex items-center gap-2"><Users /> Signatures ({jsa.signatures.length})</h3><ul className="list-disc list-inside text-sm text-muted-foreground max-h-40 overflow-y-auto">{jsa.signatures.length > 0 ? jsa.signatures.map((sig, index) => (<li key={index}>{sig.employee_name} (Signed on {new Date(sig.sign_date).toLocaleDateString()})</li>)) : <li>No signatures yet.</li>}</ul></div>
+        </div>
+        
+        <DialogFooter className="mt-auto pt-4 border-t !justify-between no-print">
+          <div className="text-xs text-muted-foreground">{hasSigned ? `You acknowledged this on ${new Date(jsa.signatures.find(s => s.employee_name === currentUser)!.sign_date).toLocaleDateString()}` : "Please read carefully before signing."}</div>
+          <div className="flex items-center gap-2">
+            <Input className="w-48" placeholder="Enter your name" value={signatureName} onChange={(e) => setSignatureName(e.target.value)} disabled={hasSigned}/>
+            <Button onClick={handleSign} disabled={hasSigned || !signatureName.trim()}><UserCheck className="mr-2 h-4 w-4" />{hasSigned ? 'Acknowledged' : 'Acknowledge and Sign'}</Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 const JsaSummaryCard = ({ jsa, areaPath, onViewDetails, onEdit, onCopy }: { jsa: JSA; areaPath: string; onViewDetails: () => void; onEdit: () => void; onCopy: () => void; }) => {
@@ -573,6 +606,29 @@ const JsaPageContent = () => {
     const [isDetailsOpen, setDetailsOpen] = useState(false);
     const [selectedJsa, setSelectedJsa] = useState<JSA | null>(null);
     const [formMode, setFormMode] = useState<'create' | 'edit' | 'copy'>('create');
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const { activeJsas, archivedJsas } = useMemo(() => {
+        const active: JSA[] = [];
+        const archived: JSA[] = [];
+        jsas.forEach(jsa => {
+            if (jsa.status === 'Active') {
+                active.push(jsa);
+            } else {
+                archived.push(jsa);
+            }
+        });
+        return { activeJsas: active, archivedJsas: archived };
+    }, [jsas]);
+
+    const filteredArchivedJsas = useMemo(() => {
+        if (!searchTerm) return archivedJsas;
+        return archivedJsas.filter(jsa => 
+            jsa.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            jsa.job_description.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+    }, [archivedJsas, searchTerm]);
+
 
     useEffect(() => {
         const jsaIdFromUrl = searchParams.get('id');
@@ -636,6 +692,8 @@ const JsaPageContent = () => {
         }
     };
     
+    const statusVariant = { Active: 'default', Expired: 'destructive', Draft: 'secondary' } as const;
+
     return (
         <AppShell>
             <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
@@ -645,21 +703,83 @@ const JsaPageContent = () => {
                 </div>
                 <p className="text-muted-foreground">Review and acknowledge safety procedures for specific jobs.</p>
 
-                <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
-                    {jsas.map((jsa) => {
-                        const areaPath = findAreaPathById(areas, jsa.areaId) || 'Unknown Area';
-                        return (
-                          <JsaSummaryCard 
-                            key={jsa.jsa_id} 
-                            jsa={jsa}
-                            areaPath={areaPath}
-                            onViewDetails={() => handleOpenDetails(jsa)}
-                            onEdit={() => handleOpenEdit(jsa)}
-                            onCopy={() => handleOpenCopy(jsa)}
-                          />
-                        )
-                    })}
-                </div>
+                <Tabs defaultValue="active" className="space-y-4">
+                    <TabsList>
+                        <TabsTrigger value="active">Active JSAs</TabsTrigger>
+                        <TabsTrigger value="archived">Expired & Drafts</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="active">
+                         <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
+                            {activeJsas.map((jsa) => {
+                                const areaPath = findAreaPathById(areas, jsa.areaId) || 'Unknown Area';
+                                return (
+                                <JsaSummaryCard 
+                                    key={jsa.jsa_id} 
+                                    jsa={jsa}
+                                    areaPath={areaPath}
+                                    onViewDetails={() => handleOpenDetails(jsa)}
+                                    onEdit={() => handleOpenEdit(jsa)}
+                                    onCopy={() => handleOpenCopy(jsa)}
+                                />
+                                )
+                            })}
+                        </div>
+                        {activeJsas.length === 0 && (
+                            <div className="text-center text-muted-foreground py-12">No active JSAs found.</div>
+                        )}
+                    </TabsContent>
+                    <TabsContent value="archived">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Archived JSAs</CardTitle>
+                                <CardDescription>A log of all expired or draft JSAs. You can copy them to create new versions.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="mb-4">
+                                    <div className="relative">
+                                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                        <Input 
+                                            placeholder="Search by title or description..." 
+                                            className="pl-8 w-full md:w-1/3"
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead>ID</TableHead>
+                                            <TableHead>Title</TableHead>
+                                            <TableHead>Status</TableHead>
+                                            <TableHead>Expires On</TableHead>
+                                            <TableHead className="text-right">Actions</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {filteredArchivedJsas.map((jsa) => (
+                                            <TableRow key={jsa.jsa_id}>
+                                                <TableCell className="font-medium">{jsa.display_id}</TableCell>
+                                                <TableCell>{jsa.title}</TableCell>
+                                                <TableCell><Badge variant={statusVariant[jsa.status]}>{jsa.status}</Badge></TableCell>
+                                                <TableCell>{format(new Date(jsa.valid_to), "P")}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button variant="ghost" size="sm" onClick={() => handleOpenDetails(jsa)}>View</Button>
+                                                    <Button variant="ghost" size="sm" onClick={() => handleOpenCopy(jsa)}>Copy</Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                        {filteredArchivedJsas.length === 0 && (
+                                            <TableRow>
+                                                <TableCell colSpan={5} className="text-center">No archived JSAs match your search.</TableCell>
+                                            </TableRow>
+                                        )}
+                                    </TableBody>
+                                </Table>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                </Tabs>
             </div>
 
             <JsaFormDialog
