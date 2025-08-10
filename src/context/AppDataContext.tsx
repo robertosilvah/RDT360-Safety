@@ -161,7 +161,10 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         }, 'area_id'),
         api.subscribeToCollection<SafetyDoc>('safetyDocs', setSafetyDocs, 'doc_id'),
         api.subscribeToCollection<ComplianceRecord>('complianceRecords', setComplianceRecords, 'employee_id'),
-        api.subscribeToCollection<Investigation>('investigations', setInvestigations, 'investigation_id'),
+        api.subscribeToCollection<Investigation>('investigations', (data) => {
+            const processedData = data.map(inv => ({...inv, comments: inv.comments || []}));
+            setInvestigations(processedData);
+        }, 'investigation_id'),
         api.subscribeToCollection<JSA>('jsas', (jsasFromDb) => {
             const now = new Date();
             const jsasToUpdate = jsasFromDb.filter(jsa => jsa.status === 'Active' && new Date(jsa.valid_to) < now);
@@ -215,7 +218,14 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     let type: CorrectiveAction['type'] = 'Other';
     if (action.related_to_incident) type = 'Reactive';
     else if (action.related_to_observation || action.related_to_forklift_inspection) type = 'Preventive';
-    return api.addCorrectiveAction({ ...action, display_id: displayId, comments: [], created_date: new Date().toISOString(), type });
+    
+    const creationComment: Comment = {
+      user: 'System Log',
+      comment: 'Corrective action created.',
+      date: new Date().toISOString()
+    };
+    
+    return api.addCorrectiveAction({ ...action, display_id: displayId, comments: [creationComment], created_date: new Date().toISOString(), type });
   };
 
   const updateCorrectiveAction = (updatedAction: CorrectiveAction) => {
@@ -383,7 +393,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       updateInvestigation: api.updateInvestigation,
       addCommentToInvestigation: (investigationId, comment) => {
         const investigation = investigations.find(i => i.investigation_id === investigationId);
-        if(investigation) return api.addCommentToDocument('investigations', investigationId, [...investigation.documents, comment]);
+        if(investigation) return api.addCommentToDocument('investigations', investigationId, [...(investigation.comments || []), comment]);
         return Promise.resolve();
       },
       addDocumentToInvestigation: (investigationId, documentData) => {

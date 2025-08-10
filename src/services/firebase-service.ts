@@ -6,6 +6,7 @@
 
 
 
+
 import { db, storage } from '@/lib/firebase';
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, writeBatch, DocumentReference,
@@ -318,7 +319,7 @@ export const removeComplianceRecord = async (employeeId: string) => {
 // Investigation Functions
 export const updateInvestigation = async (updatedInvestigation: Investigation) => {
   const { investigation_id, ...data } = updatedInvestigation;
-  await updateDoc(doc(db, 'investigations', investigation_id), data);
+  await updateDoc(doc(db, 'investigations', investigation_id), data as { [x: string]: any });
 };
 
 export const addDocumentToInvestigation = async (investigationId: string, documents: { name: string; url: string }[]) => {
@@ -363,7 +364,7 @@ export const addHotWorkPermit = async (permit: Omit<HotWorkPermit, 'permit_id' |
 };
 export const updateHotWorkPermit = async (updatedPermit: HotWorkPermit) => {
   const { permit_id, ...data } = updatedPermit;
-  await updateDoc(doc(db, 'hotWorkPermits', permit_id), data);
+  await updateDoc(doc(db, 'hotWorkPermits', permit_id), data as { [x: string]: any });
 };
 
 // Confined Space Permit Functions
@@ -373,7 +374,7 @@ export const addConfinedSpacePermit = async (permit: Omit<ConfinedSpacePermit, '
 };
 export const updateConfinedSpacePermit = async (updatedPermit: ConfinedSpacePermit) => {
     const { permit_id, ...data } = updatedPermit;
-    await updateDoc(doc(db, 'confinedSpacePermits', permit_id), data);
+    await updateDoc(doc(db, 'confinedSpacePermits', permit_id), data as { [x: string]: any });
 };
 
 
