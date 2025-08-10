@@ -1,12 +1,13 @@
 
+
 // services/mariadb.js
 // This is a mock implementation for the MariaDB local API.
 // In a real application, these functions would make fetch requests to your local API endpoints.
 
-import type { Observation, CorrectiveAction, Incident, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, ConfinedSpacePermit, IncidentData, Comment, WorkHoursLog, ToolboxTalk, ToolboxSignature } from '@/types';
+import type { Observation, CorrectiveAction, Incident, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, ConfinedSpacePermit, IncidentData, Comment, WorkHoursLog, ToolboxTalk, ToolboxSignature, PredefinedHazard, PredefinedControl } from '@/types';
 
 // IMPORTANT: When you are ready to connect to your real MariaDB backend,
-// you will need to replace the mock functions below with actual API calls.
+// you will need to replace the content of these functions with real API calls.
 
 // 1. Set your backend API's base URL. It's best to use an environment variable.
 const API_BASE_URL = process.env.NEXT_PUBLIC_MARIADB_API_URL || 'http://localhost:3001/api';

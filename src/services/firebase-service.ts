@@ -4,6 +4,7 @@
 
 
 
+
 import { db, storage } from '@/lib/firebase';
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, writeBatch, DocumentReference,
@@ -182,12 +183,31 @@ export const addForkliftInspection = async (inspection: Omit<ForkliftInspection,
 };
 
 // Forklift Functions
-export const addForklift = async (forklift: Forklift) => {
-  await setDoc(doc(db, 'forklifts', forklift.id), forklift);
+export const addForklift = async (forklift: Omit<Forklift, 'imageUrl'> & { imageFile?: File }) => {
+    let imageUrl: string | undefined = undefined;
+    if (forklift.imageFile) {
+        const storageRef = ref(storage, `forklifts/${forklift.id}_${forklift.imageFile.name}`);
+        await uploadBytes(storageRef, forklift.imageFile);
+        imageUrl = await getDownloadURL(storageRef);
+    }
+    const { imageFile, ...forkliftData } = forklift;
+    await setDoc(doc(db, 'forklifts', forkliftData.id), {...forkliftData, ...(imageUrl && {imageUrl})});
 };
-export const updateForklift = async (updatedForklift: Forklift) => {
-  await updateDoc(doc(db, 'forklifts', updatedForklift.id), updatedForklift);
+
+export const updateForklift = async (updatedForklift: Forklift & { imageFile?: File }) => {
+    const { imageFile, ...forkliftData } = updatedForklift;
+    let imageUrl = updatedForklift.imageUrl;
+
+    if (imageFile) {
+        const storageRef = ref(storage, `forklifts/${forkliftData.id}_${imageFile.name}`);
+        await uploadBytes(storageRef, imageFile);
+        imageUrl = await getDownloadURL(storageRef);
+    }
+
+    const dataToUpdate: Partial<Forklift> = { ...forkliftData, ...(imageUrl && { imageUrl }) };
+    await updateDoc(doc(db, 'forklifts', updatedForklift.id), dataToUpdate);
 };
+
 export const removeForklift = async (forkliftId: string) => {
   await deleteDoc(doc(db, 'forklifts', forkliftId));
 };

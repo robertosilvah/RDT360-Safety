@@ -27,8 +27,8 @@ interface AppDataContextType {
   forkliftInspections: ForkliftInspection[];
   addForkliftInspection: (inspection: Omit<ForkliftInspection, 'inspection_id' | 'display_id'>) => Promise<void>;
   forklifts: Forklift[];
-  addForklift: (forklift: Forklift) => Promise<void>;
-  updateForklift: (forklift: Forklift) => Promise<void>;
+  addForklift: (forklift: Omit<Forklift, 'imageUrl'> & { imageFile?: File }) => Promise<void>;
+  updateForklift: (forklift: Forklift & { imageFile?: File }) => Promise<void>;
   removeForklift: (forkliftId: string) => Promise<void>;
   users: User[];
   addUser: (user: Omit<User, 'id'>) => Promise<void>;

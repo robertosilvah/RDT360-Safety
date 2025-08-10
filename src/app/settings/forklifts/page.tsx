@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAppData } from '@/context/AppDataContext';
-import { PlusCircle, Edit, Trash2, QrCode, Printer } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, QrCode, Printer, Upload } from 'lucide-react';
 import { QRCodeCanvas } from 'qrcode.react';
 import {
   Dialog,
@@ -31,15 +31,18 @@ import {
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import type { Forklift } from '@/types';
+import Image from 'next/image';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const forkliftFormSchema = z.object({
   id: z.string().min(2, { message: 'Forklift ID must be at least 2 characters.' }),
   name: z.string().min(3, { message: 'Name must be at least 3 characters.' }),
   area: z.string().min(2, { message: 'Area must be at least 2 characters.' }),
+  imageFile: z.instanceof(File).optional(),
 });
 
 type ForkliftFormValues = z.infer<typeof forkliftFormSchema>;
@@ -55,6 +58,10 @@ const ForkliftForm = ({
     setOpen: (open: boolean) => void;
     isEdit?: boolean;
 }) => {
+  const { uploadSettings } = useAppData();
+  const { toast } = useToast();
+  const [previewUrl, setPreviewUrl] = useState<string | null>(forklift?.imageUrl || null);
+
   const form = useForm<ForkliftFormValues>({
     resolver: zodResolver(forkliftFormSchema),
     defaultValues: {
@@ -63,6 +70,29 @@ const ForkliftForm = ({
       area: forklift?.area || '',
     },
   });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const maxSizeMB = uploadSettings?.imageMaxSizeMB || 2;
+      const maxSizeInBytes = maxSizeMB * 1024 * 1024;
+      if (file.size > maxSizeInBytes) {
+        toast({
+          variant: 'destructive',
+          title: 'File too large',
+          description: `The image must be smaller than ${maxSizeMB}MB.`,
+        });
+        if (e.target) e.target.value = '';
+        return;
+      }
+      form.setValue('imageFile', file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const onSubmit = (data: ForkliftFormValues) => {
     onSave(data, isEdit);
@@ -108,6 +138,28 @@ const ForkliftForm = ({
               <FormItem>
                 <FormLabel>Assigned Area</FormLabel>
                 <FormControl><Input placeholder="e.g., Warehouse" {...field} /></FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={form.control}
+            name="imageFile"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Forklift Image</FormLabel>
+                <div className="flex items-center gap-4">
+                    <div className="relative h-20 w-20 rounded-md border flex items-center justify-center bg-muted/50">
+                        {previewUrl ? (
+                            <Image src={previewUrl} alt="Forklift preview" layout="fill" objectFit="contain" className="p-1" />
+                        ) : (
+                            <Skeleton className="h-full w-full" />
+                        )}
+                    </div>
+                    <FormControl>
+                        <Input type="file" accept="image/*" onChange={handleFileChange} className="max-w-xs" />
+                    </FormControl>
+                </div>
                 <FormMessage />
               </FormItem>
             )}
@@ -167,11 +219,24 @@ export default function ForkliftManagementPage() {
   const { toast } = useToast();
 
   const handleSave = (data: ForkliftFormValues, isEdit: boolean) => {
+    const forkliftData: Omit<Forklift, 'imageUrl'> & { imageFile?: File } = {
+        id: data.id,
+        name: data.name,
+        area: data.area,
+        imageFile: data.imageFile,
+    };
     if (isEdit) {
-      updateForklift(data);
-      toast({ title: 'Forklift Updated', description: `Forklift ${data.id} has been updated.` });
+      const existingForklift = forklifts.find(f => f.id === data.id);
+      if (existingForklift) {
+        updateForklift({
+            ...existingForklift, 
+            ...forkliftData,
+            imageUrl: existingForklift.imageUrl // Preserve existing image if not changed
+        });
+        toast({ title: 'Forklift Updated', description: `Forklift ${data.id} has been updated.` });
+      }
     } else {
-      addForklift(data);
+      addForklift(forkliftData);
       toast({ title: 'Forklift Added', description: `Forklift ${data.id} has been added.` });
     }
   };
