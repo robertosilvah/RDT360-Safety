@@ -412,20 +412,7 @@ const JsaDetailsDialog = ({ jsa, isOpen, onOpenChange, onSign, onShare, currentU
 
     return (
         <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <style jsx global>{`
-                @media print {
-                  body > *:not(.printable-area) {
-                    display: none;
-                  }
-                  .printable-area {
-                    display: block;
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                  }
-                }
-            `}</style>
-            <DialogContent className="max-w-6xl h-[90vh] flex flex-col printable-area">
+            <DialogContent className="max-w-6xl h-full flex flex-col printable-area">
                 <DialogHeader className="no-print">
                     <DialogTitle className="text-2xl flex items-center justify-between gap-2">
                         <span className="flex items-center gap-2"><FileSignature /> {jsa.title}</span>
@@ -494,7 +481,7 @@ const JsaDetailsDialog = ({ jsa, isOpen, onOpenChange, onSign, onShare, currentU
                 </div>
                 
                 <DialogFooter className="mt-auto pt-4 border-t !justify-between no-print">
-                   <Button type="button" variant="ghost" onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print</Button>
+                   <Button type="button" variant="outline" onClick={handlePrint}><Printer className="mr-2 h-4 w-4" /> Print</Button>
                    <div className="flex items-center gap-2">
                        <div className="text-xs text-muted-foreground">{hasSigned ? `You acknowledged this on ${new Date(jsa.signatures.find(s => s.employee_name === currentUser)!.sign_date).toLocaleDateString()}` : "Please read carefully before signing."}</div>
                        <Input className="w-48" placeholder="Enter your name" value={signatureName} onChange={(e) => setSignatureName(e.target.value)} disabled={hasSigned}/>

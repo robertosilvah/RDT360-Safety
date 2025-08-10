@@ -83,13 +83,31 @@
   }
 }
 
-@page {
-  size: auto;
-  margin: 0.5in;
-}
-
 @media print {
+  body > *:not(.printable-area) {
+    display: none !important;
+  }
+  .printable-area {
+    display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+    background: white !important;
+    color: black !important;
+  }
+  .printable-area > [role="dialog"] {
+    max-height: none !important;
+  }
+  .printable-area [data-radix-dialog-content] {
+    max-height: none !important;
+  }
   .no-print {
-    display: none;
+    display: none !important;
   }
 }
