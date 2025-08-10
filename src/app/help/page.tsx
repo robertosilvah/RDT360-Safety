@@ -3,7 +3,8 @@
 
 import { AppShell } from '@/components/AppShell';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Database } from 'lucide-react';
+import { CodeBlock } from '@/components/CodeBlock';
 
 const dataModel = [
   { 
@@ -128,45 +129,279 @@ const dataModel = [
   }
 ];
 
+const sqlSchema = `
+-- Nota: Estos esquemas son una representación para una base de datos relacional como MariaDB.
+-- Los tipos de datos como JSON son útiles para campos con estructuras flexibles (arrays, objetos).
+
+CREATE TABLE users (
+    id VARCHAR(255) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    role ENUM('Administrator', 'Manager', 'Operator', 'Maintenance', 'HR') NOT NULL,
+    status ENUM('Active', 'Pending') NOT NULL
+);
+
+CREATE TABLE areas (
+    area_id VARCHAR(255) PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    machines JSON, -- Almacena un array de strings
+    parentId VARCHAR(255),
+    FOREIGN KEY (parentId) REFERENCES areas(area_id) ON DELETE SET NULL
+);
+
+CREATE TABLE incidents (
+    incident_id VARCHAR(255) PRIMARY KEY,
+    display_id VARCHAR(255) NOT NULL,
+    date TIMESTAMP NOT NULL,
+    area VARCHAR(255),
+    type ENUM('Incident', 'Accident') NOT NULL,
+    description TEXT,
+    severity ENUM('Low', 'Medium', 'High') NOT NULL,
+    reported_by VARCHAR(255),
+    status ENUM('Open', 'Under Investigation', 'Closed') NOT NULL,
+    assigned_to VARCHAR(255),
+    investigation_id VARCHAR(255) UNIQUE,
+    FOREIGN KEY (investigation_id) REFERENCES investigations(investigation_id)
+);
+
+CREATE TABLE investigations (
+    investigation_id VARCHAR(255) PRIMARY KEY,
+    display_id VARCHAR(255) NOT NULL,
+    incident_id VARCHAR(255) NOT NULL,
+    status ENUM('Open', 'In Progress', 'Closed') NOT NULL,
+    root_cause TEXT,
+    contributing_factors TEXT,
+    events_history TEXT,
+    lessons_learned TEXT,
+    action_plan TEXT,
+    documents JSON, -- Almacena array de {name, url}
+    comments JSON, -- Almacena array de {user, comment, date}
+    FOREIGN KEY (incident_id) REFERENCES incidents(incident_id) ON DELETE CASCADE
+);
+
+CREATE TABLE observations (
+    observation_id VARCHAR(255) PRIMARY KEY,
+    display_id VARCHAR(255) NOT NULL,
+    report_type ENUM('Safety Concern', 'Positive Observation', 'Near Miss') NOT NULL,
+    submitted_by VARCHAR(255),
+    date TIMESTAMP NOT NULL,
+    areaId VARCHAR(255),
+    person_involved VARCHAR(255),
+    risk_level INT,
+    description TEXT,
+    actions TEXT,
+    unsafe_category ENUM('Unsafe Behavior', 'Unsafe Condition', 'N/A'),
+    status ENUM('Open', 'Closed') NOT NULL,
+    imageUrl VARCHAR(2048),
+    safety_walk_id VARCHAR(255),
+    FOREIGN KEY (areaId) REFERENCES areas(area_id) ON DELETE SET NULL,
+    FOREIGN KEY (safety_walk_id) REFERENCES safety_walks(safety_walk_id)
+);
+
+CREATE TABLE corrective_actions (
+    action_id VARCHAR(255) PRIMARY KEY,
+    display_id VARCHAR(255) NOT NULL,
+    description TEXT,
+    responsible_person VARCHAR(255),
+    due_date TIMESTAMP,
+    created_date TIMESTAMP,
+    completion_date TIMESTAMP,
+    status ENUM('Pending', 'In Progress', 'Completed', 'Overdue') NOT NULL,
+    type ENUM('Preventive', 'Reactive', 'Other'),
+    related_to_incident VARCHAR(255),
+    related_to_observation VARCHAR(255),
+    related_to_investigation VARCHAR(255),
+    related_to_forklift_inspection VARCHAR(255),
+    FOREIGN KEY (related_to_incident) REFERENCES incidents(incident_id),
+    FOREIGN KEY (related_to_observation) REFERENCES observations(observation_id),
+    FOREIGN KEY (related_to_investigation) REFERENCES investigations(investigation_id)
+);
+
+CREATE TABLE safety_walks (
+    safety_walk_id VARCHAR(255) PRIMARY KEY,
+    display_id VARCHAR(255) NOT NULL,
+    walker VARCHAR(255),
+    date TIMESTAMP,
+    status ENUM('Scheduled', 'In Progress', 'Completed'),
+    people_involved VARCHAR(255),
+    safety_feeling_scale INT,
+    checklist_items JSON, -- Almacena array de {item, status, comment}
+    comments JSON
+);
+
+CREATE TABLE jsas (
+    jsa_id VARCHAR(255) PRIMARY KEY,
+    display_id VARCHAR(255) NOT NULL,
+    title VARCHAR(255),
+    job_description TEXT,
+    areaId VARCHAR(255),
+    required_ppe JSON,
+    steps JSON, -- Almacena array de JsaStep
+    created_by VARCHAR(255),
+    created_date TIMESTAMP,
+    valid_from TIMESTAMP,
+    valid_to TIMESTAMP,
+    status ENUM('Active', 'Expired', 'Draft'),
+    signatures JSON, -- Almacena array de {employee_name, sign_date}
+    FOREIGN KEY (areaId) REFERENCES areas(area_id)
+);
+
+CREATE TABLE toolbox_talks (
+    id VARCHAR(255) PRIMARY KEY,
+    display_id VARCHAR(255) NOT NULL,
+    topic TEXT,
+    title TEXT,
+    date TIMESTAMP,
+    leader VARCHAR(255),
+    location VARCHAR(255),
+    department VARCHAR(255),
+    observations TEXT,
+    accidents_near_misses JSON,
+    unsafe_conditions JSON,
+    corrections_changed_procedures JSON,
+    special_ppe JSON,
+    assigned_to JSON,
+    attachments JSON
+);
+
+CREATE TABLE toolbox_signatures (
+    id VARCHAR(255) PRIMARY KEY,
+    toolbox_talk_id VARCHAR(255) NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    signature_image_url TEXT,
+    signed_at TIMESTAMP,
+    FOREIGN KEY (toolbox_talk_id) REFERENCES toolbox_talks(id) ON DELETE CASCADE
+);
+
+-- Otras tablas importantes
+CREATE TABLE safety_docs (
+    doc_id VARCHAR(255) PRIMARY KEY,
+    display_id VARCHAR(255) NOT NULL,
+    title VARCHAR(255),
+    category VARCHAR(255),
+    file_url VARCHAR(2048),
+    related_modules JSON
+);
+
+CREATE TABLE compliance_records (
+    employee_id VARCHAR(255) PRIMARY KEY,
+    display_id VARCHAR(255) NOT NULL,
+    name VARCHAR(255),
+    training_completed JSON,
+    cert_renewals_due TIMESTAMP,
+    next_review_date TIMESTAMP,
+    FOREIGN KEY (employee_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE forklifts (
+    id VARCHAR(255) PRIMARY KEY,
+    name VARCHAR(255),
+    area VARCHAR(255)
+);
+
+CREATE TABLE forklift_inspections (
+    inspection_id VARCHAR(255) PRIMARY KEY,
+    display_id VARCHAR(255) NOT NULL,
+    forklift_id VARCHAR(255),
+    operator_name VARCHAR(255),
+    date TIMESTAMP,
+    checklist JSON,
+    FOREIGN KEY (forklift_id) REFERENCES forklifts(id)
+);
+
+CREATE TABLE work_hours (
+    id VARCHAR(255) PRIMARY KEY,
+    start_date TIMESTAMP,
+    end_date TIMESTAMP,
+    hours_worked INT,
+    notes TEXT
+);
+
+CREATE TABLE predefined_checklist_items (
+    id VARCHAR(255) PRIMARY KEY,
+    text TEXT
+);
+
+CREATE TABLE predefined_hazards (
+    id VARCHAR(255) PRIMARY KEY,
+    text TEXT
+);
+
+CREATE TABLE predefined_controls (
+    id VARCHAR(255) PRIMARY KEY,
+    text TEXT,
+    reference JSON
+);
+`;
+
+
 export default function HelpPage() {
   return (
     <AppShell>
       <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
         <div className="flex items-center justify-between space-y-2">
             <div>
-                <h2 className="text-3xl font-bold tracking-tight">Data Model Help</h2>
+                <h2 className="text-3xl font-bold tracking-tight">Centro de Ayuda</h2>
                 <p className="text-muted-foreground">
-                    An overview of the application's data collections (tables) and their relationships.
+                    Un resumen del modelo de datos de la aplicación y el esquema SQL.
                 </p>
             </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {dataModel.map(collection => (
-                <Card key={collection.name} className="flex flex-col">
-                    <CardHeader>
-                        <CardTitle>{collection.name}</CardTitle>
-                        <CardDescription>{collection.description}</CardDescription>
-                    </CardHeader>
-                    {collection.relations.length > 0 && (
-                        <CardContent className="flex-1">
-                            <h4 className="font-semibold text-sm mb-2">Relationships:</h4>
-                            <ul className="space-y-2">
-                                {collection.relations.map(rel => (
-                                    <li key={rel.to} className="flex items-start text-sm">
-                                        <ArrowRight className="h-4 w-4 mr-2 mt-1 text-primary flex-shrink-0" />
-                                        <span>
-                                            <strong className="font-medium">{rel.to}:</strong> {rel.text}
-                                        </span>
-                                    </li>
-                                ))}
-                            </ul>
-                        </CardContent>
-                    )}
-                </Card>
-            ))}
+        <div className="grid gap-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Modelo de Datos</CardTitle>
+                    <CardDescription>Resumen de las colecciones de datos (tablas) y sus relaciones.</CardDescription>
+                </CardHeader>
+                <CardContent className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    {dataModel.map(collection => (
+                        <Card key={collection.name} className="flex flex-col">
+                            <CardHeader>
+                                <CardTitle>{collection.name}</CardTitle>
+                                <CardDescription>{collection.description}</CardDescription>
+                            </CardHeader>
+                            {collection.relations.length > 0 && (
+                                <CardContent className="flex-1">
+                                    <h4 className="font-semibold text-sm mb-2">Relaciones:</h4>
+                                    <ul className="space-y-2">
+                                        {collection.relations.map(rel => (
+                                            <li key={rel.to} className="flex items-start text-sm">
+                                                <ArrowRight className="h-4 w-4 mr-2 mt-1 text-primary flex-shrink-0" />
+                                                <span>
+                                                    <strong className="font-medium">{rel.to}:</strong> {rel.text}
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </CardContent>
+                            )}
+                        </Card>
+                    ))}
+                </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Database /> Esquema de Base de Datos SQL</CardTitle>
+                    <CardDescription>Utiliza estas sentencias <code>CREATE TABLE</code> para configurar una base de datos relacional compatible.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <CodeBlock code={sqlSchema} />
+                </CardContent>
+            </Card>
         </div>
       </div>
     </AppShell>
   );
 }
+
+const CodeBlock = ({ code }: { code: string }) => {
+  return (
+    <div className="bg-gray-900 text-white rounded-md">
+      <div className="p-4 overflow-x-auto">
+        <pre><code className="language-sql">{code}</code></pre>
+      </div>
+    </div>
+  );
+};
