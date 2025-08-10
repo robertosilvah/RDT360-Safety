@@ -25,7 +25,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
-import { Camera, Eye, Siren, User as UserIcon, Users, FileText, ClipboardCheck, Upload, Download, Trash2, Edit, Wrench, FilePlus2 } from 'lucide-react';
+import { Camera, Eye, Siren, UserIcon, Users, FileText, ClipboardCheck, Upload, Download, Trash2, Edit, Wrench, FilePlus2 } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -540,190 +540,6 @@ const ObservationForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
   );
 };
 
-const EditObservationDialog = ({
-  observation,
-  isOpen,
-  onOpenChange,
-}: {
-  observation: Observation | null;
-  isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
-}) => {
-  const { updateObservation, areas } = useAppData();
-  const { toast } = useToast();
-  const form = useForm<EditObservationFormValues>({
-    resolver: zodResolver(editObservationFormSchema),
-  });
-
-  useEffect(() => {
-    if (observation) {
-      form.reset({
-        ...observation,
-        date: format(new Date(observation.date), "yyyy-MM-dd'T'HH:mm"),
-      });
-    }
-  }, [observation, form]);
-
-  const handleUpdate = async (values: EditObservationFormValues) => {
-    if (!observation) return;
-    const updatedObservationData: Observation = {
-      ...observation,
-      ...values,
-      date: new Date(values.date).toISOString(),
-      risk_level: values.risk_level as Observation['risk_level'],
-    };
-    await updateObservation(updatedObservationData);
-    toast({ title: "Observation Updated", description: "The observation has been successfully updated." });
-    onOpenChange(false);
-  };
-
-  if (!isOpen || !observation) return null;
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(handleUpdate)} className="space-y-6">
-            <DialogHeader>
-              <DialogTitle>Edit Observation: {observation.display_id}</DialogTitle>
-              <DialogDescription>
-                Modify the details of the observation below.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-4">
-              <FormField
-                control={form.control}
-                name="report_type"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Type of Safety Report</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select a report type" /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        <SelectItem value="Safety Concern">Safety Concern</SelectItem>
-                        <SelectItem value="Positive Observation">Positive Observation</SelectItem>
-                        <SelectItem value="Near Miss">Near Miss</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="submitted_by"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Person Documenting</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Date and Time</FormLabel>
-                    <FormControl><Input type="datetime-local" {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="areaId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Area where it happened</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select an area or operation" /></SelectTrigger></FormControl>
-                      <SelectContent><AreaSelectOptions areas={areas} /></SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="person_involved"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Person Involved (optional)</FormLabel>
-                    <FormControl><Input placeholder="Name of person involved" {...field} value={field.value ?? ''} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="risk_level"
-                render={({ field }) => (
-                  <FormItem className="space-y-3">
-                    <FormLabel>Risk Evaluation (1-4)</FormLabel>
-                    <FormControl>
-                      <RadioGroup onValueChange={(value) => field.onChange(parseInt(value))} defaultValue={String(field.value)} className="flex space-x-4">
-                        {[1, 2, 3, 4].map((level) => (<FormItem key={level} className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value={String(level)} /></FormControl><FormLabel className="font-normal">{riskLabels[level]}</FormLabel></FormItem>))}
-                      </RadioGroup>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Brief Description</FormLabel>
-                    <FormControl><Textarea placeholder="Describe what you observed..." {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="actions"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Immediate Actions Taken</FormLabel>
-                    <FormControl><Textarea placeholder="Describe immediate actions taken..." {...field} /></FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="unsafe_category"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Unsafe Behavior or Condition</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl><SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger></FormControl>
-                      <SelectContent>
-                        <SelectItem value="Unsafe Behavior">Unsafe Behavior</SelectItem>
-                        <SelectItem value="Unsafe Condition">Unsafe Condition</SelectItem>
-                        <SelectItem value="N/A">N/A</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit">Save Changes</Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
-
 const ObservationDetailsDialog = ({
   observationId,
   isOpen,
@@ -830,11 +646,11 @@ const ObservationDetailsDialog = ({
         </div>
         <DialogFooter>
             {canEdit && (
-                <Button variant="outline" onClick={() => { onOpenChange(false); onEditClick(observation); }}>
+                 <Button variant="outline" onClick={() => { onOpenChange(false); onEditClick(observation); }}>
                     <Edit className="mr-2 h-4 w-4" /> Edit
                 </Button>
             )}
-            {isAdmin && (
+             {canEdit && (
                 <AlertDialog>
                     <AlertDialogTrigger asChild>
                         <Button variant="destructive">
@@ -1022,13 +838,13 @@ const ObservationTable: React.FC<ObservationTableProps> = ({
 }
 
 export default function ObservationsPage() {
-  const { observations, deleteObservation, users, areas } = useAppData();
+  const { observations, deleteObservation, users, areas, updateObservation } = useAppData();
   const { user: authUser } = useAuth();
   const [selectedObservationId, setSelectedObservationId] = useState<string | null>(null);
   const [editingObservation, setEditingObservation] = useState<Observation | null>(null);
   const [isDetailsOpen, setDetailsOpen] = useState(false);
-  const [isEditOpen, setEditOpen] = useState(false);
   const [isNewObservationOpen, setNewObservationOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -1049,13 +865,13 @@ export default function ObservationsPage() {
   const handleEditClick = (e: React.MouseEvent, observation: Observation) => {
     e.stopPropagation();
     setEditingObservation(observation);
-    setEditOpen(true);
+    setIsEditOpen(true);
   };
 
   const handleDetailsEditClick = (observation: Observation) => {
     setDetailsOpen(false);
     setEditingObservation(observation);
-    setEditOpen(true);
+    setIsEditOpen(true);
   };
   
   const handleDetailsDeleteClick = (observation: Observation) => {
@@ -1331,15 +1147,13 @@ export default function ObservationsPage() {
           onDeleteClick={handleDetailsDeleteClick}
         />
         
-        <EditObservationDialog
-            observation={editingObservation}
-            isOpen={!!editingObservation}
-            onOpenChange={(open) => {
-              if (!open) {
-                setEditingObservation(null);
-              }
-            }}
-        />
+        {editingObservation && (
+            <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+              <DialogContent className="max-w-2xl">
+                <p>Edit form goes here for {editingObservation.display_id}</p>
+              </DialogContent>
+            </Dialog>
+        )}
       </div>
     </AppShell>
   );
