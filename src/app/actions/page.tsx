@@ -199,7 +199,7 @@ const ActionForm = ({
                         (item) => (
                           <SelectItem
                             key={'incident_id' in item ? item.incident_id : item.observation_id}
-                            value={'incident_id' in item ? item.incident_id : item.observation_id}
+                            value={'incident_id' in item ? item.incident_id! : item.observation_id!}
                           >
                             {item.display_id}: {item.description.substring(0, 50)}...
                           </SelectItem>
