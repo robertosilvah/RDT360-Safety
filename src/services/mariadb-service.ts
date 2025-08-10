@@ -40,6 +40,16 @@ const getIncidents = async (): Promise<Incident[]> => {
     return Promise.resolve([]); // Return an empty array for the mock
 };
 
+// --- NOTE ON FILE UPLOADS ---
+// The functions below handle METADATA (information about files), but not the files themselves.
+// By default, this application uses FIREBASE STORAGE for all file uploads (images, documents).
+// If you want to use a fully local setup with MariaDB, you have two options:
+// 1. (Recommended) Continue using Firebase Storage for files. It's robust and scalable.
+//    Your MariaDB will store the URL pointing to the file in Firebase Storage. No changes are needed here.
+// 2. (Advanced) Build your own file upload endpoint in your local backend API.
+//    That endpoint would be responsible for saving the file to your server's disk and returning a URL.
+//    You would then call that endpoint from functions like `addToolboxTalk` before saving the metadata to MariaDB.
+
 
 // --- Functions to be fully implemented ---
 // You will need to replace the content of these functions with real API calls.
