@@ -198,7 +198,7 @@ const ActionForm = ({
                       {(linkType === 'incident' ? incidents : observations).map(
                         (item) => (
                           <SelectItem
-                            key={'incident_id' in item ? item.incident_id : item.observation_id}
+                            key={'incident_id' in item ? item.incident_id! : item.observation_id!}
                             value={'incident_id' in item ? item.incident_id! : item.observation_id!}
                           >
                             {item.display_id}: {item.description.substring(0, 50)}...
@@ -543,15 +543,25 @@ export default function CorrectiveActionsPage() {
   }, [allActions, user]);
 
   const handleSaveAction = (values: ActionFormValues) => {
-      const newAction: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments' | 'created_date' | 'completion_date' | 'type'> = {
+      const baseAction = {
         description: values.description,
         responsible_person: values.responsible_person,
         due_date: new Date(values.due_date).toISOString(),
         status: 'Pending',
-        related_to_incident: values.linkType === 'incident' ? values.linked_id : undefined,
-        related_to_observation: values.linkType === 'observation' ? values.linked_id : undefined,
       };
-      addCorrectiveAction(newAction);
+      
+      const linkedAction: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments' | 'created_date' | 'completion_date' | 'type'> = {
+          ...baseAction
+      };
+      
+      if (values.linkType === 'incident' && values.linked_id) {
+          linkedAction.related_to_incident = values.linked_id;
+      }
+      if (values.linkType === 'observation' && values.linked_id) {
+          linkedAction.related_to_observation = values.linked_id;
+      }
+
+      addCorrectiveAction(linkedAction);
       toast({
         title: 'Corrective Action Created',
         description: 'The new action has been added to the list.',
