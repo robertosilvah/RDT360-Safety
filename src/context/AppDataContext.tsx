@@ -9,7 +9,7 @@ import { parseISO } from 'date-fns';
 
 interface AppDataContextType {
   observations: Observation[];
-  addObservation: (observation: Omit<Observation, 'observation_id' | 'display_id' | 'status'>) => Promise<any>;
+  addObservation: (observation: Omit<Observation, 'observation_id' | 'display_id' | 'status' | 'created_date'>) => Promise<any>;
   updateObservation: (observation: Observation) => Promise<void>;
   deleteObservation: (observationId: string) => Promise<void>;
   correctiveActions: CorrectiveAction[];
@@ -208,9 +208,9 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [isDataLoaded, jsas]);
 
-  const addObservation = (observation: Omit<Observation, 'observation_id' | 'display_id' | 'status'>) => {
+  const addObservation = (observation: Omit<Observation, 'observation_id' | 'display_id' | 'status' | 'created_date'>) => {
     const displayId = `OBS${String(observations.length + 1).padStart(3, '0')}`;
-    return api.addObservation({ ...observation, display_id: displayId, status: 'Open' });
+    return api.addObservation({ ...observation, display_id: displayId, status: 'Open', created_date: new Date().toISOString() });
   };
   
   const addCorrectiveAction = (action: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments' | 'created_date' | 'completion_date' | 'type'>) => {

@@ -1,5 +1,3 @@
-
-
 export type TalkSection = {
   na: boolean;
   details: string;
@@ -85,7 +83,8 @@ export type Observation = {
   display_id: string;
   report_type: 'Safety Concern' | 'Positive Observation' | 'Near Miss';
   submitted_by: string;
-  date: string;
+  date: string; // Date of event
+  created_date: string; // Date of submission
   areaId: string;
   person_involved?: string;
   risk_level: 1 | 2 | 3 | 4;

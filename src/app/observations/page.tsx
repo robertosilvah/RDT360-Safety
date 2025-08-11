@@ -115,6 +115,9 @@ const observationFormSchema = baseObservationSchema.extend({
     path: ['actionDescription'],
 });
 
+const editObservationFormSchema = baseObservationSchema;
+type EditObservationFormValues = z.infer<typeof editObservationFormSchema>;
+
 const AreaSelectOptions = ({ areas, level = 0 }: { areas: Area[]; level?: number }) => {
   return (
     <>
@@ -219,7 +222,7 @@ const ObservationForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
         imageUrl = await getDownloadURL(storageRef);
       }
 
-      const newObservationData: Omit<Observation, 'observation_id' | 'display_id' | 'status'> = {
+      const newObservationData: Omit<Observation, 'observation_id' | 'display_id' | 'status' | 'created_date'> = {
           report_type: values.report_type,
           submitted_by: values.submitted_by,
           date: new Date(values.date).toISOString(),
@@ -235,7 +238,7 @@ const ObservationForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
       const newObservationRef = await addObservation(observationWithImage);
 
       if (values.createAction && values.actionDescription && values.actionResponsiblePerson && values.actionDueDate) {
-          const newActionData: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'> = {
+          const newActionData: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'| 'created_date' | 'completion_date' | 'type'> = {
               description: values.actionDescription,
               responsible_person: values.actionResponsiblePerson,
               due_date: new Date(values.actionDueDate).toISOString(),
@@ -606,7 +609,7 @@ const ObservationDetailsDialog = ({
                 <DialogHeader>
                   <DialogTitle>Observation Details: {observation.display_id}</DialogTitle>
                   <DialogDescription>
-                    {observation.report_type} reported on {format(new Date(observation.date), 'PPP p')}
+                    {observation.report_type} | Reported on: {format(new Date(observation.created_date), 'PPP p')}
                   </DialogDescription>
                 </DialogHeader>
                 <div className="max-h-[70vh] overflow-y-auto pr-4 space-y-4 py-4">
@@ -619,6 +622,10 @@ const ObservationDetailsDialog = ({
                                 <p className="text-sm font-medium">Person Documenting</p>
                                 <p className="text-sm text-muted-foreground">{observation.submitted_by}</p>
                             </div>
+                            </div>
+                             <div className="flex items-center gap-2">
+                                <p className="text-sm font-medium">Observation Date</p>
+                                <p className="text-sm text-muted-foreground">{format(new Date(observation.date), 'PPP p')}</p>
                             </div>
                             <div className="flex items-center gap-2">
                             <Users className="h-4 w-4 text-muted-foreground" />
@@ -848,7 +855,7 @@ const parseCsvRow = (row: string): string[] => {
         inQuotes = !inQuotes;
       }
     } else if (char === ',' && !inQuotes) {
-      // If it's a comma and we're not in quotes, it's a field separator
+      // If it's a field separator and we're not in quotes, it's a field separator
       values.push(currentVal.trim());
       currentVal = '';
     } else {
@@ -1123,7 +1130,7 @@ export default function ObservationsPage() {
             
             const obsCollection = collection(db, 'observations');
             const currentObsCount = observations.length;
-            const observationsToCommit: Omit<Observation, 'observation_id'>[] = [];
+            const observationsToCommit: Omit<Observation, 'observation_id' | 'created_date'>[] = [];
             const imageUrlsToProcess: { index: number, url: string }[] = [];
 
             for (let i = 1; i < rows.length; i++) {
@@ -1145,7 +1152,7 @@ export default function ObservationsPage() {
                 
                 const displayId = `OBS${String(currentObsCount + observationsToCommit.length + 1).padStart(3, '0')}`;
                 
-                const newObservation: Omit<Observation, 'observation_id'> = {
+                const newObservation: Omit<Observation, 'observation_id' | 'created_date'> = {
                     display_id: displayId,
                     status: 'Open',
                     report_type: obsData.report_type as Observation['report_type'] || 'Safety Concern',
@@ -1198,10 +1205,10 @@ export default function ObservationsPage() {
               const batch = writeBatch(db);
               enrichedObservations.forEach(obs => {
                   const newDocRef = doc(obsCollection);
-                  const cleanObs = { ...obs };
-                  if (!cleanObs.imageUrl) delete (cleanObs as any).imageUrl;
-                  if (!cleanObs.safety_walk_id) delete (cleanObs as any).safety_walk_id;
-                  if (!cleanObs.person_involved) delete (cleanObs as any).person_involved;
+                  const cleanObs: any = { ...obs, created_date: new Date().toISOString() };
+                  if (!cleanObs.imageUrl) delete cleanObs.imageUrl;
+                  if (!cleanObs.safety_walk_id) delete cleanObs.safety_walk_id;
+                  if (!cleanObs.person_involved) delete cleanObs.person_involved;
 
                   batch.set(newDocRef, cleanObs);
               });
@@ -1276,10 +1283,21 @@ export default function ObservationsPage() {
           observationId={selectedObservationId}
           isOpen={isDetailsOpen}
           onOpenChange={setDetailsOpen}
-          onEdit={handleEditClick}
-          onDelete={(obs) => handleDelete(obs)}
+          onEdit={() => {
+            setEditingObservation(observations.find(o => o.observation_id === selectedObservationId) || null);
+          }}
+          onDelete={() => {
+            const obsToDelete = observations.find(o => o.observation_id === selectedObservationId);
+            if (obsToDelete) handleDelete(obsToDelete);
+          }}
         />
         
+        <EditObservationDialog
+          observation={editingObservation}
+          isOpen={!!editingObservation}
+          onOpenChange={(open) => !open && setEditingObservation(null)}
+          areas={areas}
+        />
       </div>
     </AppShell>
   );
