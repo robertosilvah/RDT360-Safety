@@ -427,6 +427,8 @@ const CorrectiveActionsView = ({
     observations: Observation[];
     investigations: any[];
 }) => {
+    const [statusFilter, setStatusFilter] = useState('all');
+
     const getActionsForStatus = (status: CorrectiveAction['status']) => {
         const filteredActions = actions.filter(a => a.status === status);
         if (status === 'Completed') {
@@ -436,6 +438,11 @@ const CorrectiveActionsView = ({
         }
         return filteredActions;
     }
+    
+    const filteredTableActions = useMemo(() => {
+        if (statusFilter === 'all') return actions;
+        return actions.filter(action => action.status === statusFilter);
+    }, [actions, statusFilter]);
 
     return (
         <Tabs defaultValue="kanban" className="pt-4">
@@ -468,8 +475,23 @@ const CorrectiveActionsView = ({
             <TabsContent value="table" className="pt-4">
                 <Card>
                 <CardHeader>
-                    <CardTitle>All Action Items</CardTitle>
-                    <CardDescription>Track all corrective actions from incidents and observations. Click a row to see details.</CardDescription>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle>All Action Items</CardTitle>
+                            <CardDescription>Track all corrective actions from incidents and observations. Click a row to see details.</CardDescription>
+                        </div>
+                         <Select value={statusFilter} onValueChange={setStatusFilter}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="Filter by status..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Statuses</SelectItem>
+                                {kanbanStatuses.map(status => (
+                                    <SelectItem key={status} value={status}>{status}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
                 </CardHeader>
                 <CardContent>
                     <Table>
@@ -484,7 +506,7 @@ const CorrectiveActionsView = ({
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {actions.map((action) => {
+                        {filteredTableActions.map((action) => {
                         const incident = action.related_to_incident ? incidents.find(i => i.incident_id === action.related_to_incident) : null;
                         const observation = action.related_to_observation ? observations.find(o => o.observation_id === action.related_to_observation) : null;
                         const investigation = action.related_to_investigation ? investigations.find(i => i.investigation_id === action.related_to_investigation) : null;
@@ -564,7 +586,7 @@ export default function CorrectiveActionsPage() {
         due_date: new Date(values.due_date).toISOString(),
       };
       
-      const linkedAction: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments' | 'created_date' | 'completion_date' | 'type' | 'status'> = {
+      const linkedAction: Partial<Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments' | 'created_date' | 'completion_date' | 'type' | 'status'>> & typeof baseAction = {
           ...baseAction
       };
       
