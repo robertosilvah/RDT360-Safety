@@ -325,6 +325,9 @@ const ActionDetailsDialog = ({
                 <div className="max-h-[80vh] grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="md:col-span-2 space-y-6">
                         <ActionForm onSave={handleSave} setOpen={onOpenChange} initialValues={currentAction} isEdit incidents={incidents} observations={observations} />
+                         <div className="text-xs text-muted-foreground">
+                            Created on: {format(new Date(currentAction.created_date), 'PPP p')}
+                        </div>
                     </div>
                     <div className="md:col-span-1 space-y-4 pt-2">
                         <h3 className="text-lg font-semibold flex items-center gap-2"><MessageSquare className="h-5 w-5" /> Comments</h3>
@@ -547,10 +550,9 @@ export default function CorrectiveActionsPage() {
         description: values.description,
         responsible_person: values.responsible_person,
         due_date: new Date(values.due_date).toISOString(),
-        status: 'Pending',
       };
       
-      const linkedAction: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments' | 'created_date' | 'completion_date' | 'type'> = {
+      const linkedAction: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments' | 'created_date' | 'completion_date' | 'type' | 'status'> = {
           ...baseAction
       };
       
