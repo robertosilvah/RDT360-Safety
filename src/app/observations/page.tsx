@@ -544,16 +544,12 @@ const ObservationDetailsDialog = ({
   observationId,
   isOpen,
   onOpenChange,
-  onEdit,
-  onDelete,
 }: {
   observationId: string | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  onEdit: (observation: Observation) => void;
-  onDelete: (observation: Observation) => void;
 }) => {
-  const { observations, areas, users, updateObservation } = useAppData();
+  const { observations, areas, users, updateObservation, deleteObservation } = useAppData();
   const { user: authUser } = useAuth();
   const { toast } = useToast();
   
@@ -586,7 +582,13 @@ const ObservationDetailsDialog = ({
   const areaPath = findAreaPathById(areas, observation.areaId);
 
   const handleDeleteClick = () => {
-    onDelete(observation);
+    deleteObservation(observation.observation_id);
+    toast({
+        title: 'Observation Deleted',
+        description: 'The observation has been permanently removed.',
+        variant: 'destructive',
+      });
+    onOpenChange(false);
   };
 
   const handleUpdate = async (values: EditObservationFormValues) => {
@@ -1002,7 +1004,6 @@ export default function ObservationsPage() {
   const { observations, deleteObservation, users, areas, updateObservation } = useAppData();
   const { user: authUser } = useAuth();
   const [selectedObservationId, setSelectedObservationId] = useState<string | null>(null);
-  const [editingObservation, setEditingObservation] = useState<Observation | null>(null);
   const [isDetailsOpen, setDetailsOpen] = useState(false);
   const [isNewObservationOpen, setNewObservationOpen] = useState(false);
   const { toast } = useToast();
@@ -1022,28 +1023,10 @@ export default function ObservationsPage() {
     setDetailsOpen(true);
   };
   
-  const handleEditClick = (observation: Observation) => {
-    setDetailsOpen(false); // Close details dialog if open
-    setEditingObservation(observation);
-    setSelectedObservationId(observation.observation_id);
-    setDetailsOpen(true);
-  };
-  
   const handleTableEditClick = (e: React.MouseEvent, observation: Observation) => {
     e.stopPropagation();
     setSelectedObservationId(observation.observation_id);
     setDetailsOpen(true);
-  };
-
-  const handleDelete = (observation: Observation) => {
-      deleteObservation(observation.observation_id);
-      toast({
-        title: 'Observation Deleted',
-        description: 'The observation has been permanently removed.',
-        variant: 'destructive',
-      });
-      setDetailsOpen(false);
-      setSelectedObservationId(null);
   };
   
   const handleTableDelete = (e: React.MouseEvent, observationId: string) => {
@@ -1283,22 +1266,10 @@ export default function ObservationsPage() {
           observationId={selectedObservationId}
           isOpen={isDetailsOpen}
           onOpenChange={setDetailsOpen}
-          onEdit={() => {
-            setEditingObservation(observations.find(o => o.observation_id === selectedObservationId) || null);
-          }}
-          onDelete={() => {
-            const obsToDelete = observations.find(o => o.observation_id === selectedObservationId);
-            if (obsToDelete) handleDelete(obsToDelete);
-          }}
         />
         
-        <EditObservationDialog
-          observation={editingObservation}
-          isOpen={!!editingObservation}
-          onOpenChange={(open) => !open && setEditingObservation(null)}
-          areas={areas}
-        />
       </div>
     </AppShell>
   );
 }
+
