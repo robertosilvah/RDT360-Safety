@@ -426,111 +426,123 @@ const CorrectiveActionsView = ({
     incidents: Incident[];
     observations: Observation[];
     investigations: any[];
-}) => (
-    <Tabs defaultValue="kanban" className="pt-4">
-        <TabsList>
-            <TabsTrigger value="kanban"><KanbanSquareIcon className="mr-2 h-4 w-4"/>Kanban View</TabsTrigger>
-            <TabsTrigger value="table"><List className="mr-2 h-4 w-4"/>Table View</TabsTrigger>
-        </TabsList>
-        <TabsContent value="kanban" className="pt-4">
-            <div className="flex gap-4 overflow-x-auto pb-4">
-                {kanbanStatuses.map(status => (
-                    <div key={status} className="flex-shrink-0 w-80">
-                        <Card className="bg-muted/40 h-full">
-                            <CardHeader>
-                                <CardTitle className="flex items-center gap-2">
-                                    {React.createElement(statusIcons[status], { className: "h-5 w-5" })}
-                                    <span>{status}</span>
-                                    <Badge variant="secondary" className="ml-auto">{actions.filter(a => a.status === status).length}</Badge>
-                                </CardTitle>
-                            </CardHeader>
-                            <CardContent className="space-y-2 h-[60vh] overflow-y-auto">
-                                {actions.filter(a => a.status === status).map(action => (
-                                    <KanbanCard key={action.action_id} action={action} onClick={() => openDetailsDialog(action)} />
-                                ))}
-                            </CardContent>
-                        </Card>
-                    </div>
-                ))}
-            </div>
-        </TabsContent>
-        <TabsContent value="table" className="pt-4">
-            <Card>
-            <CardHeader>
-                <CardTitle>All Action Items</CardTitle>
-                <CardDescription>Track all corrective actions from incidents and observations. Click a row to see details.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead>ID</TableHead>
-                    <TableHead className="w-[40%]">Description</TableHead>
-                    <TableHead>Related To</TableHead>
-                    <TableHead>Responsible</TableHead>
-                    <TableHead>Due Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {actions.map((action) => {
-                      const incident = action.related_to_incident ? incidents.find(i => i.incident_id === action.related_to_incident) : null;
-                      const observation = action.related_to_observation ? observations.find(o => o.observation_id === action.related_to_observation) : null;
-                      const investigation = action.related_to_investigation ? investigations.find(i => i.investigation_id === action.related_to_investigation) : null;
-                      
-                      return (
-                        <TableRow key={action.action_id} onClick={() => openDetailsDialog(action)} className="cursor-pointer">
-                            <TableCell className="font-medium">{action.display_id}</TableCell>
-                            <TableCell className="max-w-sm truncate">{action.description}</TableCell>
-                            <TableCell>
-                            {incident && (
-                                <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
-                                <Link href="/incidents">
-                                    <Siren className="mr-2 h-4 w-4 text-red-500" />
-                                    {incident.display_id}
-                                </Link>
-                                </Button>
-                            )}
-                            {observation && (
-                                <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
-                                <Link href="/observations">
-                                    <Eye className="mr-2 h-4 w-4 text-blue-500" />
-                                    {observation.display_id}
-                                </Link>
-                                </Button>
-                            )}
-                            {action.related_to_forklift_inspection && (
-                                <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
-                                <Link href="/forklift-inspections">
-                                    <Truck className="mr-2 h-4 w-4 text-green-500" />
-                                    {action.related_to_forklift_inspection}
-                                </Link>
-                                </Button>
-                            )}
-                            {investigation && (
-                                <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
-                                <Link href={`/investigations?id=${investigation.investigation_id}`}>
-                                    <FileSearch className="mr-2 h-4 w-4 text-purple-500" />
-                                    {investigation.display_id}
-                                </Link>
-                                </Button>
-                            )}
-                            </TableCell>
-                            <TableCell>{action.responsible_person}</TableCell>
-                            <TableCell>{new Date(action.due_date).toLocaleDateString()}</TableCell>
-                            <TableCell>
-                            <Badge variant={statusVariant[action.status]}>{action.status}</Badge>
-                            </TableCell>
+}) => {
+    const getActionsForStatus = (status: CorrectiveAction['status']) => {
+        const filteredActions = actions.filter(a => a.status === status);
+        if (status === 'Completed') {
+            return filteredActions
+                .sort((a, b) => new Date(b.completion_date || 0).getTime() - new Date(a.completion_date || 0).getTime())
+                .slice(0, 10);
+        }
+        return filteredActions;
+    }
+
+    return (
+        <Tabs defaultValue="kanban" className="pt-4">
+            <TabsList>
+                <TabsTrigger value="kanban"><KanbanSquareIcon className="mr-2 h-4 w-4"/>Kanban View</TabsTrigger>
+                <TabsTrigger value="table"><List className="mr-2 h-4 w-4"/>Table View</TabsTrigger>
+            </TabsList>
+            <TabsContent value="kanban" className="pt-4">
+                <div className="flex gap-4 overflow-x-auto pb-4">
+                    {kanbanStatuses.map(status => (
+                        <div key={status} className="flex-shrink-0 w-80">
+                            <Card className="bg-muted/40 h-full">
+                                <CardHeader>
+                                    <CardTitle className="flex items-center gap-2">
+                                        {React.createElement(statusIcons[status], { className: "h-5 w-5" })}
+                                        <span>{status}</span>
+                                        <Badge variant="secondary" className="ml-auto">{getActionsForStatus(status).length}</Badge>
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2 h-[60vh] overflow-y-auto">
+                                    {getActionsForStatus(status).map(action => (
+                                        <KanbanCard key={action.action_id} action={action} onClick={() => openDetailsDialog(action)} />
+                                    ))}
+                                </CardContent>
+                            </Card>
+                        </div>
+                    ))}
+                </div>
+            </TabsContent>
+            <TabsContent value="table" className="pt-4">
+                <Card>
+                <CardHeader>
+                    <CardTitle>All Action Items</CardTitle>
+                    <CardDescription>Track all corrective actions from incidents and observations. Click a row to see details.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                    <TableHeader>
+                        <TableRow>
+                        <TableHead>ID</TableHead>
+                        <TableHead className="w-[40%]">Description</TableHead>
+                        <TableHead>Related To</TableHead>
+                        <TableHead>Responsible</TableHead>
+                        <TableHead>Due Date</TableHead>
+                        <TableHead>Status</TableHead>
                         </TableRow>
-                      )
-                    })}
-                </TableBody>
-                </Table>
-            </CardContent>
-            </Card>
-        </TabsContent>
-    </Tabs>
-);
+                    </TableHeader>
+                    <TableBody>
+                        {actions.map((action) => {
+                        const incident = action.related_to_incident ? incidents.find(i => i.incident_id === action.related_to_incident) : null;
+                        const observation = action.related_to_observation ? observations.find(o => o.observation_id === action.related_to_observation) : null;
+                        const investigation = action.related_to_investigation ? investigations.find(i => i.investigation_id === action.related_to_investigation) : null;
+                        
+                        return (
+                            <TableRow key={action.action_id} onClick={() => openDetailsDialog(action)} className="cursor-pointer">
+                                <TableCell className="font-medium">{action.display_id}</TableCell>
+                                <TableCell className="max-w-sm truncate">{action.description}</TableCell>
+                                <TableCell>
+                                {incident && (
+                                    <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
+                                    <Link href="/incidents">
+                                        <Siren className="mr-2 h-4 w-4 text-red-500" />
+                                        {incident.display_id}
+                                    </Link>
+                                    </Button>
+                                )}
+                                {observation && (
+                                    <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
+                                    <Link href="/observations">
+                                        <Eye className="mr-2 h-4 w-4 text-blue-500" />
+                                        {observation.display_id}
+                                    </Link>
+                                    </Button>
+                                )}
+                                {action.related_to_forklift_inspection && (
+                                    <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
+                                    <Link href="/forklift-inspections">
+                                        <Truck className="mr-2 h-4 w-4 text-green-500" />
+                                        {action.related_to_forklift_inspection}
+                                    </Link>
+                                    </Button>
+                                )}
+                                {investigation && (
+                                    <Button variant="ghost" size="sm" asChild onClick={(e) => e.stopPropagation()}>
+                                    <Link href={`/investigations?id=${investigation.investigation_id}`}>
+                                        <FileSearch className="mr-2 h-4 w-4 text-purple-500" />
+                                        {investigation.display_id}
+                                    </Link>
+                                    </Button>
+                                )}
+                                </TableCell>
+                                <TableCell>{action.responsible_person}</TableCell>
+                                <TableCell>{new Date(action.due_date).toLocaleDateString()}</TableCell>
+                                <TableCell>
+                                <Badge variant={statusVariant[action.status]}>{action.status}</Badge>
+                                </TableCell>
+                            </TableRow>
+                        )
+                        })}
+                    </TableBody>
+                    </Table>
+                </CardContent>
+                </Card>
+            </TabsContent>
+        </Tabs>
+    );
+};
 
 export default function CorrectiveActionsPage() {
   const { correctiveActions: allActions, addCorrectiveAction, incidents, observations, investigations } = useAppData();
@@ -626,3 +638,4 @@ export default function CorrectiveActionsPage() {
     </AppShell>
   );
 }
+
