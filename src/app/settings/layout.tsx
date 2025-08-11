@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { ReactNode } from "react";
@@ -6,7 +7,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Truck, ListChecks, FolderTree, Paintbrush, Upload, Database, Shield, AlertTriangle, ShieldCheck, Mail } from 'lucide-react';
+import { Users, Truck, ListChecks, FolderTree, Paintbrush, Upload, Database, Shield, AlertTriangle, ShieldCheck, Mail, HelpCircle } from 'lucide-react';
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
     const pathname = usePathname();
@@ -22,6 +23,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
         : pathname.includes('/uploads') ? 'uploads'
         : pathname.includes('/database') ? 'database'
         : pathname.includes('/email') ? 'email'
+        : pathname.includes('/help') ? 'help'
         : '';
 
     return (
