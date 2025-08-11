@@ -310,7 +310,7 @@ const PermitDetailsDialog = ({
                     </Button>
                 )}
             </DialogTitle>
-            <DialogDescription>{isCreateMode ? 'Fill in details to issue a new permit.' : `Details for permit in ${permit.locationName}`}</DialogDescription>
+            <DialogDescription>{isCreateMode ? 'Fill in details to issue a new permit.' : `Details for permit in ${permit.locationName}. Created on ${format(new Date(permit.created_date), 'PPP')}.`}</DialogDescription>
         </DialogHeader>
         <div className="max-h-[70vh] overflow-y-auto pr-2">
          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -546,4 +546,3 @@ export default function ConfinedSpacePermitsPage() {
         </AppShell>
     );
 }
-

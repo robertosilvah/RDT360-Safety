@@ -452,7 +452,7 @@ const PermitDetailsDialog = ({
             )}
           </DialogTitle>
           <DialogDescription>
-            {isCreateMode ? 'Fill in the details below to issue a new permit.' : `Details for permit in ${permit.locationName}`}
+            {isCreateMode ? 'Fill in the details below to issue a new permit.' : `Details for permit in ${permit.locationName}. Created on ${format(new Date(permit.created_date), 'PPP')}.`}
           </DialogDescription>
         </DialogHeader>
         <div className="max-h-[70vh] overflow-y-auto pr-2">
@@ -795,7 +795,7 @@ export default function HotWorkPermitsPage() {
                                                 <TableCell className="font-medium">{permit.locationName}</TableCell>
                                                 <TableCell>{permit.supervisor}</TableCell>
                                                 <TableCell>{format(new Date(permit.permit_expires), 'P p')}</TableCell>
-                                                <TableCell><Badge variant={statusVariant[status]}>{status}</Badge></TableCell>
+                                                <TableCell><Badge variant={statusVariant[status.text]}>{status.text}</Badge></TableCell>
                                                 <TableCell className="text-right">
                                                     <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(permit, 'edit')}>View</Button>
                                                     <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(permit, 'copy')}>Copy</Button>

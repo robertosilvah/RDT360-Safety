@@ -443,7 +443,7 @@ const JsaDetailsDialog = ({ jsa, isOpen, onOpenChange, onSign, onShare, currentU
               <Button type="button" variant="ghost" size="icon" onClick={handlePrint}><Printer className="h-5 w-5" /><span className="sr-only">Print</span></Button>
             </div>
           </DialogTitle>
-          <DialogDescription>{jsa.job_description}</DialogDescription>
+          <DialogDescription>{jsa.job_description}. Created by {jsa.created_by} on {format(new Date(jsa.created_date), 'PPP')}.</DialogDescription>
         </DialogHeader>
         
         <div className="printable-area flex-1 overflow-y-auto pr-6 space-y-6 py-4">
