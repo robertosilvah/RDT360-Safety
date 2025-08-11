@@ -323,3 +323,8 @@ export type UploadSettings = {
   imageMaxSizeMB: number;
   docMaxSizeMB: number;
 };
+
+export type EmailSettings = {
+  sendOnNewObservation: boolean;
+  recipients: string[];
+};

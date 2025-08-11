@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/AppShell";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Truck, ListChecks, FolderTree, Paintbrush, Upload, Database, Shield, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { Users, Truck, ListChecks, FolderTree, Paintbrush, Upload, Database, Shield, AlertTriangle, ShieldCheck, Mail } from 'lucide-react';
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
     const pathname = usePathname();
@@ -21,6 +21,7 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
         : pathname.includes('/branding') ? 'branding'
         : pathname.includes('/uploads') ? 'uploads'
         : pathname.includes('/database') ? 'database'
+        : pathname.includes('/email') ? 'email'
         : '';
 
     return (
@@ -68,6 +69,11 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
                          <TabsTrigger value="controls" asChild>
                            <Link href="/settings/controls">
                                <ShieldCheck className="mr-2 h-4 w-4" /> JSA Controls
+                           </Link>
+                        </TabsTrigger>
+                         <TabsTrigger value="email" asChild>
+                           <Link href="/settings/email">
+                               <Mail className="mr-2 h-4 w-4" /> Email
                            </Link>
                         </TabsTrigger>
                         <TabsTrigger value="branding" asChild>

@@ -7,13 +7,14 @@
 
 
 
+
 import { db, storage } from '@/lib/firebase';
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, writeBatch, DocumentReference,
   getDocs, query, where, getDoc,
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import type { Observation, CorrectiveAction, Incident, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, ConfinedSpacePermit, IncidentData, Comment, WorkHoursLog, ToolboxTalk, ToolboxSignature, PredefinedHazard, PredefinedControl } from '@/types';
+import type { Observation, CorrectiveAction, Incident, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, ConfinedSpacePermit, IncidentData, Comment, WorkHoursLog, ToolboxTalk, ToolboxSignature, PredefinedHazard, PredefinedControl, EmailSettings } from '@/types';
 
 // Generic subscribe to collection function
 export const subscribeToCollection = <T extends { [key: string]: any }>(
@@ -434,6 +435,9 @@ export const updateBrandingSettings = async (logoFile: File) => {
 export const updateUploadSettings = async (settings: UploadSettings) => {
   await setDoc(doc(db, 'settings', 'uploads'), settings);
 };
+export const updateEmailSettings = async (settings: EmailSettings) => {
+  await setDoc(doc(db, 'settings', 'email'), settings);
+}
 
 // Work Hours Log Functions
 export const addWorkHoursLog = async (log: Omit<WorkHoursLog, 'id'>) => {

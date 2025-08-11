@@ -3,7 +3,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, IncidentData, ConfinedSpacePermit, WorkHoursLog, ToolboxTalk, ToolboxSignature, PredefinedHazard, PredefinedControl } from '@/types';
+import type { Observation, CorrectiveAction, Incident, Comment, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, IncidentData, ConfinedSpacePermit, WorkHoursLog, ToolboxTalk, ToolboxSignature, PredefinedHazard, PredefinedControl, EmailSettings } from '@/types';
 import api from '@/services/backend';
 import { parseISO } from 'date-fns';
 
@@ -77,6 +77,8 @@ interface AppDataContextType {
   updateBrandingSettings: (logoFile: File) => Promise<void>;
   uploadSettings: UploadSettings | null;
   updateUploadSettings: (settings: UploadSettings) => Promise<void>;
+  emailSettings: EmailSettings | null;
+  updateEmailSettings: (settings: EmailSettings) => Promise<void>;
   workHours: WorkHoursLog[];
   addWorkHoursLog: (log: Omit<WorkHoursLog, 'id'>) => Promise<void>;
   updateWorkHoursLog: (log: WorkHoursLog) => Promise<void>;
@@ -108,6 +110,7 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
   const [confinedSpacePermits, setConfinedSpacePermits] = useState<ConfinedSpacePermit[]>([]);
   const [brandingSettings, setBrandingSettings] = useState<BrandingSettings | null>(null);
   const [uploadSettings, setUploadSettings] = useState<UploadSettings | null>(null);
+  const [emailSettings, setEmailSettings] = useState<EmailSettings | null>(null);
   const [workHours, setWorkHours] = useState<WorkHoursLog[]>([]);
   const [toolboxTalks, setToolboxTalks] = useState<ToolboxTalk[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
@@ -187,6 +190,9 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
         api.subscribeToDoc('settings', 'uploads', (settings) => {
             setUploadSettings(settings || { imageMaxSizeMB: 5, docMaxSizeMB: 10 });
         }),
+        api.subscribeToDoc('settings', 'email', (settings) => {
+            setEmailSettings(settings || { sendOnNewObservation: false, recipients: [] });
+        }),
         api.subscribeToCollection<WorkHoursLog>('workHours', setWorkHours, 'id'),
         api.subscribeToCollection<ToolboxTalk>('toolboxTalks', (talks) => {
             const talksWithSignatures: ToolboxTalk[] = talks.map(talk => ({...talk, signatures: []}));
@@ -210,7 +216,11 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
 
   const addObservation = (observation: Omit<Observation, 'observation_id' | 'display_id' | 'status' | 'created_date'>) => {
     const displayId = `OBS${String(observations.length + 1).padStart(3, '0')}`;
-    return api.addObservation({ ...observation, display_id: displayId, status: 'Open', created_date: new Date().toISOString() });
+    const newObservation = { ...observation, display_id: displayId, status: 'Open' as const, created_date: new Date().toISOString() };
+    if (emailSettings?.sendOnNewObservation && emailSettings.recipients.length > 0) {
+        console.log(`[SIMULATED EMAIL] New observation #${displayId} created. Sending email to: ${emailSettings.recipients.join(', ')}`);
+    }
+    return api.addObservation(newObservation);
   };
   
   const addCorrectiveAction = (action: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments' | 'created_date' | 'completion_date' | 'type'>) => {
@@ -412,6 +422,8 @@ export const AppDataProvider = ({ children }: { children: ReactNode }) => {
       updateBrandingSettings: api.updateBrandingSettings,
       uploadSettings,
       updateUploadSettings: api.updateUploadSettings,
+      emailSettings,
+      updateEmailSettings: api.updateEmailSettings,
       workHours,
       addWorkHoursLog: api.addWorkHoursLog,
       updateWorkHoursLog: api.updateWorkHoursLog,
