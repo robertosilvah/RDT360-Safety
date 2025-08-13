@@ -1,4 +1,5 @@
 
+
 export type TalkSection = {
   na: boolean;
   details: string;
