@@ -14,7 +14,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { Incident, Comment, Investigation } from '@/types';
-import { FilePlus2, Download, MessageSquare, User, Clock, FileSearch, Loader2, Trash2 } from 'lucide-react';
+import { FilePlus2, Download, MessageSquare, User, Clock, FileSearch, Loader2, Trash2, Edit } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import { useForm } from 'react-hook-form';
@@ -187,6 +187,7 @@ const IncidentDetailsDialog = ({
   const router = useRouter();
   const [newComment, setNewComment] = useState('');
   const [isCreatingInvestigation, setIsCreatingInvestigation] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   const form = useForm<IncidentFormValues>({
     resolver: zodResolver(incidentFormSchema),
@@ -219,10 +220,13 @@ const IncidentDetailsDialog = ({
         date: format(parseISO(currentIncident.date), "yyyy-MM-dd'T'HH:mm"),
       });
       setNewComment('');
+      setIsEditing(false);
     }
   }, [currentIncident, form, isOpen]);
 
   if (!currentIncident) return null;
+
+  const isLocked = currentIncident.status === 'Closed' && !isEditing;
 
   const handleStartInvestigation = async () => {
     setIsCreatingInvestigation(true);
@@ -275,6 +279,11 @@ const IncidentDetailsDialog = ({
     }
   };
 
+  const handleEdit = () => {
+    form.setValue('status', 'Open');
+    setIsEditing(true);
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl">
@@ -296,7 +305,7 @@ const IncidentDetailsDialog = ({
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Type</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLocked}>
                                   <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                   <SelectContent>
                                       <SelectItem value="Incident">Incident</SelectItem>
@@ -313,7 +322,7 @@ const IncidentDetailsDialog = ({
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Status</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLocked}>
                                   <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                   <SelectContent>
                                       <SelectItem value="Open">Open</SelectItem>
@@ -331,7 +340,7 @@ const IncidentDetailsDialog = ({
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Severity</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLocked}>
                                   <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
                                   <SelectContent>
                                       <SelectItem value="Low">Low</SelectItem>
@@ -350,7 +359,7 @@ const IncidentDetailsDialog = ({
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Date and Time of Incident</FormLabel>
-                                <FormControl><Input type="datetime-local" {...field} /></FormControl>
+                                <FormControl><Input type="datetime-local" {...field} disabled={isLocked} /></FormControl>
                                 <FormMessage />
                             </FormItem>
                         )}
@@ -361,23 +370,23 @@ const IncidentDetailsDialog = ({
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Description</FormLabel>
-                          <FormControl><Textarea rows={4} {...field} /></FormControl>
+                          <FormControl><Textarea rows={4} {...field} disabled={isLocked} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <FormField control={form.control} name="area" render={({ field }) => (
-                            <FormItem><FormLabel>Area</FormLabel><FormControl><Input placeholder="e.g., Warehouse Section B" {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>Area</FormLabel><FormControl><Input placeholder="e.g., Warehouse Section B" {...field} disabled={isLocked} /></FormControl><FormMessage /></FormItem>
                         )} />
                         <FormField control={form.control} name="assigned_to" render={({ field }) => (
-                            <FormItem><FormLabel>Assigned To</FormLabel><FormControl><Input placeholder="e.g., Safety Manager" {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>Assigned To</FormLabel><FormControl><Input placeholder="e.g., Safety Manager" {...field} disabled={isLocked} /></FormControl><FormMessage /></FormItem>
                         )} />
                         <FormField control={form.control} name="person_involved" render={({ field }) => (
-                            <FormItem><FormLabel>Person Involved</FormLabel><FormControl><Input placeholder="e.g., Jane Doe" {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>Person Involved</FormLabel><FormControl><Input placeholder="e.g., Jane Doe" {...field} disabled={isLocked} /></FormControl><FormMessage /></FormItem>
                         )} />
                         <FormField control={form.control} name="witnesses" render={({ field }) => (
-                            <FormItem><FormLabel>Witnesses</FormLabel><FormControl><Input placeholder="e.g., Mike, Bob" {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormItem><FormLabel>Witnesses</FormLabel><FormControl><Input placeholder="e.g., Mike, Bob" {...field} disabled={isLocked} /></FormControl><FormMessage /></FormItem>
                         )} />
                     </div>
                 </div>
@@ -388,7 +397,7 @@ const IncidentDetailsDialog = ({
                         <Link href={`/investigations?id=${currentIncident.investigation_id}`}>View Investigation</Link>
                       </Button>
                     ) : (
-                      <Button type="button" variant="outline" onClick={handleStartInvestigation} disabled={isCreatingInvestigation}>
+                      <Button type="button" variant="outline" onClick={handleStartInvestigation} disabled={isCreatingInvestigation || isLocked}>
                         {isCreatingInvestigation ? (
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         ) : (
@@ -398,7 +407,11 @@ const IncidentDetailsDialog = ({
                       </Button>
                     )}
                   </div>
-                  <Button type="submit">Save & Close</Button>
+                  {isLocked ? (
+                      <Button onClick={handleEdit}><Edit className="mr-2 h-4 w-4" /> Re-open and Edit</Button>
+                  ) : (
+                      <Button type="submit">Save & Close</Button>
+                  )}
                 </DialogFooter>
               </form>
             </Form>
@@ -424,12 +437,13 @@ const IncidentDetailsDialog = ({
             </div>
             <div className="flex flex-col gap-2 mt-auto">
                <Textarea 
-                  placeholder="Add a comment..."
+                  placeholder={isLocked ? "Comments are locked." : "Add a comment..."}
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
                   rows={2}
+                  disabled={isLocked}
               />
-              <Button size="sm" onClick={handleAddComment} disabled={!newComment.trim()}>Add Comment</Button>
+              <Button size="sm" onClick={handleAddComment} disabled={!newComment.trim() || isLocked}>Add Comment</Button>
             </div>
           </div>
         </div>
