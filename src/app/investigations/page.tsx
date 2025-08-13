@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAppData } from '@/context/AppDataContext';
 import type { Investigation, Comment, CorrectiveAction, Incident } from '@/types';
-import { PlusCircle, Upload, FileText, MessageSquare, User, Clock, Siren, Wand2, Loader2, Edit, AlertCircle, Calendar, BookOpen, ListChecks, Printer } from 'lucide-react';
+import { PlusCircle, Upload, FileText, MessageSquare, User, Clock, Siren, Wand2, Loader2, Edit, AlertCircle, Calendar, BookOpen, ListChecks, Printer, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -398,6 +398,7 @@ const InvestigationsPageContent = () => {
   const [selectedInvestigation, setSelectedInvestigation] = useState<Investigation | null>(null);
   const [isDetailsOpen, setDetailsOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const investigationIdFromUrl = searchParams.get('id');
@@ -411,11 +412,26 @@ const InvestigationsPageContent = () => {
   }, [searchParams, investigations]);
   
   const filteredInvestigations = useMemo(() => {
-    if (statusFilter === 'all') {
-        return investigations;
-    }
-    return investigations.filter(inv => inv.status === statusFilter);
-  }, [investigations, statusFilter]);
+    return investigations.filter(investigation => {
+        const statusMatch = statusFilter === 'all' || investigation.status === statusFilter;
+        
+        if (!searchTerm) {
+            return statusMatch;
+        }
+
+        const lowercasedTerm = searchTerm.toLowerCase();
+        const incident = incidents.find(i => i.incident_id === investigation.incident_id);
+
+        const searchMatch = (
+            investigation.display_id.toLowerCase().includes(lowercasedTerm) ||
+            investigation.root_cause.toLowerCase().includes(lowercasedTerm) ||
+            (incident && incident.display_id.toLowerCase().includes(lowercasedTerm)) ||
+            (incident && incident.area.toLowerCase().includes(lowercasedTerm))
+        );
+
+        return statusMatch && searchMatch;
+    });
+  }, [investigations, incidents, statusFilter, searchTerm]);
 
   const statusVariant: { [key in Investigation['status']]: 'destructive' | 'secondary' | 'default' | 'outline' } = {
     'Open': 'secondary',
@@ -437,22 +453,33 @@ const InvestigationsPageContent = () => {
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <CardTitle>All Investigations</CardTitle>
                     <CardDescription>A log of all incident investigations. Click a row to view and manage details.</CardDescription>
                 </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Filter by status..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Statuses</SelectItem>
-                        <SelectItem value="Open">Open</SelectItem>
-                        <SelectItem value="In Progress">In Progress</SelectItem>
-                        <SelectItem value="Closed">Closed</SelectItem>
-                    </SelectContent>
-                </Select>
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                    <div className="relative">
+                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                         <Input 
+                            placeholder="Search..." 
+                            className="pl-8 w-full sm:w-auto"
+                            value={searchTerm}
+                            onChange={e => setSearchTerm(e.target.value)}
+                         />
+                    </div>
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-full sm:w-[180px]">
+                            <SelectValue placeholder="Filter by status..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Statuses</SelectItem>
+                            <SelectItem value="Open">Open</SelectItem>
+                            <SelectItem value="In Progress">In Progress</SelectItem>
+                            <SelectItem value="Closed">Closed</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
           </CardHeader>
           <CardContent>
