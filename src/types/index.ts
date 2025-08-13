@@ -1,3 +1,4 @@
+
 export type TalkSection = {
   na: boolean;
   details: string;
@@ -71,6 +72,8 @@ export type Incident = {
   description: string;
   severity: 'Low' | 'Medium' | 'High';
   reported_by: string;
+  person_involved?: string;
+  witnesses?: string;
   linked_docs: string[];
   status: 'Open' | 'Under Investigation' | 'Closed';
   assigned_to?: string;

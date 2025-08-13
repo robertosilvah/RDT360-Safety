@@ -50,6 +50,8 @@ const incidentFormSchema = z.object({
   severity: z.enum(['Low', 'Medium', 'High']),
   status: z.enum(['Open', 'Under Investigation', 'Closed']),
   assigned_to: z.string().optional(),
+  person_involved: z.string().optional(),
+  witnesses: z.string().optional(),
 });
 
 type IncidentFormValues = z.infer<typeof incidentFormSchema>;
@@ -75,6 +77,8 @@ const IncidentReportForm = ({ setOpen }: { setOpen: (open: boolean) => void }) =
             severity: 'Low',
             area: '',
             assigned_to: '',
+            person_involved: '',
+            witnesses: '',
             date: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
         },
     });
@@ -102,7 +106,7 @@ const IncidentReportForm = ({ setOpen }: { setOpen: (open: boolean) => void }) =
                         Fill out the details below. You can start an investigation after reporting.
                     </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4">
+                <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-4">
                     <FormField
                         control={form.control}
                         name="description"
@@ -147,6 +151,14 @@ const IncidentReportForm = ({ setOpen }: { setOpen: (open: boolean) => void }) =
                         <FormField control={form.control} name="area" render={({ field }) => (
                             <FormItem><FormLabel>Area</FormLabel><FormControl><Input placeholder="e.g., Warehouse Section B" {...field} /></FormControl><FormMessage /></FormItem>
                         )} />
+                        <FormField control={form.control} name="person_involved" render={({ field }) => (
+                            <FormItem><FormLabel>Person Involved (Optional)</FormLabel><FormControl><Input placeholder="e.g., Jane Doe" {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField control={form.control} name="witnesses" render={({ field }) => (
+                            <FormItem><FormLabel>Witnesses (comma-separated)</FormLabel><FormControl><Input placeholder="e.g., Mike, Bob" {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
                         <FormField control={form.control} name="assigned_to" render={({ field }) => (
                             <FormItem><FormLabel>Assigned To (Optional)</FormLabel><FormControl><Input placeholder="e.g., John Doe" {...field} /></FormControl><FormMessage /></FormItem>
                         )} />
@@ -185,6 +197,8 @@ const IncidentDetailsDialog = ({
       severity: 'Low',
       status: 'Open',
       assigned_to: '',
+      person_involved: '',
+      witnesses: '',
     },
   });
   
@@ -198,6 +212,8 @@ const IncidentDetailsDialog = ({
         severity: currentIncident.severity,
         status: currentIncident.status,
         assigned_to: currentIncident.assigned_to || '',
+        person_involved: currentIncident.person_involved || '',
+        witnesses: currentIncident.witnesses || '',
       });
       setNewComment('');
     }
@@ -236,7 +252,13 @@ const IncidentDetailsDialog = ({
   };
 
   const handleSubmit = (values: IncidentFormValues) => {
-    const updatedIncident = { ...currentIncident, ...values, assigned_to: values.assigned_to || undefined };
+    const updatedIncident = { 
+        ...currentIncident,
+        ...values,
+        assigned_to: values.assigned_to || undefined,
+        person_involved: values.person_involved || undefined,
+        witnesses: values.witnesses || undefined,
+    };
     updateIncident(updatedIncident);
     toast({ title: 'Incident Updated', description: `Incident ${currentIncident.display_id} has been updated.` });
     onOpenChange(false);
@@ -255,7 +277,7 @@ const IncidentDetailsDialog = ({
         <DialogHeader>
           <DialogTitle>Incident Details: {currentIncident.display_id}</DialogTitle>
            <DialogDescription>
-            Reported on {format(new Date(currentIncident.date), 'PPP')} in {currentIncident.area}
+            Reported on {format(new Date(currentIncident.date), 'PPP p')} in {currentIncident.area}
           </DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-h-[70vh]">
@@ -340,6 +362,14 @@ const IncidentDetailsDialog = ({
                         </FormItem>
                       )}
                     />
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField control={form.control} name="person_involved" render={({ field }) => (
+                            <FormItem><FormLabel>Person Involved</FormLabel><FormControl><Input placeholder="e.g., Jane Doe" {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={form.control} name="witnesses" render={({ field }) => (
+                            <FormItem><FormLabel>Witnesses</FormLabel><FormControl><Input placeholder="e.g., Mike, Bob" {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                    </div>
                 </div>
                 <DialogFooter className="!justify-between pt-4 mt-auto border-t">
                   <div>
@@ -475,11 +505,11 @@ export default function IncidentsPage() {
                   <TableHead>Date</TableHead>
                   <TableHead>Area</TableHead>
                   <TableHead>Type</TableHead>
-                  <TableHead className="w-[40%]">Description</TableHead>
+                  <TableHead className="w-[30%]">Description</TableHead>
                   <TableHead>Severity</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Assigned To</TableHead>
-                  <TableHead>Docs</TableHead>
+                  <TableHead>Person Involved</TableHead>
+                  <TableHead>Witnesses</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -492,22 +522,15 @@ export default function IncidentsPage() {
                     <TableCell>
                       <Badge variant={typeVariant[incident.type]}>{incident.type}</Badge>
                     </TableCell>
-                    <TableCell className="max-w-md truncate">{incident.description}</TableCell>
+                    <TableCell className="max-w-xs truncate">{incident.description}</TableCell>
                     <TableCell>
                       <Badge variant={severityVariant[incident.severity]}>{incident.severity}</Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant={statusVariant[incident.status]}>{incident.status}</Badge>
                     </TableCell>
-                    <TableCell>{incident.assigned_to || 'N/A'}</TableCell>
-                    <TableCell>
-                        {incident.linked_docs.length > 0 && (
-                            <Button variant="outline" size="icon" onClick={(e) => e.stopPropagation()}>
-                                <Download className="h-4 w-4" />
-                                <span className="sr-only">Download Document</span>
-                            </Button>
-                        )}
-                    </TableCell>
+                    <TableCell>{incident.person_involved || 'N/A'}</TableCell>
+                    <TableCell>{incident.witnesses || 'N/A'}</TableCell>
                     <TableCell className="text-right">
                         {isAdmin && (
                             <AlertDialog>
