@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useEffect, Suspense } from 'react';
+import React, { useState, useEffect, Suspense, useMemo } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -397,6 +397,7 @@ const InvestigationsPageContent = () => {
   const searchParams = useSearchParams();
   const [selectedInvestigation, setSelectedInvestigation] = useState<Investigation | null>(null);
   const [isDetailsOpen, setDetailsOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all');
 
   useEffect(() => {
     const investigationIdFromUrl = searchParams.get('id');
@@ -408,6 +409,13 @@ const InvestigationsPageContent = () => {
       }
     }
   }, [searchParams, investigations]);
+  
+  const filteredInvestigations = useMemo(() => {
+    if (statusFilter === 'all') {
+        return investigations;
+    }
+    return investigations.filter(inv => inv.status === statusFilter);
+  }, [investigations, statusFilter]);
 
   const statusVariant: { [key in Investigation['status']]: 'destructive' | 'secondary' | 'default' | 'outline' } = {
     'Open': 'secondary',
@@ -429,8 +437,23 @@ const InvestigationsPageContent = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle>All Investigations</CardTitle>
-            <CardDescription>A log of all incident investigations. Click a row to view and manage details.</CardDescription>
+            <div className="flex items-center justify-between">
+                <div>
+                    <CardTitle>All Investigations</CardTitle>
+                    <CardDescription>A log of all incident investigations. Click a row to view and manage details.</CardDescription>
+                </div>
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Filter by status..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        <SelectItem value="Open">Open</SelectItem>
+                        <SelectItem value="In Progress">In Progress</SelectItem>
+                        <SelectItem value="Closed">Closed</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
           </CardHeader>
           <CardContent>
             <Table>
@@ -443,7 +466,7 @@ const InvestigationsPageContent = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {investigations.map((investigation) => {
+                {filteredInvestigations.map((investigation) => {
                   const incident = incidents.find(i => i.incident_id === investigation.incident_id);
                   return (
                     <TableRow key={investigation.investigation_id} onClick={() => handleRowClick(investigation)} className="cursor-pointer">
