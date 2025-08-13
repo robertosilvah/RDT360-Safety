@@ -25,7 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format, formatDistanceToNow, parseISO } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useAppData } from '@/context/AppDataContext';
@@ -52,16 +52,15 @@ const incidentFormSchema = z.object({
   assigned_to: z.string().optional(),
   person_involved: z.string().optional(),
   witnesses: z.string().optional(),
+  area: z.string().min(3, "Area is required."),
+  date: z.string().refine((val) => val && !isNaN(Date.parse(val)), {
+    message: 'Please enter a valid date and time.',
+  }),
 });
 
 type IncidentFormValues = z.infer<typeof incidentFormSchema>;
 
-const newIncidentFormSchema = incidentFormSchema.omit({ status: true }).extend({
-    area: z.string().min(3, "Area is required."),
-    date: z.string().refine((val) => val && !isNaN(Date.parse(val)), {
-        message: 'Please enter a valid date and time.',
-    }),
-});
+const newIncidentFormSchema = incidentFormSchema.omit({ status: true });
 type NewIncidentFormValues = z.infer<typeof newIncidentFormSchema>;
 
 
@@ -199,6 +198,8 @@ const IncidentDetailsDialog = ({
       assigned_to: '',
       person_involved: '',
       witnesses: '',
+      area: '',
+      date: '',
     },
   });
   
@@ -214,6 +215,8 @@ const IncidentDetailsDialog = ({
         assigned_to: currentIncident.assigned_to || '',
         person_involved: currentIncident.person_involved || '',
         witnesses: currentIncident.witnesses || '',
+        area: currentIncident.area,
+        date: format(parseISO(currentIncident.date), "yyyy-MM-dd'T'HH:mm"),
       });
       setNewComment('');
     }
@@ -255,6 +258,7 @@ const IncidentDetailsDialog = ({
     const updatedIncident = { 
         ...currentIncident,
         ...values,
+        date: new Date(values.date).toISOString(),
         assigned_to: values.assigned_to || undefined,
         person_involved: values.person_involved || undefined,
         witnesses: values.witnesses || undefined,
@@ -342,15 +346,15 @@ const IncidentDetailsDialog = ({
                     </div>
                      <FormField
                         control={form.control}
-                        name="assigned_to"
+                        name="date"
                         render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Assigned To</FormLabel>
-                            <FormControl><Input placeholder="e.g., Safety Manager" {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
+                            <FormItem>
+                                <FormLabel>Date and Time of Incident</FormLabel>
+                                <FormControl><Input type="datetime-local" {...field} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
                         )}
-                      />
+                    />
                     <FormField
                       control={form.control}
                       name="description"
@@ -363,6 +367,12 @@ const IncidentDetailsDialog = ({
                       )}
                     />
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <FormField control={form.control} name="area" render={({ field }) => (
+                            <FormItem><FormLabel>Area</FormLabel><FormControl><Input placeholder="e.g., Warehouse Section B" {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={form.control} name="assigned_to" render={({ field }) => (
+                            <FormItem><FormLabel>Assigned To</FormLabel><FormControl><Input placeholder="e.g., Safety Manager" {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
                         <FormField control={form.control} name="person_involved" render={({ field }) => (
                             <FormItem><FormLabel>Person Involved</FormLabel><FormControl><Input placeholder="e.g., Jane Doe" {...field} /></FormControl><FormMessage /></FormItem>
                         )} />
@@ -569,7 +579,3 @@ export default function IncidentsPage() {
     </AppShell>
   );
 }
-
-    
-
-    
