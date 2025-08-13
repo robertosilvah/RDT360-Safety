@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -263,9 +264,9 @@ const IncidentDetailsDialog = ({
         ...currentIncident,
         ...values,
         date: new Date(values.date).toISOString(),
-        assigned_to: values.assigned_to || undefined,
-        person_involved: values.person_involved || undefined,
-        witnesses: values.witnesses || undefined,
+        assigned_to: values.assigned_to || '',
+        person_involved: values.person_involved || '',
+        witnesses: values.witnesses || '',
     };
     updateIncident(updatedIncident);
     toast({ title: 'Incident Updated', description: `Incident ${currentIncident.display_id} has been updated.` });
