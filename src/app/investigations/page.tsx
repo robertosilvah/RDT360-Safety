@@ -488,8 +488,10 @@ const InvestigationsPageContent = () => {
                 <TableRow>
                   <TableHead>Investigation ID</TableHead>
                   <TableHead>Incident ID</TableHead>
+                  <TableHead>Area</TableHead>
+                  <TableHead>Person Involved</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-[40%]">Root Cause Summary</TableHead>
+                  <TableHead className="w-[30%]">Root Cause Summary</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -507,6 +509,8 @@ const InvestigationsPageContent = () => {
                           <Link href={`/incidents`}>{incident?.display_id || investigation.incident_id}</Link>
                         </Button>
                       </TableCell>
+                      <TableCell>{incident?.area || 'N/A'}</TableCell>
+                      <TableCell>{incident?.person_involved || 'N/A'}</TableCell>
                       <TableCell>
                         <Badge variant={statusVariant[investigation.status]}>{investigation.status}</Badge>
                       </TableCell>
