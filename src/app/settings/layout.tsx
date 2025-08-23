@@ -23,7 +23,6 @@ export default function SettingsLayout({ children }: { children: ReactNode }) {
         : pathname.includes('/uploads') ? 'uploads'
         : pathname.includes('/database') ? 'database'
         : pathname.includes('/email') ? 'email'
-        : pathname.includes('/help') ? 'help'
         : '';
 
     return (

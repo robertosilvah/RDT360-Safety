@@ -161,7 +161,10 @@ CREATE TABLE incidents (
     status ENUM('Open', 'Under Investigation', 'Closed') NOT NULL,
     assigned_to VARCHAR(255),
     investigation_id VARCHAR(255) UNIQUE,
-    FOREIGN KEY (investigation_id) REFERENCES investigations(investigation_id)
+    person_involved VARCHAR(255),
+    witnesses VARCHAR(255),
+    comments JSON,
+    linked_docs JSON
 );
 
 CREATE TABLE investigations (
@@ -185,6 +188,7 @@ CREATE TABLE observations (
     report_type ENUM('Safety Concern', 'Positive Observation', 'Near Miss') NOT NULL,
     submitted_by VARCHAR(255),
     date TIMESTAMP NOT NULL,
+    created_date TIMESTAMP NOT NULL,
     areaId VARCHAR(255),
     person_involved VARCHAR(255),
     risk_level INT,
@@ -193,9 +197,7 @@ CREATE TABLE observations (
     unsafe_category ENUM('Unsafe Behavior', 'Unsafe Condition', 'N/A'),
     status ENUM('Open', 'Closed') NOT NULL,
     imageUrl VARCHAR(2048),
-    safety_walk_id VARCHAR(255),
-    FOREIGN KEY (areaId) REFERENCES areas(area_id) ON DELETE SET NULL,
-    FOREIGN KEY (safety_walk_id) REFERENCES safety_walks(safety_walk_id)
+    safety_walk_id VARCHAR(255)
 );
 
 CREATE TABLE corrective_actions (
@@ -206,15 +208,13 @@ CREATE TABLE corrective_actions (
     due_date TIMESTAMP,
     created_date TIMESTAMP,
     completion_date TIMESTAMP,
-    status ENUM('Pending', 'In Progress', 'Completed', 'Overdue') NOT NULL,
+    status ENUM('Pending', 'In Progress', 'Completed', 'Overdue', 'On Hold') NOT NULL,
     type ENUM('Preventive', 'Reactive', 'Other'),
     related_to_incident VARCHAR(255),
     related_to_observation VARCHAR(255),
     related_to_investigation VARCHAR(255),
     related_to_forklift_inspection VARCHAR(255),
-    FOREIGN KEY (related_to_incident) REFERENCES incidents(incident_id),
-    FOREIGN KEY (related_to_observation) REFERENCES observations(observation_id),
-    FOREIGN KEY (related_to_investigation) REFERENCES investigations(investigation_id)
+    comments JSON
 );
 
 CREATE TABLE safety_walks (
@@ -296,7 +296,8 @@ CREATE TABLE compliance_records (
 CREATE TABLE forklifts (
     id VARCHAR(255) PRIMARY KEY,
     name VARCHAR(255),
-    area VARCHAR(255)
+    area VARCHAR(255),
+    imageUrl VARCHAR(2048)
 );
 
 CREATE TABLE forklift_inspections (
