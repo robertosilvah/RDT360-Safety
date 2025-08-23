@@ -3,7 +3,7 @@
 
 import { AppShell } from '@/components/AppShell';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowRight, Database } from 'lucide-react';
+import { ArrowRight, Database, Server } from 'lucide-react';
 import { CodeBlock } from '@/components/CodeBlock';
 
 const dataModel = [
@@ -335,6 +335,47 @@ CREATE TABLE predefined_controls (
 );
 `;
 
+const apiEndpoints = `
+# Endpoints de la API RESTful para un backend con MariaDB
+
+## General
+# Los archivos (imágenes, documentos) se siguen manejando a través de Firebase Storage por defecto.
+# El backend de MariaDB solo almacenará las URL a esos archivos.
+
+# --- Incidents ---
+GET    /api/incidents          -> Obtener todos los incidentes
+POST   /api/incidents          -> Crear un nuevo incidente
+GET    /api/incidents/:id      -> Obtener un incidente por ID
+PUT    /api/incidents/:id      -> Actualizar un incidente
+DELETE /api/incidents/:id      -> Eliminar un incidente
+
+# --- Observations ---
+GET    /api/observations       -> Obtener todas las observaciones
+POST   /api/observations       -> Crear una nueva observación
+#... (y así sucesivamente para PUT, DELETE)
+
+# --- Corrective Actions ---
+GET    /api/corrective-actions -> Obtener todas las acciones correctivas
+POST   /api/corrective-actions -> Crear una nueva acción
+#...
+
+# --- Users ---
+GET    /api/users              -> Obtener todos los usuarios
+POST   /api/users              -> Invitar a un nuevo usuario
+PUT    /api/users/:id/status   -> Actualizar el estado de un usuario (e.g., aprobar)
+DELETE /api/users/:id          -> Eliminar un usuario
+
+# --- Settings & Predefined Data ---
+GET    /api/settings/areas     -> Obtener toda la jerarquía de áreas
+POST   /api/settings/areas     -> Crear una nueva área
+PUT    /api/settings/areas/:id -> Actualizar un área
+# ... y así para otros datos predefinidos como 'hazards', 'controls', 'forklifts', etc.
+
+# --- Notificaciones (Ejemplo) ---
+# Este endpoint no devolvería datos, sino que activaría una acción en el servidor.
+POST   /api/notify/new-observation -> Dispara el envío de correos a los destinatarios configurados.
+`;
+
 
 export default function HelpPage() {
   return (
@@ -391,8 +432,19 @@ export default function HelpPage() {
                     <CodeBlock code={sqlSchema} />
                 </CardContent>
             </Card>
+
+             <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2"><Server /> Endpoints de la API (para Backend con MariaDB)</CardTitle>
+                    <CardDescription>Ejemplos de endpoints RESTful que necesitarías en tu API de backend para interactuar con la base de datos MariaDB.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <CodeBlock code={apiEndpoints} />
+                </CardContent>
+            </Card>
         </div>
       </div>
     </AppShell>
   );
 }
+
