@@ -19,6 +19,13 @@ const jsaRoutes = require('./routes/jsas');
 const safetyWalkRoutes = require('./routes/safetyWalks');
 const userRoutes = require('./routes/users');
 const documentRoutes = require('./routes/documents');
+const areaRoutes = require('./routes/areas');
+const complianceRecordRoutes = require('./routes/complianceRecords');
+const forkliftRoutes = require('./routes/forklifts');
+const forkliftInspectionRoutes = require('./routes/forkliftInspections');
+const hotWorkPermitRoutes = require('./routes/hotWorkPermits');
+const toolboxTalkRoutes = require('./routes/toolboxTalks');
+const workHoursRoutes = require('./routes/workHours');
 
 app.use('/api/incidents', incidentRoutes);
 app.use('/api/observations', observationRoutes);
@@ -28,6 +35,13 @@ app.use('/api/jsas', jsaRoutes);
 app.use('/api/safety-walks', safetyWalkRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/documents', documentRoutes);
+app.use('/api/areas', areaRoutes);
+app.use('/api/compliance-records', complianceRecordRoutes);
+app.use('/api/forklifts', forkliftRoutes);
+app.use('/api/forklift-inspections', forkliftInspectionRoutes);
+app.use('/api/hot-work-permits', hotWorkPermitRoutes);
+app.use('/api/toolbox-talks', toolboxTalkRoutes);
+app.use('/api/work-hours', workHoursRoutes);
 
 
 // Welcome route
