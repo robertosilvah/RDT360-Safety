@@ -342,38 +342,76 @@ const apiEndpoints = `
 # Los archivos (imágenes, documentos) se siguen manejando a través de Firebase Storage por defecto.
 # El backend de MariaDB solo almacenará las URL a esos archivos.
 
-# --- Incidents ---
-GET    /api/incidents          -> Obtener todos los incidentes
-POST   /api/incidents          -> Crear un nuevo incidente
-GET    /api/incidents/:id      -> Obtener un incidente por ID
-PUT    /api/incidents/:id      -> Actualizar un incidente
-DELETE /api/incidents/:id      -> Eliminar un incidente
+# --- Core Features ---
+GET    /api/incidents                -> Obtener todos los incidentes
+POST   /api/incidents                -> Crear un nuevo incidente
+GET    /api/incidents/:id            -> Obtener un incidente por ID
+PUT    /api/incidents/:id            -> Actualizar un incidente
+DELETE /api/incidents/:id            -> Eliminar un incidente
+GET    /api/incidents/:id/actions    -> Obtener acciones correctivas para un incidente
 
-# --- Observations ---
-GET    /api/observations       -> Obtener todas las observaciones
-POST   /api/observations       -> Crear una nueva observación
-#... (y así sucesivamente para PUT, DELETE)
+GET    /api/observations             -> Obtener todas las observaciones
+POST   /api/observations             -> Crear una nueva observación
+GET    /api/observations/:id         -> Obtener una observación por ID
+PUT    /api/observations/:id         -> Actualizar una observación
+DELETE /api/observations/:id         -> Eliminar una observación
 
-# --- Corrective Actions ---
-GET    /api/corrective-actions -> Obtener todas las acciones correctivas
-POST   /api/corrective-actions -> Crear una nueva acción
-#...
+GET    /api/investigations           -> Obtener todas las investigaciones
+POST   /api/investigations           -> Crear (usualmente vinculado a un incidente)
+GET    /api/investigations/:id       -> Obtener una investigación
+PUT    /api/investigations/:id       -> Actualizar una investigación
 
-# --- Users ---
-GET    /api/users              -> Obtener todos los usuarios
-POST   /api/users              -> Invitar a un nuevo usuario
-PUT    /api/users/:id/status   -> Actualizar el estado de un usuario (e.g., aprobar)
-DELETE /api/users/:id          -> Eliminar un usuario
+GET    /api/corrective-actions       -> Obtener todas las acciones correctivas
+POST   /api/corrective-actions       -> Crear una nueva acción
+GET    /api/corrective-actions/:id   -> Obtener una acción
+PUT    /api/corrective-actions/:id   -> Actualizar una acción
 
-# --- Settings & Predefined Data ---
-GET    /api/settings/areas     -> Obtener toda la jerarquía de áreas
-POST   /api/settings/areas     -> Crear una nueva área
-PUT    /api/settings/areas/:id -> Actualizar un área
-# ... y así para otros datos predefinidos como 'hazards', 'controls', 'forklifts', etc.
+# --- Tools ---
+GET    /api/jsas                     -> Obtener todos los JSAs
+POST   /api/jsas                     -> Crear un nuevo JSA
+GET    /api/jsas/:id                 -> Obtener un JSA por ID
+PUT    /api/jsas/:id                 -> Actualizar un JSA
+POST   /api/jsas/:id/sign            -> Firmar un JSA
 
-# --- Notificaciones (Ejemplo) ---
-# Este endpoint no devolvería datos, sino que activaría una acción en el servidor.
-POST   /api/notify/new-observation -> Dispara el envío de correos a los destinatarios configurados.
+GET    /api/forklift-inspections     -> Obtener todas las inspecciones
+POST   /api/forklift-inspections     -> Crear una nueva inspección
+
+GET    /api/toolbox-talks            -> Obtener todos los toolbox talks
+POST   /api/toolbox-talks            -> Crear un nuevo talk
+GET    /api/toolbox-talks/:id        -> Obtener un talk por ID
+GET    /api/toolbox-talks/:id/signatures -> Obtener las firmas de un talk
+POST   /api/toolbox-talks/:id/sign   -> Añadir una firma a un talk
+
+# --- Permits ---
+GET    /api/permits/hot-work         -> Obtener todos los permisos de trabajo en caliente
+POST   /api/permits/hot-work         -> Crear un nuevo permiso
+GET    /api/permits/hot-work/:id     -> Obtener un permiso por ID
+PUT    /api/permits/hot-work/:id     -> Actualizar un permiso (estado, firmas)
+
+GET    /api/permits/confined-space   -> Obtener todos los permisos de espacio confinado
+# ... (y así sucesivamente para POST, GET, PUT)
+
+# --- Management & Settings ---
+GET    /api/users                    -> Obtener todos los usuarios
+POST   /api/users                    -> Invitar a un nuevo usuario
+PUT    /api/users/:id/status         -> Actualizar el estado de un usuario (e.g., aprobar)
+DELETE /api/users/:id                -> Eliminar un usuario
+
+GET    /api/documents                -> Obtener todos los documentos
+POST   /api/documents                -> Subir un nuevo documento
+DELETE /api/documents/:id            -> Eliminar un documento
+
+GET    /api/compliance-records       -> Obtener todos los registros
+POST   /api/compliance-records       -> Crear o actualizar un registro para un empleado
+
+GET    /api/settings/areas           -> Obtener toda la jerarquía de áreas
+POST   /api/settings/areas           -> Crear una nueva área
+PUT    /api/settings/areas/:id       -> Actualizar un área
+DELETE /api/settings/areas/:id       -> Eliminar un área
+
+GET    /api/settings/forklifts       -> Obtener todos los montacargas
+POST   /api/settings/forklifts       -> Añadir un nuevo montacargas
+# ... (y así para otros datos predefinidos como 'hazards', 'controls', etc.)
 `;
 
 
