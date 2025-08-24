@@ -452,7 +452,7 @@ export default function HelpPage() {
                         Esta guía cubre la configuración del proyecto, la conexión a la base de datos MariaDB y la implementación de rutas de API.
                     </p>
                     <Button asChild className="mt-4">
-                        <Link href="/docs/backend_guide.md" target="_blank">Ver Guía de Backend</Link>
+                        <Link href="https://github.com/robertosilvah/RDT360-Safety/blob/main/docs/backend_guide.md" target="_blank">Ver Guía de Backend</Link>
                     </Button>
                 </CardContent>
             </Card>
