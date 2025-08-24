@@ -441,21 +441,6 @@ export default function HelpPage() {
         </div>
 
         <div className="grid gap-6">
-             <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2"><NotebookPen /> Guía para el Backend</CardTitle>
-                    <CardDescription>Aprende a construir un backend con Node.js y Express para esta aplicación.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-sm text-muted-foreground">
-                        Hemos preparado una guía completa con ejemplos de código para ayudarte a configurar tu propio servidor backend.
-                        Esta guía cubre la configuración del proyecto, la conexión a la base de datos MariaDB y la implementación de rutas de API.
-                    </p>
-                    <Button asChild className="mt-4">
-                        <Link href="https://github.com/robertosilvah/RDT360-Safety/blob/main/docs/backend_guide.md" target="_blank">Ver Guía de Backend</Link>
-                    </Button>
-                </CardContent>
-            </Card>
             <Card>
                 <CardHeader>
                     <CardTitle>Modelo de Datos</CardTitle>
