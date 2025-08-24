@@ -366,6 +366,12 @@ POST   /api/corrective-actions       -> Crear una nueva acción
 GET    /api/corrective-actions/:id   -> Obtener una acción
 PUT    /api/corrective-actions/:id   -> Actualizar una acción
 
+GET    /api/safety-walks             -> Obtener todas las caminatas de seguridad
+POST   /api/safety-walks             -> Crear una nueva caminata
+GET    /api/safety-walks/:id         -> Obtener una caminata por ID
+PUT    /api/safety-walks/:id         -> Actualizar una caminata (estado, checklist)
+
+
 # --- Tools ---
 GET    /api/jsas                     -> Obtener todos los JSAs
 POST   /api/jsas                     -> Crear un nuevo JSA
@@ -403,6 +409,10 @@ DELETE /api/documents/:id            -> Eliminar un documento
 
 GET    /api/compliance-records       -> Obtener todos los registros
 POST   /api/compliance-records       -> Crear o actualizar un registro para un empleado
+
+GET    /api/work-hours-log           -> Obtener todos los registros de horas trabajadas
+POST   /api/work-hours-log           -> Añadir un nuevo registro de horas
+DELETE /api/work-hours-log/:id       -> Eliminar un registro de horas
 
 GET    /api/settings/areas           -> Obtener toda la jerarquía de áreas
 POST   /api/settings/areas           -> Crear una nueva área
