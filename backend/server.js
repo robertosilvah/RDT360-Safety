@@ -12,11 +12,12 @@ app.use(express.json()); // To parse request bodies as JSON
 
 // API Routes
 const incidentRoutes = require('./routes/incidents');
+const observationRoutes = require('./routes/observations');
+
 app.use('/api/incidents', incidentRoutes);
+app.use('/api/observations', observationRoutes);
 
 // ... you would use other routes here ...
-// const observationRoutes = require('./routes/observations');
-// app.use('/api/observations', observationRoutes);
 
 // Welcome route
 app.get('/', (req, res) => {
