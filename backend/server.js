@@ -13,11 +13,22 @@ app.use(express.json()); // To parse request bodies as JSON
 // API Routes
 const incidentRoutes = require('./routes/incidents');
 const observationRoutes = require('./routes/observations');
+const correctiveActionRoutes = require('./routes/correctiveActions');
+const investigationRoutes = require('./routes/investigations');
+const jsaRoutes = require('./routes/jsas');
+const safetyWalkRoutes = require('./routes/safetyWalks');
+const userRoutes = require('./routes/users');
+const documentRoutes = require('./routes/documents');
 
 app.use('/api/incidents', incidentRoutes);
 app.use('/api/observations', observationRoutes);
+app.use('/api/corrective-actions', correctiveActionRoutes);
+app.use('/api/investigations', investigationRoutes);
+app.use('/api/jsas', jsaRoutes);
+app.use('/api/safety-walks', safetyWalkRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/documents', documentRoutes);
 
-// ... you would use other routes here ...
 
 // Welcome route
 app.get('/', (req, res) => {
