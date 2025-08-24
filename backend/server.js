@@ -26,6 +26,10 @@ const forkliftInspectionRoutes = require('./routes/forkliftInspections');
 const hotWorkPermitRoutes = require('./routes/hotWorkPermits');
 const toolboxTalkRoutes = require('./routes/toolboxTalks');
 const workHoursRoutes = require('./routes/workHours');
+const predefinedHazardRoutes = require('./routes/predefinedHazards');
+const predefinedControlRoutes = require('./routes/predefinedControls');
+const toolboxSignatureRoutes = require('./routes/toolboxSignatures');
+
 
 app.use('/api/incidents', incidentRoutes);
 app.use('/api/observations', observationRoutes);
@@ -42,6 +46,9 @@ app.use('/api/forklift-inspections', forkliftInspectionRoutes);
 app.use('/api/hot-work-permits', hotWorkPermitRoutes);
 app.use('/api/toolbox-talks', toolboxTalkRoutes);
 app.use('/api/work-hours', workHoursRoutes);
+app.use('/api/predefined-hazards', predefinedHazardRoutes);
+app.use('/api/predefined-controls', predefinedControlRoutes);
+app.use('/api/toolbox-signatures', toolboxSignatureRoutes);
 
 
 // Welcome route
