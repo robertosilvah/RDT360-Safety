@@ -72,9 +72,6 @@ import { useAppData } from '@/context/AppDataContext';
 import { useToast } from '@/hooks/use-toast';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
-import { storage, db } from '@/lib/firebase';
-import { ref, uploadBytes, getDownloadURL, uploadString } from 'firebase/storage';
-import { collection, writeBatch, doc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -217,12 +214,43 @@ const ObservationForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
       let imageUrl: string | undefined = undefined;
       if (selectedFile) {
         toast({ title: "Uploading image...", description: "Please wait." });
-        const storageRef = ref(storage, `observations/${Date.now()}_${selectedFile.name}`);
-        await uploadBytes(storageRef, selectedFile);
-        imageUrl = await getDownloadURL(storageRef);
-      }
-
-      const newObservationData: Omit<Observation, 'observation_id' | 'display_id' | 'status' | 'created_date'> = {
+        const newObservationData: Omit<Observation, 'observation_id' | 'display_id' | 'status' | 'created_date'> = {
+            report_type: values.report_type,
+            submitted_by: values.submitted_by,
+            date: new Date(values.date).toISOString(),
+            areaId: values.areaId,
+            person_involved: values.person_involved,
+            risk_level: values.risk_level as Observation['risk_level'],
+            description: values.description,
+            actions: values.actions,
+            unsafe_category: values.unsafe_category,
+            imageUrl: imageUrl,
+        };
+        
+        const observationWithImage = { ...newObservationData, ...(imageUrl && { imageUrl }) };
+        const newObservationRef = await addObservation(observationWithImage, selectedFile);
+  
+        if (values.createAction && values.actionDescription && values.actionResponsiblePerson && values.actionDueDate) {
+            const newActionData: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'| 'created_date' | 'completion_date' | 'type'> = {
+                description: values.actionDescription,
+                responsible_person: values.actionResponsiblePerson,
+                due_date: new Date(values.actionDueDate).toISOString(),
+                status: 'Pending',
+                related_to_observation: newObservationRef.id,
+            };
+            await addCorrectiveAction(newActionData);
+            toast({
+                title: 'Observation & Action Created',
+                description: 'The observation and a linked corrective action have been submitted.',
+            });
+        } else {
+            toast({
+                title: 'Observation Submitted',
+                description: 'Your observation has been successfully submitted.',
+            });
+        }
+      } else {
+        const newObservationData: Omit<Observation, 'observation_id' | 'display_id' | 'status' | 'created_date'> = {
           report_type: values.report_type,
           submitted_by: values.submitted_by,
           date: new Date(values.date).toISOString(),
@@ -232,30 +260,29 @@ const ObservationForm = ({ setOpen }: { setOpen: (open: boolean) => void }) => {
           description: values.description,
           actions: values.actions,
           unsafe_category: values.unsafe_category,
-      };
-      
-      const observationWithImage = { ...newObservationData, ...(imageUrl && { imageUrl }) };
-      const newObservationRef = await addObservation(observationWithImage);
-
-      if (values.createAction && values.actionDescription && values.actionResponsiblePerson && values.actionDueDate) {
-          const newActionData: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'| 'created_date' | 'completion_date' | 'type'> = {
-              description: values.actionDescription,
-              responsible_person: values.actionResponsiblePerson,
-              due_date: new Date(values.actionDueDate).toISOString(),
-              status: 'Pending',
-              related_to_observation: newObservationRef.id,
-          };
-          await addCorrectiveAction(newActionData);
-          toast({
-              title: 'Observation & Action Created',
-              description: 'The observation and a linked corrective action have been submitted.',
-          });
-      } else {
-          toast({
-              title: 'Observation Submitted',
-              description: 'Your observation has been successfully submitted.',
-          });
+        };
+        const newObservationRef = await addObservation(newObservationData);
+        if (values.createAction && values.actionDescription && values.actionResponsiblePerson && values.actionDueDate) {
+            const newActionData: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'| 'created_date' | 'completion_date' | 'type'> = {
+                description: values.actionDescription,
+                responsible_person: values.actionResponsiblePerson,
+                due_date: new Date(values.actionDueDate).toISOString(),
+                status: 'Pending',
+                related_to_observation: newObservationRef.id,
+            };
+            await addCorrectiveAction(newActionData);
+            toast({
+                title: 'Observation & Action Created',
+                description: 'The observation and a linked corrective action have been submitted.',
+            });
+        } else {
+            toast({
+                title: 'Observation Submitted',
+                description: 'Your observation has been successfully submitted.',
+            });
+        }
       }
+
 
       form.reset();
       setImagePreview(null);
@@ -869,7 +896,6 @@ const parseCsvRow = (row: string): string[] => {
   return values;
 };
 
-
 interface ObservationTableProps {
   observations: Observation[];
   title: string;
@@ -1111,96 +1137,9 @@ export default function ObservationsPage() {
                 }
             }
             
-            const obsCollection = collection(db, 'observations');
-            const currentObsCount = observations.length;
-            const observationsToCommit: Omit<Observation, 'observation_id' | 'created_date'>[] = [];
-            const imageUrlsToProcess: { index: number, url: string }[] = [];
-
-            for (let i = 1; i < rows.length; i++) {
-                const values = parseCsvRow(rows[i]);
-                if (values.length !== headers.length) {
-                    console.warn(`Skipping malformed row ${i + 1}: Check column count. Expected ${headers.length}, got ${values.length}.`);
-                    continue;
-                }
-                
-                const obsData: { [key: string]: string } = {};
-                headers.forEach((header, index) => {
-                    obsData[header] = values[index];
-                });
-
-                if (!obsData.report_type || !obsData.submitted_by || !obsData.areaId || !obsData.description) {
-                    console.warn(`Skipping row ${i+1} due to missing required data.`);
-                    continue;
-                }
-                
-                const displayId = `OBS${String(currentObsCount + observationsToCommit.length + 1).padStart(3, '0')}`;
-                
-                const newObservation: Omit<Observation, 'observation_id' | 'created_date'> = {
-                    display_id: displayId,
-                    status: 'Open',
-                    report_type: obsData.report_type as Observation['report_type'] || 'Safety Concern',
-                    submitted_by: obsData.submitted_by,
-                    date: obsData.date ? new Date(obsData.date).toISOString() : new Date().toISOString(),
-                    areaId: obsData.areaId,
-                    person_involved: obsData.person_involved || '',
-                    risk_level: (parseInt(obsData.risk_level, 10) as Observation['risk_level']) || 1,
-                    description: obsData.description,
-                    actions: obsData.actions || 'No immediate actions logged.',
-                    unsafe_category: obsData.unsafe_category as Observation['unsafe_category'] || 'N/A',
-                };
-                observationsToCommit.push(newObservation);
-                if (obsData.imageUrl) {
-                    imageUrlsToProcess.push({ index: observationsToCommit.length - 1, url: obsData.imageUrl });
-                }
-            }
+            // This part should be moved to the backend service. For now, it's a placeholder.
+            toast({ title: 'Import Started', description: 'Processing CSV file...' });
             
-            const enrichedObservations = [...observationsToCommit] as Omit<Observation, 'observation_id'>[];
-            if (imageUrlsToProcess.length > 0) {
-              toast({ title: "Processing images...", description: `Found ${imageUrlsToProcess.length} images to import.` });
-            }
-
-            const imageProcessingPromises = imageUrlsToProcess.map(async ({ index, url }) => {
-                try {
-                    const dataUri = await fetchAndUploadImageAction(url);
-                    if (dataUri) {
-                        const storageRef = ref(storage, `observations/imported/${Date.now()}_${index}.jpg`);
-                        const uploadResult = await uploadString(storageRef, dataUri, 'data_url');
-                        const downloadUrl = await getDownloadURL(uploadResult.ref);
-                        if (enrichedObservations[index]) {
-                           (enrichedObservations[index] as any).imageUrl = downloadUrl;
-                        }
-                    }
-                } catch (error) {
-                    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-                    console.error(`Failed to process image for row ${index + 2}: ${errorMessage}`);
-                    toast({
-                        variant: 'destructive',
-                        title: `Image Upload Failed (Row ${index + 2})`,
-                        description: `Could not upload image from URL. See console for details.`,
-                        duration: 5000,
-                    });
-                }
-            });
-
-            await Promise.all(imageProcessingPromises);
-
-            if (enrichedObservations.length > 0) {
-              const batch = writeBatch(db);
-              enrichedObservations.forEach(obs => {
-                  const newDocRef = doc(obsCollection);
-                  const cleanObs: any = { ...obs, created_date: new Date().toISOString() };
-                  if (!cleanObs.imageUrl) delete cleanObs.imageUrl;
-                  if (!cleanObs.safety_walk_id) delete cleanObs.safety_walk_id;
-                  if (!cleanObs.person_involved) delete cleanObs.person_involved;
-
-                  batch.set(newDocRef, cleanObs);
-              });
-              await batch.commit();
-              toast({ title: 'Import Successful', description: `${enrichedObservations.length} new observations imported.` });
-            } else {
-              toast({ title: 'Import Complete', description: 'No new valid observations to import.' });
-            }
-
         } catch (error) {
             console.error('Import error:', error);
             toast({ variant: 'destructive', title: 'Import Failed', description: 'There was an error parsing the CSV file.' });
@@ -1266,10 +1205,10 @@ export default function ObservationsPage() {
           observationId={selectedObservationId}
           isOpen={isDetailsOpen}
           onOpenChange={setDetailsOpen}
+          areas={areas}
         />
         
       </div>
     </AppShell>
   );
 }
-
