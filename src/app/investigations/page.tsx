@@ -140,6 +140,7 @@ const InvestigationDetailsDialog = ({ investigation, isOpen, onOpenChange }: { i
             incidentType: incidentDetails.type,
             incidentSeverity: incidentDetails.severity,
             incidentArea: incidentDetails.area,
+            historicalIncidentsJSON: JSON.stringify(incidents),
         });
 
         if (analysis.rootCause && analysis.contributingFactors) {

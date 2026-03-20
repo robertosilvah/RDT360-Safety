@@ -325,8 +325,8 @@ export const addDocumentToInvestigation = async (investigationId: string, docume
 };
 
 // JSA Functions
-export const addJsa = async (jsaData: Omit<JSA, 'jsa_id'>): Promise<boolean> => {
-    await addDoc(collection(db, 'jsas'), jsaData);
+export const addJsa = async (jsaData: Omit<JSA, 'jsa_id'>, displayId: string): Promise<boolean> => {
+    await addDoc(collection(db, 'jsas'), {...jsaData, display_id: displayId});
     return true;
 };
 export const updateJsa = async (updatedJsa: JSA): Promise<boolean> => {

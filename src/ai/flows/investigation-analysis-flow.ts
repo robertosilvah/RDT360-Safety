@@ -9,58 +9,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {db} from '@/lib/firebase';
-import {collection, getDocs} from 'firebase/firestore';
-import type {Incident} from '@/types';
 import {z} from 'genkit';
-
-// Tool to find similar incidents
-const findSimilarIncidents = ai.defineTool(
-  {
-    name: 'findSimilarIncidents',
-    description:
-      'Searches for past incidents that are similar to the provided query and returns a summary.',
-    inputSchema: z.object({
-      query: z
-        .string()
-        .describe(
-          'A description of the incident to search for similarities.'
-        ),
-    }),
-    outputSchema: z
-      .string()
-      .describe(
-        'A summary of similar incidents found, or a message indicating none were found.'
-      ),
-  },
-  async ({query}) => {
-    const queryLower = query.toLowerCase();
-
-    const incidentsCollection = collection(db, 'incidents');
-    const incidentsSnapshot = await getDocs(incidentsCollection);
-    const allIncidents: Incident[] = incidentsSnapshot.docs.map(doc => ({
-      ...(doc.data() as Omit<Incident, 'incident_id'>),
-      incident_id: doc.id,
-    }));
-
-    const similar = allIncidents.filter(incident =>
-      incident.description.toLowerCase().includes(queryLower)
-    );
-
-    if (similar.length === 0) {
-      return 'No similar incidents found in the database.';
-    }
-
-    const summary = similar
-      .map(
-        incident =>
-          `Incident ID ${incident.incident_id}: "${incident.description}" (Severity: ${incident.severity})`
-      )
-      .join('\n');
-
-    return `Found ${similar.length} similar incidents:\n${summary}`;
-  }
-);
 
 const InvestigationAnalysisInputSchema = z.object({
   incidentDescription: z
@@ -77,6 +26,9 @@ const InvestigationAnalysisInputSchema = z.object({
   incidentArea: z
     .string()
     .describe('The area where the incident occurred.'),
+  historicalIncidentsJSON: z
+    .string()
+    .describe('A JSON string representing an array of past incidents for historical context. The AI should use this data to identify patterns or similar events.')
 });
 export type InvestigationAnalysisInput = z.infer<
   typeof InvestigationAnalysisInputSchema
@@ -115,12 +67,11 @@ const prompt = ai.definePrompt({
   name: 'investigationAnalysisPrompt',
   input: {schema: InvestigationAnalysisInputSchema},
   output: {schema: InvestigationAnalysisOutputSchema},
-  tools: [findSimilarIncidents],
   system: `You are an expert safety investigator. Your task is to analyze an incident report and provide a comprehensive analysis.
 
-You MUST use the 'findSimilarIncidents' tool to check for historical patterns. For the 'query' parameter of the tool, use the provided incident description.
+You will be given the current incident's details and a JSON string containing all historical incidents. You MUST analyze this historical data to check for patterns or similar past events.
   
-Based on the incident details and any similar incidents found, provide the following:
+Based on all available details (current and historical), provide the following:
 1. A concise root cause.
 2. A list of contributing factors.
 3. A chronological history of events that led to the incident.
@@ -131,7 +82,10 @@ Based on the incident details and any similar incidents found, provide the follo
 - Description: {{{incidentDescription}}}
 - Type: {{{incidentType}}}
 - Severity: {{{incidentSeverity}}}
-- Area: {{{incidentArea}}}`,
+- Area: {{{incidentArea}}}
+
+For historical context, here is a JSON array of past incidents:
+{{{historicalIncidentsJSON}}}`,
 });
 
 const investigationAnalysisFlow = ai.defineFlow(

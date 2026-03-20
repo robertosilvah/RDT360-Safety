@@ -1,3 +1,4 @@
+
 // services/mariadb.js
 // This is a mock implementation for the MariaDB local API.
 // In a real application, these functions would make fetch requests to your local API endpoints.
@@ -68,7 +69,14 @@ export const subscribeToDoc = (collectionName: string, docId: string, callback: 
 export const ensureAdminUserExists = async () => {};
 export const ensureSampleJsaExists = async () => {};
 
-export const addObservation = (observation: any) => apiFetch('/observations', { method: 'POST', body: JSON.stringify(observation) });
+export const addObservation = (observation: Omit<Observation, 'observation_id'>, imageFile?: File | null) => {
+    let imageUrl;
+    if (imageFile) {
+        console.warn("[MariaDB Mock] File upload is not implemented. Using placeholder URL.");
+        imageUrl = `/uploads/mock/${imageFile.name}`;
+    }
+    return apiFetch('/observations', { method: 'POST', body: JSON.stringify({ ...observation, imageUrl }) });
+};
 export const updateObservation = (observation: any) => apiFetch(`/observations/${observation.observation_id}`, { method: 'PUT', body: JSON.stringify(observation) });
 export const deleteObservation = (id: string) => apiFetch(`/observations/${id}`, { method: 'DELETE' });
 
@@ -101,7 +109,7 @@ export const addForkliftInspection = (inspection: any) => apiFetch('/forklift-in
 export const addForklift = async (forklift: Omit<Forklift, 'imageUrl'> & { imageFile?: File }) => {
     let imageUrl;
     if (forklift.imageFile) {
-      console.warn("[MariaDB Mock] File upload is not implemented. Storing placeholder URL.");
+      console.warn("[MariaDB] File upload is not implemented. Storing placeholder URL.");
       imageUrl = `/uploads/mock/${forklift.imageFile.name}`;
     }
     const { imageFile, ...forkliftData } = forklift;
@@ -110,7 +118,7 @@ export const addForklift = async (forklift: Omit<Forklift, 'imageUrl'> & { image
 export const updateForklift = async (forklift: Forklift & { imageFile?: File }) => {
     let imageUrl = forklift.imageUrl;
     if (forklift.imageFile) {
-      console.warn("[MariaDB Mock] File upload is not implemented. Storing placeholder URL.");
+      console.warn("[MariaDB] File upload is not implemented. Storing placeholder URL.");
       imageUrl = `/uploads/mock/${forklift.imageFile.name}`;
     }
     const { imageFile, ...forkliftData } = forklift;
@@ -151,16 +159,20 @@ export const addJsa = (jsa: any) => apiFetch('/jsas', { method: 'POST', body: JS
 export const updateJsa = (jsa: any) => apiFetch(`/jsas/${jsa.jsa_id}`, { method: 'PUT', body: JSON.stringify(jsa) });
 export const batchUpdateJsaStatus = (jsaIds: string[], status: 'Active' | 'Expired' | 'Draft') => apiFetch('/jsas/batch-status', { method: 'PUT', body: JSON.stringify({ jsaIds, status }) });
 
-export const addHotWorkPermit = (permit: any, displayId: string, locationName: string) => apiFetch('/hot-work-permits', { method: 'POST', body: JSON.stringify({ ...permit, displayId, locationName }) });
+export const addHotWorkPermit = (permit: any) => apiFetch('/hot-work-permits', { method: 'POST', body: JSON.stringify(permit) });
 export const updateHotWorkPermit = (permit: any) => apiFetch(`/hot-work-permits/${permit.permit_id}`, { method: 'PUT', body: JSON.stringify(permit) });
 
-export const addConfinedSpacePermit = (permit: any, displayId: string, locationName: string) => apiFetch('/confined-space-permits', { method: 'POST', body: JSON.stringify({ ...permit, displayId, locationName }) });
+export const addConfinedSpacePermit = (permit: any) => apiFetch('/confined-space-permits', { method: 'POST', body: JSON.stringify(permit) });
 export const updateConfinedSpacePermit = (permit: any) => apiFetch(`/confined-space-permits/${permit.permit_id}`, { method: 'PUT', body: JSON.stringify(permit) });
 
 export const addCommentToDocument = (collectionName: string, docId: string, comments: Comment[]) => apiFetch(`/${collectionName}/${docId}/comments`, { method: 'POST', body: JSON.stringify(comments) });
 
 export const addToolboxTalk = (talk: any, attachment?: File) => apiFetch('/toolbox-talks', { method: 'POST', body: JSON.stringify({ ...talk, attachmentName: attachment?.name }) });
-export const addToolboxSignature = (talkId: string, signature: any) => apiFetch(`/toolbox-talks/${talkId}/signatures`, { method: 'POST', body: JSON.stringify(signature) });
+export const addToolboxSignature = (talkId: string, signature: any) => {
+    // In a real API, this would handle a data URL or multipart/form-data upload
+    console.warn("[MariaDB] File upload for signature is not implemented. Sending placeholder data.");
+    return apiFetch(`/toolbox-signatures`, { method: 'POST', body: JSON.stringify({...signature, signature_image_url: 'placeholder/url'}) });
+};
 export const getSignaturesForTalk = (talkId: string, callback: (data: ToolboxSignature[]) => void): (() => void) => {
     const interval = setInterval(async () => {
         try {
@@ -178,14 +190,14 @@ export const getSignaturesForTalk = (talkId: string, callback: (data: ToolboxSig
 
 export const updateBrandingSettings = async (logoFile: File): Promise<void> => {
   // This would require a multipart/form-data upload endpoint in a real API.
-  console.warn('[MariaDB Mock] Branding settings update with file upload is not implemented.');
+  console.warn('[MariaDB] Branding settings update with file upload is not implemented.');
 };
 export const updateUploadSettings = async (settings: UploadSettings): Promise<void> => {
-  console.warn('[MariaDB Mock] Upload settings update is not implemented.');
+  console.warn('[MariaDB] Upload settings update is not implemented.');
 };
 
 export const updateEmailSettings = async (settings: EmailSettings): Promise<void> => {
-  console.warn('[MariaDB Mock] Email settings update is not implemented.');
+  console.warn('[MariaDB] Email settings update is not implemented.');
 };
 
 export const addWorkHoursLog = (log: any) => apiFetch('/work-hours', { method: 'POST', body: JSON.stringify(log) });
