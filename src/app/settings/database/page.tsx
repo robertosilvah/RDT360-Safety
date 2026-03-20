@@ -51,7 +51,7 @@ export default function DatabaseSettingsPage() {
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="firebase">Firebase (Cloud)</SelectItem>
-                    <SelectItem value="mariadb">MariaDB (Local API Mock)</SelectItem>
+                    <SelectItem value="mariadb">MariaDB (Local API)</SelectItem>
                 </SelectContent>
             </Select>
         </div>
@@ -59,7 +59,7 @@ export default function DatabaseSettingsPage() {
           <Server className="h-4 w-4" />
           <AlertTitle>How this works</AlertTitle>
           <AlertDescription>
-            The application uses an abstraction layer that allows you to switch data sources. Changing this setting will make the app use a different set of functions for all data operations (e.g., fetching incidents, adding users). The MariaDB option is currently a mock for demonstration purposes.
+            The application uses an abstraction layer that allows you to switch data sources. Changing this setting will make the app use a different set of functions for all data operations (e.g., fetching incidents, adding users). The MariaDB option connects to a local Node.js API that you can run on your machine.
           </AlertDescription>
         </Alert>
       </CardContent>
