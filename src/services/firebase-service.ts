@@ -1,19 +1,10 @@
 
-
-
-
-
-
-
-
-
-
 import { db, storage } from '@/lib/firebase';
 import {
   collection, onSnapshot, addDoc, updateDoc, deleteDoc, doc, setDoc, writeBatch, DocumentReference,
   getDocs, query, where, getDoc,
 } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, uploadString } from 'firebase/storage';
 import type { Observation, CorrectiveAction, Incident, SafetyWalk, ForkliftInspection, User, Forklift, PredefinedChecklistItem, Area, SafetyDoc, ComplianceRecord, Investigation, JSA, HotWorkPermit, BrandingSettings, UploadSettings, ConfinedSpacePermit, IncidentData, Comment, WorkHoursLog, ToolboxTalk, ToolboxSignature, PredefinedHazard, PredefinedControl, EmailSettings } from '@/types';
 
 // Generic subscribe to collection function
@@ -106,13 +97,19 @@ export const ensureSampleJsaExists = async () => {
 };
 
 // Observation Functions
-export const addObservation = (observation: Omit<Observation, 'observation_id'>) => {
-  return addDoc(collection(db, 'observations'), observation);
+export const addObservation = async (observation: Omit<Observation, 'observation_id'>, imageFile?: File | null) => {
+  let imageUrl;
+  if (imageFile) {
+    const storageRef = ref(storage, `observations/${Date.now()}_${imageFile.name}`);
+    await uploadBytes(storageRef, imageFile);
+    imageUrl = await getDownloadURL(storageRef);
+  }
+  return addDoc(collection(db, 'observations'), { ...observation, ...(imageUrl && {imageUrl}) });
 };
 
 export const updateObservation = async (observation: Observation) => {
   const { observation_id, ...data } = observation;
-  await updateDoc(doc(db, 'observations', observation_id), data);
+  await updateDoc(doc(db, 'observations', observation_id), data as { [x: string]: any });
 };
 
 export const deleteObservation = async (observationId: string) => {
@@ -192,7 +189,7 @@ export const createInvestigationForIncident = async (incidentId: string, display
 
 export const updateIncident = async (updatedIncident: Incident) => {
   const { incident_id, ...data } = updatedIncident;
-  await updateDoc(doc(db, 'incidents', incident_id), data);
+  await updateDoc(doc(db, 'incidents', incident_id), data as { [x: string]: any });
 };
 
 // Safety Walk Functions
@@ -222,9 +219,9 @@ export const addForklift = async (forklift: Omit<Forklift, 'imageUrl'> & { image
     await setDoc(doc(db, 'forklifts', forkliftData.id), {...forkliftData, ...(imageUrl && {imageUrl})});
 };
 
-export const updateForklift = async (updatedForklift: Forklift & { imageFile?: File }) => {
-    const { imageFile, ...forkliftData } = updatedForklift;
-    let imageUrl = updatedForklift.imageUrl;
+export const updateForklift = async (forklift: Forklift & { imageFile?: File }) => {
+    const { imageFile, ...forkliftData } = forklift;
+    let imageUrl = forklift.imageUrl;
 
     if (imageFile) {
         const storageRef = ref(storage, `forklifts/${forkliftData.id}_${imageFile.name}`);
@@ -233,7 +230,7 @@ export const updateForklift = async (updatedForklift: Forklift & { imageFile?: F
     }
 
     const dataToUpdate: Partial<Forklift> = { ...forkliftData, ...(imageUrl && { imageUrl }) };
-    await updateDoc(doc(db, 'forklifts', updatedForklift.id), dataToUpdate);
+    await updateDoc(doc(db, 'forklifts', forkliftData.id), dataToUpdate);
 };
 
 export const removeForklift = async (forkliftId: string) => {
@@ -311,7 +308,7 @@ export const addComplianceRecord = async (record: Omit<ComplianceRecord, 'displa
   await setDoc(doc(db, 'complianceRecords', record.employee_id), record);
 };
 export const updateComplianceRecord = async (record: ComplianceRecord) => {
-  await updateDoc(doc(db, 'complianceRecords', record.employee_id), record);
+  await updateDoc(doc(db, 'complianceRecords', record.employee_id), record as { [x: string]: any });
 };
 export const removeComplianceRecord = async (employeeId: string) => {
   await deleteDoc(doc(db, 'complianceRecords', employeeId));
@@ -328,22 +325,12 @@ export const addDocumentToInvestigation = async (investigationId: string, docume
 };
 
 // JSA Functions
-export const addJsa = async (jsaData: Omit<JSA, 'jsa_id' | 'display_id' | 'status' | 'created_by' | 'created_date' | 'signatures'>, displayId: string): Promise<boolean> => {
-    const status = new Date(jsaData.valid_to) < new Date() ? 'Expired' : 'Active';
-    const newJsaForDb = { 
-        ...jsaData,
-        display_id: displayId, 
-        status: status,
-        created_by: 'Safety Manager', // Mocked
-        created_date: new Date().toISOString(),
-        signatures: [],
-    };
-    await addDoc(collection(db, 'jsas'), newJsaForDb);
+export const addJsa = async (jsaData: Omit<JSA, 'jsa_id'>): Promise<boolean> => {
+    await addDoc(collection(db, 'jsas'), jsaData);
     return true;
 };
 export const updateJsa = async (updatedJsa: JSA): Promise<boolean> => {
     const { jsa_id, ...data } = updatedJsa;
-    data.status = new Date(data.valid_to) < new Date() ? 'Expired' : 'Active';
     await updateDoc(doc(db, 'jsas', jsa_id), data);
     return true;
 };
@@ -359,9 +346,8 @@ export const batchUpdateJsaStatus = async (jsaIds: string[], status: 'Active' | 
 
 
 // Hot Work Permit Functions
-export const addHotWorkPermit = async (permit: Omit<HotWorkPermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, displayId: string, locationName: string) => {
-  const newPermitData = { ...permit, display_id: displayId, created_date: new Date().toISOString(), status: 'Draft' as const, locationName: locationName, comments: [] };
-  await addDoc(collection(db, 'hotWorkPermits'), newPermitData);
+export const addHotWorkPermit = async (permit: Omit<HotWorkPermit, 'permit_id'>) => {
+  await addDoc(collection(db, 'hotWorkPermits'), permit);
 };
 export const updateHotWorkPermit = async (updatedPermit: HotWorkPermit) => {
   const { permit_id, ...data } = updatedPermit;
@@ -369,9 +355,8 @@ export const updateHotWorkPermit = async (updatedPermit: HotWorkPermit) => {
 };
 
 // Confined Space Permit Functions
-export const addConfinedSpacePermit = async (permit: Omit<ConfinedSpacePermit, 'permit_id' | 'display_id' | 'created_date' | 'status' | 'supervisor_signature' | 'locationName' | 'comments'>, displayId: string, locationName: string) => {
-    const newPermitData = { ...permit, display_id: displayId, created_date: new Date().toISOString(), status: 'Draft' as const, locationName: locationName, comments: [] };
-    await addDoc(collection(db, 'confinedSpacePermits'), newPermitData);
+export const addConfinedSpacePermit = async (permit: Omit<ConfinedSpacePermit, 'permit_id'>) => {
+    await addDoc(collection(db, 'confinedSpacePermits'), permit);
 };
 export const updateConfinedSpacePermit = async (updatedPermit: ConfinedSpacePermit) => {
     const { permit_id, ...data } = updatedPermit;
@@ -385,29 +370,30 @@ export const addCommentToDocument = async (collectionName: string, docId: string
 };
 
 // Toolbox Talk Functions
-export const addToolboxTalk = async (talk: Omit<ToolboxTalk, 'id' | 'display_id' | 'signatures' | 'attachments'>, attachment?: File) => {
-  let attachmentUrl = '';
+export const addToolboxTalk = async (talk: Omit<ToolboxTalk, 'id' | 'attachments'>, attachment?: File) => {
+  let attachmentData: { name: string, url: string }[] = [];
   if (attachment) {
       const storageRef = ref(storage, `toolbox-attachments/${Date.now()}_${attachment.name}`);
       await uploadBytes(storageRef, attachment);
-      attachmentUrl = await getDownloadURL(storageRef);
+      const attachmentUrl = await getDownloadURL(storageRef);
+      attachmentData.push({ name: attachment.name, url: attachmentUrl });
   }
 
   const newTalkData = {
       ...talk,
-      signatures: [],
-      attachments: attachment ? [{ name: attachment.name, url: attachmentUrl }] : [],
+      attachments: attachmentData,
   };
   return await addDoc(collection(db, 'toolboxTalks'), newTalkData);
 };
 
-export const addToolboxSignature = async (talkId: string, signature: Omit<ToolboxSignature, 'id'>) => {
+export const addToolboxSignature = async (talkId: string, signature: Omit<ToolboxSignature, 'id' | 'toolbox_talk_id' | 'signature_image_url'> & { signature_image_url: string }) => {
     const storageRef = ref(storage, `toolbox-signatures/${talkId}_${Date.now()}.png`);
     const uploadResult = await uploadString(storageRef, signature.signature_image_url, 'data_url');
     const downloadUrl = await getDownloadURL(uploadResult.ref);
 
     const signatureData = {
         ...signature,
+        toolbox_talk_id: talkId,
         signature_image_url: downloadUrl
     };
     return await addDoc(collection(db, 'toolboxSignatures'), signatureData);
@@ -445,7 +431,7 @@ export const addWorkHoursLog = async (log: Omit<WorkHoursLog, 'id'>) => {
 };
 export const updateWorkHoursLog = async (updatedLog: WorkHoursLog) => {
   const { id, ...data } = updatedLog;
-  await updateDoc(doc(db, 'workHours', id), data);
+  await updateDoc(doc(db, 'workHours', id), data as { [x: string]: any });
 };
 export const removeWorkHoursLog = async (logId: string) => {
   await deleteDoc(doc(db, 'workHours', logId));

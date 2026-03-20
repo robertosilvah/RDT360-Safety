@@ -580,22 +580,18 @@ export default function CorrectiveActionsPage() {
   }, [allActions, user]);
 
   const handleSaveAction = (values: ActionFormValues) => {
-      const baseAction = {
+      const baseAction: Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments'| 'created_date' | 'completion_date' | 'type'> = {
         description: values.description,
         responsible_person: values.responsible_person,
         due_date: new Date(values.due_date).toISOString(),
+        status: 'Pending',
       };
       
-      const linkedAction: Partial<Omit<CorrectiveAction, 'action_id' | 'display_id' | 'comments' | 'created_date' | 'completion_date' | 'type' | 'status'>> & typeof baseAction = {
-          ...baseAction
+      const linkedAction = {
+          ...baseAction,
+          related_to_incident: values.linkType === 'incident' ? values.linked_id : undefined,
+          related_to_observation: values.linkType === 'observation' ? values.linked_id : undefined,
       };
-      
-      if (values.linkType === 'incident' && values.linked_id) {
-          linkedAction.related_to_incident = values.linked_id;
-      }
-      if (values.linkType === 'observation' && values.linked_id) {
-          linkedAction.related_to_observation = values.linked_id;
-      }
 
       addCorrectiveAction(linkedAction);
       toast({
@@ -660,4 +656,3 @@ export default function CorrectiveActionsPage() {
     </AppShell>
   );
 }
-
